@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {BlokzGame} from "../src/BlokzGame.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -46,10 +46,10 @@ contract MockERC20 is Test {
 
 /// @dev Exposes internals for testing.
 contract BlokzGameExposed is BlokzGame {
-    MockERC20 public mockCUSD;
+    MockERC20 public mockCusd;
 
-    function setCUSDMock(address mock) external {
-        mockCUSD = MockERC20(mock);
+    function setCusdMock(address mock) external {
+        mockCusd = MockERC20(mock);
     }
 
     // Override CUSD constant behaviour by overriding the transfer helper in tests.
@@ -86,6 +86,7 @@ contract BlokzGameTest is Test {
 
     function test_startGame_createsActiveGame() public {
         vm.prank(alice);
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seedHash = keccak256(abi.encodePacked(bytes32("seed"), alice));
         uint256 gameId = game.startGame(seedHash);
 
@@ -98,6 +99,7 @@ contract BlokzGameTest is Test {
 
     function test_startGame_cannotHaveTwoActiveGames() public {
         vm.startPrank(alice);
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seedHash = keccak256(abi.encodePacked(bytes32("seed"), alice));
         game.startGame(seedHash);
 
@@ -107,6 +109,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_submitScore_withValidSeed() public {
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seed = bytes32("myseed");
         bytes32 seedHash = keccak256(abi.encodePacked(seed, alice));
 
@@ -128,6 +131,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_submitScore_wrongSeedReverts() public {
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seed = bytes32("realseed");
         bytes32 seedHash = keccak256(abi.encodePacked(seed, alice));
 
@@ -137,10 +141,12 @@ contract BlokzGameTest is Test {
         uint256[] memory packed = new uint256[](1);
         vm.prank(alice);
         vm.expectRevert(BlokzGame.InvalidSeed.selector);
+        // forge-lint: disable-next-line(unsafe-typecast)
         game.submitScore(gameId, bytes32("wrongseed"), packed, 100, 0);
     }
 
     function test_submitScore_onlyOwnerCanSubmit() public {
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seed = bytes32("s");
         bytes32 seedHash = keccak256(abi.encodePacked(seed, alice));
         vm.prank(alice);
@@ -153,6 +159,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_canStartNewGameAfterSubmitting() public {
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seed = bytes32("s");
         bytes32 seedHash = keccak256(abi.encodePacked(seed, alice));
 
@@ -164,6 +171,7 @@ contract BlokzGameTest is Test {
         game.submitScore(gameId, seed, packed, 100, 0);
 
         // Should be able to start a new game
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seedHash2 = keccak256(abi.encodePacked(bytes32("seed2"), alice));
         vm.prank(alice);
         uint256 gameId2 = game.startGame(seedHash2);
@@ -240,7 +248,7 @@ contract BlokzGameTest is Test {
 
     // ─────────────────────────────── Task 3.5: Tournament tests ──
 
-    function _mockCUSD() internal {
+    function _mockCusd() internal {
         // Replace CUSD calls with our mock
         vm.mockCall(
             game.CUSD(),
@@ -255,7 +263,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_tournament_fullLifecycle() public {
-        _mockCUSD();
+        _mockCusd();
         uint256 entryFee = 1 ether;
         uint64 start = uint64(block.timestamp + 60);
         uint64 end = uint64(block.timestamp + 1 days);
@@ -276,8 +284,8 @@ contract BlokzGameTest is Test {
         assertEq(playerCount, 3);
 
         // Submit scores (no moves needed, zero moveCount skips spot-check)
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes32 seed = bytes32("seed");
-        bytes32 seedHash = keccak256(abi.encodePacked(seed, alice));
         uint256[] memory packed = new uint256[](1);
 
         vm.prank(alice);
@@ -300,7 +308,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_tournament_cannotJoinAfterEnd() public {
-        _mockCUSD();
+        _mockCusd();
         uint64 start = uint64(block.timestamp + 60);
         uint64 end = uint64(block.timestamp + 1 hours);
 
@@ -314,7 +322,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_tournament_cannotJoinTwice() public {
-        _mockCUSD();
+        _mockCusd();
         uint64 start = uint64(block.timestamp + 60);
         uint64 end = uint64(block.timestamp + 1 days);
 
@@ -355,7 +363,7 @@ contract BlokzGameTest is Test {
     }
 
     function test_tournament_maxPlayersEnforced() public {
-        _mockCUSD();
+        _mockCusd();
         uint64 start = uint64(block.timestamp + 60);
         uint64 end = uint64(block.timestamp + 1 days);
 

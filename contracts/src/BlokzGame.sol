@@ -205,8 +205,11 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
             uint256 bitOffset = (checkIndex % 25) * 10;
             uint256 bits = (packedMoves[wordIdx] >> bitOffset) & 0x3FF;
 
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint8 pieceIndex = uint8((bits >> 8) & 0x3);
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint8 row = uint8((bits >> 4) & 0xF);
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint8 col = uint8(bits & 0xF);
 
             // Bounds validation — sufficient to detect obviously tampered move data.
@@ -395,15 +398,15 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
 
         // Prize splits (as fractions of distributable)
         if (numPlayers >= 3) {
-            _safeCUSDTransfer(sorted[0], (distributable * 50) / 90); // ~55.6% of distributable
-            _safeCUSDTransfer(sorted[1], (distributable * 25) / 90); // ~27.8%
-            _safeCUSDTransfer(sorted[2], (distributable * 15) / 90); // ~16.7%
+            _safeCusdTransfer(sorted[0], (distributable * 50) / 90); // ~55.6% of distributable
+            _safeCusdTransfer(sorted[1], (distributable * 25) / 90); // ~27.8%
+            _safeCusdTransfer(sorted[2], (distributable * 15) / 90); // ~16.7%
         } else if (numPlayers == 2) {
-            _safeCUSDTransfer(sorted[0], (distributable * 2) / 3);
-            _safeCUSDTransfer(sorted[1], distributable / 3);
+            _safeCusdTransfer(sorted[0], (distributable * 2) / 3);
+            _safeCusdTransfer(sorted[1], distributable / 3);
         } else {
             // Single player gets all distributable back
-            _safeCUSDTransfer(sorted[0], distributable);
+            _safeCusdTransfer(sorted[0], distributable);
         }
 
         address winner = sorted[0];
@@ -422,7 +425,7 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
     function withdrawProtocolRevenue() external onlyOwner nonReentrant {
         uint256 amount = protocolRevenue;
         protocolRevenue = 0;
-        _safeCUSDTransfer(owner(), amount);
+        _safeCusdTransfer(owner(), amount);
     }
 
     // ────────────────────────────────────────────────────── Internal helpers ──
@@ -453,7 +456,7 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
         }
     }
 
-    function _safeCUSDTransfer(address to, uint256 amount) internal {
+    function _safeCusdTransfer(address to, uint256 amount) internal {
         if (amount == 0) return;
         bool ok = IERC20(CUSD).transfer(to, amount);
         if (!ok) revert TransferFailed();
