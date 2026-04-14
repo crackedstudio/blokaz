@@ -9,6 +9,8 @@ import type { ShapeDefinition } from '../engine/shapes'
 import ScoreBar from './ScoreBar'
 import GameOverModal from './GameOverModal'
 import { hapticImpact, hapticNotification, hapticError } from '../miniapp/haptics'
+import { useStartGame, generateGameSeed } from '../hooks/useBlokzGame'
+import { useAccount } from 'wagmi'
 
 const GameScreen: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -19,13 +21,24 @@ const GameScreen: React.FC = () => {
   const rafRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
 
-  const { gameSession, score, comboStreak, isGameOver, startGame, placePiece, resetGame } =
+  const { gameSession, score, comboStreak, isGameOver, startGame, setOnChainData, placePiece, resetGame } =
     useGameStore()
 
-  // Start a new game on mount
+  // On-chain registration hook (unused until explicit integration)
+  const { startGame: contractStartGame } = useStartGame()
+  const [currentSeed, setCurrentSeed] = useState<{seed: `0x${string}`, hash: `0x${string}`} | null>(null)
+
+  // 1. Initial Start (Local)
   useEffect(() => {
-    startGame(BigInt(Date.now()))
+    const { seed, hash } = generateGameSeed()
+    setCurrentSeed({ seed, hash })
+    const localSeed = BigInt(hash.slice(0, 18)) 
+    startGame(localSeed)
+    setOnChainData(0n, seed) // Initial state
   }, [])
+
+  // 2. Wallet Context
+  const { address, isConnected } = useAccount()
 
   // Initialize canvas renderers whenever a new game session starts
   useEffect(() => {

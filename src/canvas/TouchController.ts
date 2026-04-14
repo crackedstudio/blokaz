@@ -85,7 +85,8 @@ export class TouchController {
     this.dragPos = { x, y }
 
     // Offset for ghost prediction (above finger)
-    const ghostGridPos = this.gridRenderer.screenToGrid(x, y - 40)
+    // Pass raw client coordinates to screenToGrid which handles its own rect subtraction
+    const ghostGridPos = this.gridRenderer.screenToGrid(e.clientX, e.clientY - 40)
     
     if (ghostGridPos) {
       // @ts-ignore
