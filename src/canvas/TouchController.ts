@@ -1,6 +1,6 @@
 import { GridRenderer } from './GridRenderer'
 import { PieceRenderer } from './PieceRenderer'
-import { ShapeDefinition } from '../engine/shapes'
+import type { ShapeDefinition } from '../engine/shapes'
 import { Grid } from '../engine/grid'
 
 export class TouchController {

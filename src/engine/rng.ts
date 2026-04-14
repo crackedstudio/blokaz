@@ -1,4 +1,5 @@
-import { ShapeDefinition, TOTAL_WEIGHT } from './shapes'
+import { TOTAL_WEIGHT } from './shapes'
+import type { ShapeDefinition } from './shapes'
 
 export class DeterministicRNG {
   private s0: bigint

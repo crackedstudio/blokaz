@@ -1,4 +1,5 @@
-import { GameSession, MoveRecord } from './game'
+import { GameSession } from './game'
+import type { MoveRecord } from './game'
 import { Grid } from './grid'
 
 /**

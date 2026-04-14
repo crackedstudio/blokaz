@@ -1,4 +1,4 @@
-import { ShapeDefinition } from './shapes'
+import type { ShapeDefinition } from './shapes'
 
 export class Grid {
   static SIZE = 9

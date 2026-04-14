@@ -1,7 +1,9 @@
 import { Grid } from './grid'
-import { ShapeDefinition, SHAPES } from './shapes'
+import { SHAPES } from './shapes'
+import type { ShapeDefinition } from './shapes'
 import { DeterministicRNG, dealThree } from './rng'
-import { calculateScore, ScoreEvent } from './scoring'
+import { calculateScore } from './scoring'
+import type { ScoreEvent } from './scoring'
 
 export interface MoveRecord {
   pieceIndex: number

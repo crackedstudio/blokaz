@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { GameSession } from '../engine/game'
-import { ShapeDefinition } from '../engine/shapes'
+import type { ShapeDefinition } from '../engine/shapes'
 
 interface GameState {
   gameSession: GameSession | null

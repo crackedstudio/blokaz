@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { packMoves, unpackMoves, buildProof } from '../replay'
-import { MoveRecord, GameSession } from '../game'
+import { GameSession } from '../game'
+import type { MoveRecord } from '../game'
 
 describe('Replay Proof Builder', () => {
   it('should pack and unpack moves losslessly', () => {

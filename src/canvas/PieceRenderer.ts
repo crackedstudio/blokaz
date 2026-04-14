@@ -1,4 +1,4 @@
-import { ShapeDefinition } from '../engine/shapes'
+import type { ShapeDefinition } from '../engine/shapes'
 import { COLOR_PALETTE } from './GridRenderer'
 
 export class PieceRenderer {
