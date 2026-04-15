@@ -109,11 +109,6 @@ contract BlokzGame is Ownable, ReentrancyGuard {
     // ────────────────────────────────────────────────────── Game Registry ──
 
     function startGame(bytes32 seedHash) external returns (uint256 gameId) {
-        uint256 existingId = activeGame[msg.sender];
-        if (existingId != 0 && games[existingId].status == GameStatus.ACTIVE) {
-            revert AlreadyHasActiveGame();
-        }
-
         gameId = nextGameId++;
         games[gameId] = Game({
             player: msg.sender,
