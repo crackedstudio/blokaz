@@ -13,7 +13,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract BlokzGame is Ownable, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────── Constants ──
 
-    address public constant CUSD = 0x765DE816845861e75A25fCA122bb6898B8B1282a;
+    address public constant USDC = 0x01C5C0122039549AD1493B8220cABEdD739BC44E;
     uint256 public constant EPOCH_DURATION = 7 days;
     uint8 public constant LEADERBOARD_SIZE = 50;
     uint256 public constant PROTOCOL_FEE_BPS = 500; // 5 %
@@ -246,7 +246,7 @@ contract BlokzGame is Ownable, ReentrancyGuard {
         if (inTournament[tid][msg.sender]) revert AlreadyInTournament();
 
         if (t.entryFee > 0) {
-            if (!IERC20(CUSD).transferFrom(msg.sender, address(this), t.entryFee)) revert TransferFailed();
+            if (!IERC20(USDC).transferFrom(msg.sender, address(this), t.entryFee)) revert TransferFailed();
             t.prizePool += t.entryFee;
         }
         t.playerCount++;
@@ -330,6 +330,6 @@ contract BlokzGame is Ownable, ReentrancyGuard {
     }
 
     function _safeCusdTransfer(address to, uint256 amount) internal {
-        if (amount > 0 && !IERC20(CUSD).transfer(to, amount)) revert TransferFailed();
+        if (amount > 0 && !IERC20(USDC).transfer(to, amount)) revert TransferFailed();
     }
 }

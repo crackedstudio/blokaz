@@ -49,7 +49,7 @@ pnpm add wagmi viem @tanstack/react-query \
 
 **Create `src/chain/contracts.ts`:**
 - `BLOKZ_GAME_ADDRESS` — proxy address from the testnet deployment
-- `CUSD_ADDRESS` — `0x765DE816845861e75A25fCA122bb6898B8B1282a`
+- `CUSD_ADDRESS` — `0x01C5C0122039549AD1493B8220cABEdD739BC44E`
 - `BLOKZ_ABI` — copy from `contracts/out/BlokzGame.sol/BlokzGame.json`
 
 **Update `src/main.tsx`:** Wrap `<App>` in `WagmiProvider` + `QueryClientProvider`.
@@ -108,7 +108,7 @@ pnpm add wagmi viem @tanstack/react-query \
 
 **Create `src/chain/useTournament.ts`** with hooks:
 - `useTournamentList()` — reads active tournaments
-- `useJoinTournament(id, entryFee)` — batches cUSD `approve` + `joinTournament` via EIP-5792 `useSendCalls`
+- `useJoinTournament(id, entryFee)` — batches USDC `approve` + `joinTournament` via EIP-5792 `useSendCalls`
 - `useSubmitTournamentScore(tournamentId, ...)` — submits a tournament score
 - `useTournamentResults(id)` — reads final standings
 
@@ -121,7 +121,7 @@ pnpm add wagmi viem @tanstack/react-query \
 - Final standings with prize amounts per place
 - "Collect Prize" button for winners (calls `finalizeTournament` if not yet done)
 
-**Acceptance:** Full tournament lifecycle works end-to-end with real cUSD on testnet.
+**Acceptance:** Full tournament lifecycle works end-to-end with real USDC on testnet.
 
 ---
 
@@ -177,7 +177,7 @@ export function shareScore(score: number, maxCombo: number): void {
    ```json
    {
      "name": "Blokaz",
-     "description": "Block puzzle meets blockchain. Clear lines, chain combos, win cUSD.",
+     "description": "Block puzzle meets blockchain. Clear lines, chain combos, win USDC.",
      "iconUrl": "https://blokaz.xyz/icon-512.png",
      "splashImageUrl": "https://blokaz.xyz/splash-1920x1080.png",
      "splashBackgroundColor": "#0a0a0c",
@@ -224,10 +224,10 @@ export function shareScore(score: number, maxCombo: number): void {
 ### Task 6.2 — Contract Invariant Testing
 
 **Create `contracts/test/BlokzGame.invariant.t.sol`:**
-- Contract cUSD balance ≥ sum of all unfunded prize pools
+- Contract USDC balance ≥ sum of all unfunded prize pools
 - Leaderboard length never exceeds 50
 - No player has more than 1 active game
-- `protocolRevenue + weeklyRewardPool + distributed = total cUSD ever received`
+- `protocolRevenue + weeklyRewardPool + distributed = total USDC ever received`
 - Fuzz `_spotCheckMoves` with random inputs — valid inputs never revert
 
 ### Task 6.3 — UX & Performance Polish

@@ -9,7 +9,8 @@ import { BLOKZ_GAME_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
 
 const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
-const CUSD_ADDRESS = '0x765DE816845861e75A25fCA122bb6898B8B1282a' as const
+const USDC_ADDRESS = '0x01C5C0122039549AD1493B8220cABEdD739BC44E' as const
+export const USDC_DECIMALS = 6
 
 const ERC20_ABI = [
   {
@@ -96,14 +97,14 @@ export function useActiveGame(address?: `0x${string}`) {
  * Hook to get specific tournament details.
  */
 export function useTournament(tournamentId: bigint) {
-  const { data: tournament, isLoading } = useReadContract({
+  const { data: tournament, isLoading, refetch } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'tournaments',
     args: [tournamentId],
   })
 
-  return { tournament, isLoading }
+  return { tournament, isLoading, refetch }
 }
 
 /**
@@ -134,11 +135,11 @@ export function useInTournament(tournamentId: bigint, playerAddress?: `0x${strin
 }
 
 /**
- * Hook to check cUSD allowance for the BlokzGame contract.
+ * Hook to check USDC allowance for the BlokzGame contract.
  */
-export function useCUSDAllowance(ownerAddress?: `0x${string}`) {
+export function useUSDCAllowance(ownerAddress?: `0x${string}`) {
   const { data: allowance, isLoading, refetch } = useReadContract({
-    address: CUSD_ADDRESS,
+    address: USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: ownerAddress ? [ownerAddress, CONTRACT_ADDRESS] : undefined,
@@ -174,6 +175,19 @@ export function useOwner() {
   })
 
   return { owner: owner as `0x${string}` | undefined, isLoading }
+}
+
+/**
+ * Hook to get the accumulated protocol revenue.
+ */
+export function useProtocolRevenue() {
+  const { data: revenue, isLoading, refetch } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: BLOKZ_GAME_ABI,
+    functionName: 'protocolRevenue',
+  })
+
+  return { revenue: revenue as bigint | undefined, isLoading, refetch }
 }
 
 
@@ -340,15 +354,15 @@ export function useSetUsername() {
 }
 
 /**
- * Hook to approve cUSD spending for the BlokzGame contract.
+ * Hook to approve USDC spending for the BlokzGame contract.
  */
-export function useApproveCUSD() {
+export function useApproveUSDC() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
   const approve = (amount: bigint) => {
     writeContract({
-      address: CUSD_ADDRESS,
+      address: USDC_ADDRESS,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [CONTRACT_ADDRESS, amount],

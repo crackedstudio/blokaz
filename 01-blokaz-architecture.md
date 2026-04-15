@@ -2,13 +2,13 @@
 
 ## A Block Blast–Style Puzzle Game as a Celo Farcaster MiniApp
 
-**Version 2.0 — cUSD Native Economy**
+**Version 2.0 — USDC Native Economy**
 
 ---
 
 ## 1. Product Overview
 
-Blokaz is a competitive block-placement puzzle game running as a **Farcaster MiniApp** on the **Celo blockchain**. Players drag and drop geometric pieces onto a 9×9 grid, clear rows and columns, chain combos, and compete for high scores. Blockchain integration enables verifiable scores, cUSD-staked tournaments, on-chain leaderboards, and direct cUSD prize payouts — all while keeping the core gameplay loop fast, fluid, and 100% client-side.
+Blokaz is a competitive block-placement puzzle game running as a **Farcaster MiniApp** on the **Celo blockchain**. Players drag and drop geometric pieces onto a 9×9 grid, clear rows and columns, chain combos, and compete for high scores. Blockchain integration enables verifiable scores, USDC-staked tournaments, on-chain leaderboards, and direct USDC prize payouts — all while keeping the core gameplay loop fast, fluid, and 100% client-side.
 
 ### 1.1 Design Principles
 
@@ -17,12 +17,12 @@ Blokaz is a competitive block-placement puzzle game running as a **Farcaster Min
 | **Game-first** | All game logic runs in the browser. Zero latency for piece placement, line clears, and combos. The chain is never in the critical rendering path. |
 | **Prove, don't trust** | Final scores are committed with a deterministic replay proof so the contract can verify legitimacy without simulating the game on-chain. |
 | **MiniApp-native** | Built on the Farcaster MiniApp SDK with Wagmi + Celo. Wallet connection, transactions, and haptic feedback use the SDK's native primitives. |
-| **cUSD standard** | All economic activity (tournament fees, prizes, rewards) flows through cUSD — Celo's dollar-pegged stablecoin. No custom token, no speculation, no regulatory friction. |
+| **USDC standard** | All economic activity (tournament fees, prizes, rewards) flows through USDC — Celo's dollar-pegged stablecoin. No custom token, no speculation, no regulatory friction. |
 | **MVP velocity** | Single smart contract, single frontend bundle, no backend server required for core play. A thin optional API only for relay/indexing. |
 
-### 1.2 Why cUSD Only (No Custom Token)
+### 1.2 Why USDC Only (No Custom Token)
 
-Custom game tokens create three problems that slow down an MVP: they require liquidity bootstrapping, they invite speculative behavior that distracts from gameplay, and they add regulatory surface area. By using cUSD exclusively, Blokaz achieves real-money prize pools from day one, zero token management overhead, stable and predictable economics for players, and instant familiarity for anyone in the Celo ecosystem. The game monetizes through protocol fees on tournament prize pools (5%), not through token inflation or sales.
+Custom game tokens create three problems that slow down an MVP: they require liquidity bootstrapping, they invite speculative behavior that distracts from gameplay, and they add regulatory surface area. By using USDC exclusively, Blokaz achieves real-money prize pools from day one, zero token management overhead, stable and predictable economics for players, and instant familiarity for anyone in the Celo ecosystem. The game monetizes through protocol fees on tournament prize pools (5%), not through token inflation or sales.
 
 ---
 
@@ -62,11 +62,11 @@ Custom game tokens create three problems that slow down an MVP: they require liq
               │  │ • Leaderboard   │  │
               │  │ • Tournaments   │  │
               │  │ • Score Verify  │  │
-              │  │ • cUSD Vault    │  │
+              │  │ • USDC Vault    │  │
               │  └─────────────────┘  │
               │                       │
               │  ┌─────────────────┐  │
-              │  │  cUSD (ERC-20)  │  │
+              │  │  USDC (ERC-20)  │  │
               │  │  0xcebA9300...  │  │
               │  └─────────────────┘  │
               └───────────────────────┘
@@ -370,8 +370,8 @@ A single upgradeable contract handles all on-chain state. No heavy computation h
 BlokzGame.sol (UUPS Upgradeable)
 ├── GameRegistry         — maps gameId → seed, player, status
 ├── Leaderboard          — top N scores per epoch (week)
-├── TournamentManager    — cUSD entry fees, prize pools, brackets
-├── RewardVault          — holds and distributes cUSD rewards
+├── TournamentManager    — USDC entry fees, prize pools, brackets
+├── RewardVault          — holds and distributes USDC rewards
 └── ScoreVerifier        — lightweight replay validation
 ```
 
@@ -422,20 +422,20 @@ interface IBlokzGame {
     function getLeaderboard(uint256 epoch)
         external view returns (LeaderboardEntry[] memory);
 
-    /// @notice Claim cUSD reward if player is in top N of a past epoch.
+    /// @notice Claim USDC reward if player is in top N of a past epoch.
     function claimReward(uint256 epoch) external;
 
-    // ── Tournaments (cUSD Entry) ───────────────────────────
+    // ── Tournaments (USDC Entry) ───────────────────────────
 
-    /// @notice Create a tournament with a cUSD entry fee.
+    /// @notice Create a tournament with a USDC entry fee.
     function createTournament(
-        uint256 entryFeeCUSD,     // in cUSD (6 decimals)
+        uint256 entryFeeCUSD,     // in USDC (6 decimals)
         uint256 startTime,
         uint256 endTime,
         uint8 maxPlayers
     ) external returns (uint256 tournamentId);
 
-    /// @notice Join a tournament (must have approved cUSD first).
+    /// @notice Join a tournament (must have approved USDC first).
     function joinTournament(uint256 tournamentId) external;
 
     /// @notice Submit a tournament game score.
@@ -447,7 +447,7 @@ interface IBlokzGame {
         uint32 score
     ) external;
 
-    /// @notice End tournament and distribute cUSD prizes.
+    /// @notice End tournament and distribute USDC prizes.
     function finalizeTournament(uint256 tournamentId) external;
 
     // ── Structs ────────────────────────────────────────────
@@ -478,7 +478,7 @@ Full replay verification on-chain would cost too much gas. Blokaz uses a **proba
 
 This gives a strong deterrent against cheating with ~80k gas per submission.
 
-### 4.5 cUSD Reward Distribution
+### 4.5 USDC Reward Distribution
 
 ```
 WEEKLY EPOCH REWARDS (funded by tournament protocol fees)
@@ -489,7 +489,7 @@ WEEKLY EPOCH REWARDS (funded by tournament protocol fees)
 │   ├── 3rd place  → 15%
 │   ├── 4th–10th   → 25% (split equally)
 │   └── Protocol   → 5% (operational reserve)
-└── Paid in cUSD
+└── Paid in USDC
 
 TOURNAMENT PRIZE DISTRIBUTION
 ├── Prize Pool = (entryFee × playerCount)
@@ -499,7 +499,7 @@ TOURNAMENT PRIZE DISTRIBUTION
 │   ├── 3rd place  → 15%
 │   ├── Protocol   → 5% (revenue)
 │   └── Weekly Pool → 5% (feeds weekly leaderboard rewards)
-└── Paid in cUSD directly to winner wallets
+└── Paid in USDC directly to winner wallets
 ```
 
 ### 4.6 Storage Layout
@@ -508,7 +508,7 @@ TOURNAMENT PRIZE DISTRIBUTION
 contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     // ── Constants ──
-    address public constant CUSD = 0x765DE816845861e75A25fCA122bb6898B8B1282a; // cUSD on Celo mainnet
+    address public constant CUSD = 0x01C5C0122039549AD1493B8220cABEdD739BC44E; // USDC on Celo testnet
     uint256 public constant EPOCH_DURATION = 7 days;
     uint8 public constant LEADERBOARD_SIZE = 50;
     uint256 public constant PROTOCOL_FEE_BPS = 500; // 5% = 500 basis points
@@ -537,13 +537,13 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgrad
     // ── Tournaments ──
     struct Tournament {
         address creator;
-        uint256 entryFee;          // cUSD amount (6 decimals)
+        uint256 entryFee;          // USDC amount (6 decimals)
         uint64 startTime;
         uint64 endTime;
         uint8 maxPlayers;
         uint8 playerCount;
         bool finalized;
-        uint256 prizePool;         // accumulated cUSD
+        uint256 prizePool;         // accumulated USDC
     }
     mapping(uint256 => Tournament) public tournaments;
     mapping(uint256 => mapping(address => uint32)) public tournamentScores;
@@ -551,8 +551,8 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgrad
     uint256 public nextTournamentId;
 
     // ── Revenue ──
-    uint256 public protocolRevenue;      // accumulated cUSD protocol fees
-    uint256 public weeklyRewardPool;     // cUSD earmarked for weekly leaderboard
+    uint256 public protocolRevenue;      // accumulated USDC protocol fees
+    uint256 public weeklyRewardPool;     // USDC earmarked for weekly leaderboard
 }
 ```
 
@@ -565,7 +565,7 @@ contract BlokzGame is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgrad
 | Score verification is probabilistic (3 spot-checks) | ~80k gas vs. ~2M+ for full replay |
 | EIP-5792 batching for approve+join | One user confirmation instead of two |
 | `bytes32` seed instead of `uint256[]` entropy | Single storage slot |
-| cUSD transfers via IERC20 (no native value) | Standard, predictable gas costs |
+| USDC transfers via IERC20 (no native value) | Standard, predictable gas costs |
 
 ---
 
@@ -667,14 +667,14 @@ export const wagmiConfig = createConfig({
 });
 ```
 
-### 5.5 EIP-5792 Batch: cUSD Approve + Tournament Join
+### 5.5 EIP-5792 Batch: USDC Approve + Tournament Join
 
 ```typescript
 import { useSendCalls } from "wagmi";
 import { encodeFunctionData, parseUnits } from "viem";
 import { erc20Abi } from "viem";
 
-const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a";
+const CUSD_ADDRESS = "0x01C5C0122039549AD1493B8220cABEdD739BC44E";
 
 export function useJoinTournament(tournamentId: bigint, entryFee: bigint) {
   const { sendCalls } = useSendCalls();
@@ -811,8 +811,8 @@ Optimal: 390×844 (iPhone 14 / most Android)
 | **Replay attack** | Each gameId is unique and tied to `msg.sender`. Same proof can't be submitted twice. |
 | **Bot play** | Rate-limit: max 1 active game per address. QuickAuth ties games to Farcaster identity. |
 | **Contract upgrade abuse** | UUPS with timelock + multisig admin. Upgrade proposals require 48h delay. |
-| **Prize pool drain** | ReentrancyGuard on all cUSD transfers. Reward claims check `hasClaimedReward`. |
-| **cUSD approval exploit** | Batch tx approves exact amount per tournament. No infinite approvals. |
+| **Prize pool drain** | ReentrancyGuard on all USDC transfers. Reward claims check `hasClaimedReward`. |
+| **USDC approval exploit** | Batch tx approves exact amount per tournament. No infinite approvals. |
 
 ---
 
@@ -821,7 +821,7 @@ Optimal: 390×844 (iPhone 14 / most Android)
 ```json
 {
   "name": "Blokaz",
-  "description": "Block puzzle meets blockchain. Place pieces, clear lines, chain combos, win cUSD prizes on Celo.",
+  "description": "Block puzzle meets blockchain. Place pieces, clear lines, chain combos, win USDC prizes on Celo.",
   "iconUrl": "https://blokaz.xyz/icon-512.png",
   "splashImageUrl": "https://blokaz.xyz/splash-1920x1080.png",
   "splashBackgroundColor": "#0F172A",
@@ -838,11 +838,11 @@ Optimal: 390×844 (iPhone 14 / most Android)
 | Feature | Description |
 |---------|-------------|
 | **Daily Challenges** | Same seed for all players each day. Pure skill leaderboard. |
-| **NFT Skins** | ERC-1155 block color themes purchasable with cUSD. |
-| **Multiplayer Duels** | Two players, same seed, real-time. First to game-over loses. cUSD wager. |
+| **NFT Skins** | ERC-1155 block color themes purchasable with USDC. |
+| **Multiplayer Duels** | Two players, same seed, real-time. First to game-over loses. USDC wager. |
 | **On-chain Achievements** | SBTs (Soulbound Tokens) for milestones (100 combos, 10k score). |
 | **Farcaster Frames** | Embed live score cards as Farcaster Frames for viral sharing. |
-| **Season Passes** | Weekly cUSD subscription for premium tournaments with larger pools. |
+| **Season Passes** | Weekly USDC subscription for premium tournaments with larger pools. |
 
 ---
 
@@ -901,7 +901,7 @@ Language:       TypeScript 5.4 strict
 Smart Contract: Solidity 0.8.24, Foundry (forge)
 Chain:          Celo Mainnet (42220) + Alfajores Testnet (44787)
 Wallet:         Farcaster MiniApp SDK + Wagmi v2
-Token:          cUSD (0x765DE816845861e75A25fCA122bb6898B8B1282a)
+Token:          USDC (0x01C5C0122039549AD1493B8220cABEdD739BC44E)
 Testing:        Vitest (frontend), Forge (contracts)
 CI/CD:          GitHub Actions → Vercel (frontend), Forge script (deploy)
 ```

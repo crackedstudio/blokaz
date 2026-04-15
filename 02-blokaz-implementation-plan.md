@@ -635,7 +635,7 @@ Wire these into TouchController and GameScreen:
 
 ## Phase 3 — Smart Contracts
 
-**Goal**: A deployed, tested Solidity contract on Celo Alfajores testnet. Handles game registration, score submission with spot-check verification, weekly leaderboard, and cUSD tournament management.
+**Goal**: A deployed, tested Solidity contract on Celo Alfajores testnet. Handles game registration, score submission with spot-check verification, weekly leaderboard, and USDC tournament management.
 
 **Duration**: 5–6 days
 
@@ -684,7 +684,7 @@ Use UUPS upgradeable pattern. Import from OpenZeppelin:
   - ReentrancyGuardUpgradeable
 
 Constants:
-  address public constant CUSD = 0x765DE816845861e75A25fCA122bb6898B8B1282a;
+  address public constant CUSD = 0x01C5C0122039549AD1493B8220cABEdD739BC44E;
   uint256 public constant EPOCH_DURATION = 7 days;
   uint8 public constant LEADERBOARD_SIZE = 50;
   uint256 public constant PROTOCOL_FEE_BPS = 500;
@@ -824,7 +824,7 @@ Write tests:
 
 ---
 
-### Task 3.5 — Tournament Manager (cUSD)
+### Task 3.5 — Tournament Manager (USDC)
 
 ```
 Prompt to AI editor:
@@ -834,7 +834,7 @@ Add tournament functionality to BlokzGame.sol.
 State:
   struct Tournament {
     address creator;
-    uint256 entryFee;       // cUSD amount
+    uint256 entryFee;       // USDC amount
     uint64 startTime;
     uint64 endTime;
     uint8 maxPlayers;
@@ -862,7 +862,7 @@ Functions:
     — require tournament not started yet OR is in progress
     — require playerCount < maxPlayers
     — require !inTournament[id][msg.sender]
-    — transferFrom cUSD entry fee from player to contract
+    — transferFrom USDC entry fee from player to contract
     — increment prizePool and playerCount
 
   function submitTournamentScore(uint256 tournamentId, uint256 gameId, ...) external
@@ -874,7 +874,7 @@ Functions:
     — require block.timestamp > endTime
     — require !finalized
     — sort players by score (bounded by maxPlayers <= 64)
-    — distribute cUSD:
+    — distribute USDC:
         1st: 50% of prizePool
         2nd: 25%
         3rd: 15%
@@ -884,21 +884,21 @@ Functions:
     — Mark finalized
 
   function withdrawProtocolRevenue() external onlyOwner
-    — transfers accumulated protocolRevenue in cUSD to owner
+    — transfers accumulated protocolRevenue in USDC to owner
 
-Use IERC20(CUSD).transfer() and transferFrom() for all cUSD movement.
-Use ReentrancyGuard on all functions that move cUSD.
+Use IERC20(CUSD).transfer() and transferFrom() for all USDC movement.
+Use ReentrancyGuard on all functions that move USDC.
 
-Write tests (use a mock ERC20 for cUSD in tests):
+Write tests (use a mock ERC20 for USDC in tests):
   - Create tournament, 4 players join, submit scores, finalize
   - Verify prize distribution amounts
   - Cannot join after max players reached
   - Cannot finalize before end time
-  - Cannot join without sufficient cUSD approval
+  - Cannot join without sufficient USDC approval
   - Protocol revenue accumulates correctly
 ```
 
-**Acceptance**: Full tournament lifecycle works in Forge tests with mock cUSD.
+**Acceptance**: Full tournament lifecycle works in Forge tests with mock USDC.
 
 ---
 
@@ -950,7 +950,7 @@ Create src/chain/config.ts:
 
 Create src/chain/contracts.ts:
   - Export BLOKZ_GAME_ADDRESS (from testnet deployment)
-  - Export CUSD_ADDRESS (Celo mainnet: 0x765DE816845861e75A25fCA122bb6898B8B1282a)
+  - Export CUSD_ADDRESS (Celo mainnet: 0x01C5C0122039549AD1493B8220cABEdD739BC44E)
   - Export the contract ABI (copy from forge artifacts)
 
 Wrap the App in WagmiProvider + QueryClientProvider in main.tsx.
@@ -1030,7 +1030,7 @@ Prompt to AI editor:
 Create src/chain/useTournament.ts:
   Hooks for:
   - useTournamentList(): reads active tournaments, returns array
-  - useJoinTournament(id, entryFee): batches cUSD approve + joinTournament
+  - useJoinTournament(id, entryFee): batches USDC approve + joinTournament
     using useSendCalls (EIP-5792)
   - useSubmitTournamentScore(tournamentId, gameId, ...): submits score
   - useTournamentResults(id): reads scores after finalization
@@ -1049,7 +1049,7 @@ Create src/components/TournamentResults.tsx:
     if not yet finalized, then shows claim)
 ```
 
-**Acceptance**: Create a tournament, have 2+ addresses join, play games, finalize, verify cUSD distribution.
+**Acceptance**: Create a tournament, have 2+ addresses join, play games, finalize, verify USDC distribution.
 
 ---
 
@@ -1120,7 +1120,7 @@ Prompt to AI editor:
 1. Create the manifest.json in public/:
    {
      "name": "Blokaz",
-     "description": "Block puzzle meets blockchain. Clear lines, chain combos, win cUSD on Celo.",
+     "description": "Block puzzle meets blockchain. Clear lines, chain combos, win USDC on Celo.",
      "iconUrl": "https://blokaz.xyz/icon-512.png",
      "splashImageUrl": "https://blokaz.xyz/splash-1920x1080.png",
      "splashBackgroundColor": "#0F172A",
@@ -1194,11 +1194,11 @@ Prompt to AI editor:
 Create contracts/test/BlokzGame.invariant.t.sol:
 
 Foundry invariant tests:
-  - Total cUSD in contract >= sum of all unfulfilled tournament prize pools
+  - Total USDC in contract >= sum of all unfulfilled tournament prize pools
   - Leaderboard size never exceeds LEADERBOARD_SIZE
   - No player can have more than 1 active game
   - All finalized tournaments have distributed exactly the correct amounts
-  - protocolRevenue + weeklyRewardPool + distributed = total cUSD ever received
+  - protocolRevenue + weeklyRewardPool + distributed = total USDC ever received
 
 Also write fuzz tests for _spotCheckMoves:
   - Fuzz with random seeds and move counts

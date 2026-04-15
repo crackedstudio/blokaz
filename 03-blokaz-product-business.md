@@ -8,7 +8,7 @@
 
 Blokaz is a block-placement puzzle game — think Block Blast, but built on the blockchain. Players drag and drop geometric shapes onto a 9×9 grid, trying to fill complete rows and columns to clear them. Every clear earns points. Consecutive clears chain into combos that multiply your score. The game ends when no remaining piece fits anywhere on the board.
 
-What makes Blokaz different from the dozens of block puzzle games already on app stores is where it lives and what happens with your score. Blokaz runs as a **MiniApp inside Farcaster** (the decentralized social network) on the **Celo blockchain**. Your scores are cryptographically verified and posted on-chain. You can enter tournaments with cUSD (a dollar-pegged stablecoin), compete against other players, and win real money — all without leaving the Farcaster app, without downloading anything, and without managing complex crypto wallets.
+What makes Blokaz different from the dozens of block puzzle games already on app stores is where it lives and what happens with your score. Blokaz runs as a **MiniApp inside Farcaster** (the decentralized social network) on the **Celo blockchain**. Your scores are cryptographically verified and posted on-chain. You can enter tournaments with USDC (a dollar-pegged stablecoin), compete against other players, and win real money — all without leaving the Farcaster app, without downloading anything, and without managing complex crypto wallets.
 
 The core promise: **the simplicity of a casual mobile game, with the stakes of competitive gaming, powered by blockchain transparency.**
 
@@ -32,7 +32,7 @@ The game ends when no remaining piece can fit anywhere on the grid. The player s
 
 ### Step 4 — Compete in Tournaments
 
-Beyond free play, players can enter tournaments. A tournament has a cUSD entry fee (e.g., $1, $5, $10), a time window, and a player cap. Everyone plays with the same rules. At the end, the prize pool is distributed: 50% to first place, 25% to second, 15% to third, with 5% going to the protocol as revenue. Entry fees and prizes are paid in cUSD — real dollar value, no volatile tokens.
+Beyond free play, players can enter tournaments. A tournament has a USDC entry fee (e.g., $1, $5, $10), a time window, and a player cap. Everyone plays with the same rules. At the end, the prize pool is distributed: 50% to first place, 25% to second, 15% to third, with 5% going to the protocol as revenue. Entry fees and prizes are paid in USDC — real dollar value, no volatile tokens.
 
 ### Step 5 — Share and Flex
 
@@ -74,7 +74,7 @@ In every mobile puzzle game, leaderboards are meaningless. Scores are self-repor
 
 **Permissionless tournaments.** Anyone can create a tournament by setting an entry fee, a time window, and a player cap. The smart contract holds all entry fees in escrow and distributes prizes automatically when the tournament ends. No tournament organizer can run off with the money. No middleman takes a hidden cut. The rules are public code.
 
-**Stable-value prizes.** All economic activity uses cUSD — Celo's dollar-pegged stablecoin. Players know exactly what they're winning. There's no token speculation, no "your prize dropped 40% while you were sleeping." A $10 entry fee means a $10 entry fee.
+**Stable-value prizes.** All economic activity uses USDC — Celo's dollar-pegged stablecoin. Players know exactly what they're winning. There's no token speculation, no "your prize dropped 40% while you were sleeping." A $10 entry fee means a $10 entry fee.
 
 **Permanent records.** Every submitted score lives on the Celo blockchain forever. A player's gaming history is their own — portable, verifiable, and independent of any company's continued existence.
 
@@ -119,7 +119,7 @@ Many crypto games launch a token. Blokaz deliberately does not, for several reas
 
 **Regulatory clarity.** A game that accepts and pays out stablecoins is far simpler from a regulatory perspective than one that issues its own token. There's no security classification question, no need for legal opinions, and no risk of the token being treated as an unregistered security.
 
-**Player trust.** Players understand dollars. They don't understand "BLKZ tokens that might be worth something later." By using cUSD, Blokaz eliminates the speculation layer entirely. The value proposition is simple: "Put up $5, win up to $50."
+**Player trust.** Players understand dollars. They don't understand "BLKZ tokens that might be worth something later." By using USDC, Blokaz eliminates the speculation layer entirely. The value proposition is simple: "Put up $5, win up to $50."
 
 **Faster MVP.** Token launches require liquidity bootstrapping, exchange listings, tokenomics design, and ongoing market-making. None of that is necessary for a game. It's engineering effort that doesn't make the game more fun.
 
@@ -147,11 +147,11 @@ A growing niche of players who enjoy low-stakes competitive wagering — think d
 
 ### vs. Block Blast (Hungry Studio)
 
-Block Blast is the direct gameplay inspiration. It's a free mobile app with ads and no real-money component. Blokaz differentiates on three axes: verifiable competition (on-chain scores), real-money stakes (cUSD tournaments), and social integration (Farcaster native). Block Blast players who want to prove they're actually good — and get rewarded for it — are the ideal conversion target.
+Block Blast is the direct gameplay inspiration. It's a free mobile app with ads and no real-money component. Blokaz differentiates on three axes: verifiable competition (on-chain scores), real-money stakes (USDC tournaments), and social integration (Farcaster native). Block Blast players who want to prove they're actually good — and get rewarded for it — are the ideal conversion target.
 
 ### vs. Existing Crypto Games (Axie, StepN, etc.)
 
-Most crypto games require significant upfront investment, complex tokenomics understanding, and feel more like financial products than games. Blokaz is the opposite: zero upfront cost to play, optional cUSD entry only for tournaments, and gameplay that stands on its own merit without any blockchain interaction. The blockchain is invisible infrastructure, not the selling point.
+Most crypto games require significant upfront investment, complex tokenomics understanding, and feel more like financial products than games. Blokaz is the opposite: zero upfront cost to play, optional USDC entry only for tournaments, and gameplay that stands on its own merit without any blockchain interaction. The blockchain is invisible infrastructure, not the selling point.
 
 ### vs. Farcaster Frame Games
 
@@ -175,7 +175,7 @@ Partner with Celo ecosystem projects to sponsor tournaments. A DeFi protocol mig
 
 ### Phase 4 — Expansion (Year 2+)
 
-Potential expansion paths include daily challenge mode (same seed for all players, pure skill comparison), NFT skins for blocks (cosmetic, purchasable with cUSD), multiplayer duels (two players, same pieces, real-time race), and integration with other MiniApp platforms beyond Farcaster.
+Potential expansion paths include daily challenge mode (same seed for all players, pure skill comparison), NFT skins for blocks (cosmetic, purchasable with USDC), multiplayer duels (two players, same pieces, real-time race), and integration with other MiniApp platforms beyond Farcaster.
 
 ---
 
@@ -183,7 +183,7 @@ Potential expansion paths include daily challenge mode (same seed for all player
 
 ### Why Celo?
 
-Celo was chosen for specific technical reasons that directly benefit a real-time game. Transaction finality on Celo is approximately 5 seconds, which means score submissions confirm quickly. Gas fees are extremely low — fractions of a cent per transaction — which means submitting a score is essentially free. And cUSD is a first-class citizen on Celo, unlike on chains where stablecoins are third-party additions.
+Celo was chosen for specific technical reasons that directly benefit a real-time game. Transaction finality on Celo is approximately 5 seconds, which means score submissions confirm quickly. Gas fees are extremely low — fractions of a cent per transaction — which means submitting a score is essentially free. And USDC is a first-class citizen on Celo, unlike on chains where stablecoins are third-party additions.
 
 ### Why Farcaster MiniApp?
 
@@ -215,12 +215,12 @@ A skilled full-stack developer with Solidity experience could build the entire M
 | **Score Submissions / Day** | Blockchain adoption — do players care about competing? |
 | **Avg Score** | Difficulty tuning — is the game too easy or too hard? |
 | **Combo Distribution** | Skill curve — are players learning to chain? |
-| **Tournament Fill Rate** | Economic demand — are players willing to stake cUSD? |
+| **Tournament Fill Rate** | Economic demand — are players willing to stake USDC? |
 | **Tournament Creation Rate** | Community health — are users creating their own competitions? |
 | **Protocol Revenue / Week** | Business viability — is the 5% fee generating meaningful revenue? |
 | **Shares / Game** | Virality — are players bringing in new players? |
 | **Retention (D1, D7, D30)** | Stickiness — do players come back? |
-| **Avg cUSD Staked / Player** | Monetization depth — how much are players willing to put up? |
+| **Avg USDC Staked / Player** | Monetization depth — how much are players willing to put up? |
 
 ---
 
@@ -233,7 +233,7 @@ A skilled full-stack developer with Solidity experience could build the entire M
 | Low tournament participation | Medium | High | Start with very low entry fees ($0.50–$1). Seed initial tournaments with house funds. Make free play genuinely fun so tournament play is a natural escalation. |
 | Smart contract vulnerability | Low | Critical | Foundry invariant testing. Formal audit before mainnet. UUPS upgrade path for emergency fixes. Start with low tournament caps. |
 | Celo network issues | Low | Medium | Game is playable offline. Scores queue for submission. UX degrades gracefully. |
-| Regulatory challenge on tournaments | Low | High | cUSD-only (no custom token). Skill-based competition (not chance). Geographic restrictions if needed. Legal review before large-scale launch. |
+| Regulatory challenge on tournaments | Low | High | USDC-only (no custom token). Skill-based competition (not chance). Geographic restrictions if needed. Legal review before large-scale launch. |
 
 ---
 

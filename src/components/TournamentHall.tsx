@@ -34,7 +34,7 @@ const TournamentHall: React.FC<TournamentHallProps> = ({ onBack, onEnterMatch })
               {count?.toString() || '0'} ACTIVE LOBBIES
             </div>
             <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-purple-400">
-              CUSD PRIZES
+              USDC PRIZES
             </div>
           </div>
         </div>

@@ -1,17 +1,18 @@
 import React, { useState } from 'react'
-import { useCreateTournament, useWithdrawRevenue } from '../hooks/useBlokzGame'
-import { parseEther } from 'viem'
+import { useCreateTournament, useWithdrawRevenue, useProtocolRevenue, USDC_DECIMALS } from '../hooks/useBlokzGame'
+import { parseUnits, formatUnits } from 'viem'
 
 const AdminDashboard: React.FC = () => {
   const { createTournament, isPending: isCreating, isSuccess: isCreateSuccess } = useCreateTournament()
   const { withdraw, isPending: isWithdrawing, isSuccess: isWithdrawSuccess } = useWithdrawRevenue()
+  const { revenue, isLoading: isLoadingRevenue } = useProtocolRevenue()
 
   const [fee, setFee] = useState('0.1')
   const [duration, setDuration] = useState('24') // hours
   const [maxPlayers, setMaxPlayers] = useState('100')
 
   const handleCreate = () => {
-    const feeWei = parseEther(fee)
+    const feeWei = parseUnits(fee, USDC_DECIMALS)
     const start = BigInt(Math.floor(Date.now() / 1000) + 300) // 5 mins from now
     const end = start + BigInt(Number(duration) * 3600)
     createTournament(feeWei, start, end, Number(maxPlayers))
@@ -34,7 +35,7 @@ const AdminDashboard: React.FC = () => {
           
           <div className="space-y-6">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Entry Fee (cUSD)</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Entry Fee (USDC)</label>
               <input 
                 type="number" 
                 value={fee}
@@ -89,7 +90,9 @@ const AdminDashboard: React.FC = () => {
           
           <div className="p-6 bg-black/40 rounded-2xl border border-white/5 mb-8">
             <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-2">Accumulated Revenue</div>
-            <div className="text-3xl font-black text-white">... cUSD</div>
+            <div className="text-3xl font-black text-white">
+              {isLoadingRevenue ? '...' : (revenue !== undefined ? formatUnits(revenue, USDC_DECIMALS) : '0')} USDC
+            </div>
           </div>
 
           <button

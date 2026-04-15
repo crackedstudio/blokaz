@@ -1,15 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   useTournamentCount, 
   useTournament, 
   useInTournament, 
-  useCUSDAllowance, 
-  useApproveCUSD, 
+  useUSDCAllowance, 
+  useApproveUSDC, 
   useJoinTournament,
-  useFinalizeTournament
+  useFinalizeTournament,
+  USDC_DECIMALS
 } from '../hooks/useBlokzGame'
 import { useAccount } from 'wagmi'
-import { formatEther } from 'viem'
+import { formatUnits } from 'viem'
 import { useGameStore } from '../stores/gameStore'
 
 interface TournamentCardProps {
@@ -19,13 +20,30 @@ interface TournamentCardProps {
 
 const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch }) => {
   const { address } = useAccount()
-  const { tournament, isLoading: isLoadingDetails } = useTournament(id)
+  const { tournament, isLoading: isLoadingDetails, refetch: refetchTournament } = useTournament(id)
   const { isIn, isLoading: isLoadingIn, refetch: refetchIn } = useInTournament(id, address)
-  const { allowance, refetch: refetchAllowance } = useCUSDAllowance(address)
+  const { allowance, refetch: refetchAllowance } = useUSDCAllowance(address)
   
-  const { approve, isPending: isApproving, isConfirming: isConfirmingApprove } = useApproveCUSD()
-  const { joinTournament, isPending: isJoining, isConfirming: isConfirmingJoin } = useJoinTournament()
-  const { finalizeTournament, isPending: isFinalizing } = useFinalizeTournament()
+  const { approve, isPending: isApproving, isConfirming: isConfirmingApprove, isSuccess: isApproveSuccess, error: approveError } = useApproveUSDC()
+  const { joinTournament, isPending: isJoining, isConfirming: isConfirmingJoin, isSuccess: isJoinSuccess, error: joinError } = useJoinTournament()
+  const { finalizeTournament, isPending: isFinalizing, isSuccess: isFinalizeSuccess } = useFinalizeTournament()
+
+  useEffect(() => {
+    if (isApproveSuccess) refetchAllowance()
+  }, [isApproveSuccess, refetchAllowance])
+
+  useEffect(() => {
+    if (isJoinSuccess) {
+      refetchIn()
+      refetchTournament()
+    }
+  }, [isJoinSuccess, refetchIn, refetchTournament])
+
+  useEffect(() => {
+    if (isFinalizeSuccess) {
+      refetchTournament()
+    }
+  }, [isFinalizeSuccess, refetchTournament])
 
   if (isLoadingDetails || !tournament) {
     return <div className="h-32 bg-white/5 rounded-2xl animate-pulse" />
@@ -40,6 +58,7 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch }) => 
   const needsApproval = allowance !== undefined && allowance < entryFee
 
   const formatTime = (ts: bigint) => new Date(Number(ts) * 1000).toLocaleDateString()
+  const formatAmount = (amt: bigint) => formatUnits(amt, USDC_DECIMALS)
 
   const handleJoin = async () => {
     if (needsApproval) {
@@ -61,7 +80,7 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch }) => 
           </p>
         </div>
         <div className="text-right">
-          <div className="text-blue-400 font-black text-xl">{formatEther(prizePool)} cUSD</div>
+          <div className="text-blue-400 font-black text-xl">{formatAmount(prizePool)} USDC</div>
           <p className="text-[10px] text-gray-600 uppercase font-bold">Prize Pool</p>
         </div>
       </div>
@@ -69,7 +88,7 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch }) => 
       <div className="grid grid-cols-2 gap-4 mb-5">
         <div className="p-3 bg-black/40 rounded-xl border border-white/5">
           <div className="text-[9px] text-gray-500 uppercase tracking-tighter mb-1">Entry Fee</div>
-          <div className="font-mono text-sm">{formatEther(entryFee)} cUSD</div>
+          <div className="font-mono text-sm">{formatAmount(entryFee)} USDC</div>
         </div>
         <div className="p-3 bg-black/40 rounded-xl border border-white/5">
           <div className="text-[9px] text-gray-500 uppercase tracking-tighter mb-1">Players</div>
@@ -108,15 +127,24 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch }) => 
           )}
         </div>
       ) : (
-        <button 
-          onClick={handleJoin}
-          disabled={isEnded || isFull || isJoining || isApproving || isConfirmingApprove || isConfirmingJoin}
-          className="w-full py-3 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-black rounded-xl transition-all text-sm uppercase tracking-widest border border-white/5"
-        >
-          {isApproving || isConfirmingApprove ? 'Approving cUSD...' :
-           isJoining || isConfirmingJoin ? 'Joining...' :
-           needsApproval ? 'Approve cUSD' : 'Join Tournament'}
-        </button>
+        <>
+          <button 
+            onClick={handleJoin}
+            className="w-full py-3 bg-white text-black hover:bg-white/90 disabled:bg-white/20 disabled:text-white/40 font-black rounded-xl transition-all active:scale-95 text-sm uppercase tracking-widest shadow-xl shadow-white/5"
+            disabled={isEnded || isFull || isJoining || isApproving || isConfirmingApprove || isConfirmingJoin}
+          >
+            {isApproving || isConfirmingApprove ? 'Approving USDC...' :
+             isJoining || isConfirmingJoin ? 'Joining...' :
+             isFull ? 'Tournament Full' :
+             needsApproval ? 'Approve USDC' : 'Join Tournament'}
+          </button>
+
+          {(approveError || joinError) && (
+            <p className="mt-2 text-[10px] text-red-500 font-bold uppercase tracking-tight text-center bg-red-500/10 p-2 rounded-lg border border-red-500/20">
+              {approveError?.message || joinError?.message || 'Transaction failed'}
+            </p>
+          )}
+        </>
       )}
     </div>
   )
@@ -137,7 +165,7 @@ const TournamentSection: React.FC = () => {
       <div className="mb-6">
         <h3 className="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-2">Available Contests</h3>
         <p className="text-[10px] text-gray-500 leading-relaxed">
-          Join premium tournaments with cUSD entry fees. Perform at your best to win a share of the prize pool.
+          Join premium tournaments with USDC entry fees. Perform at your best to win a share of the prize pool.
         </p>
       </div>
 
