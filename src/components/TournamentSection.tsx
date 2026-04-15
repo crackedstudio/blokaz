@@ -128,9 +128,8 @@ const TournamentSection: React.FC = () => {
 
   const handleStartMatch = (id: bigint) => {
     setTournamentId(id)
-    // We also need to trigger the game start UI
-    // For now, setting the ID is enough as GameScreen will pick it up
-    alert(`Tournament mode active for Match #${id.toString()}! Start the game normally.`)
+    // Implicitly navigate back to game screen to start the match
+    window.location.hash = '#/'
   }
 
   return (

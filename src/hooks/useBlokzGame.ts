@@ -163,6 +163,20 @@ export function useUsername(address?: `0x${string}`) {
 }
 
 
+/**
+ * Hook to get the contract owner address.
+ */
+export function useOwner() {
+  const { data: owner, isLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: BLOKZ_GAME_ABI,
+    functionName: 'owner',
+  })
+
+  return { owner: owner as `0x${string}` | undefined, isLoading }
+}
+
+
 // ───────────────────────────────────────────────────────── Write Hooks ──
 
 /**

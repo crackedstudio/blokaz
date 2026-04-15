@@ -1,10 +1,12 @@
 import React from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useAccount } from 'wagmi'
+import { useOwner } from '../hooks/useBlokzGame'
 
 interface HeaderProps {
   onShowLeaderboard: () => void
-  onViewChange: (view: 'game' | 'tournaments') => void
-  activeView: 'game' | 'tournaments'
+  onViewChange: (view: 'game' | 'tournaments' | 'admin') => void
+  activeView: 'game' | 'tournaments' | 'admin'
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -12,12 +14,15 @@ export const Header: React.FC<HeaderProps> = ({
   onViewChange, 
   activeView 
 }) => {
-  const safeNavigate = (view: 'game' | 'tournaments') => {
+  const { address } = useAccount()
+  const { owner } = useOwner()
+
+  const isOwner = address && owner && address.toLowerCase() === owner.toLowerCase()
+
+  const safeNavigate = (view: 'game' | 'tournaments' | 'admin') => {
     console.log('Header: attempting to navigate to', view)
     if (typeof onViewChange === 'function') {
       onViewChange(view)
-    } else {
-      console.error('Header: onViewChange is not a function', { onViewChange })
     }
   }
 
@@ -59,6 +64,20 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="text-base group-hover:scale-110 transition-transform">🏆</span>
           Tournaments
         </button>
+
+        {isOwner && (
+          <button 
+            onClick={() => safeNavigate('admin')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-medium group ${
+              activeView === 'admin' 
+                ? 'bg-purple-500/20 border border-purple-500/40 text-purple-400' 
+                : 'bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            <span className="text-base group-hover:scale-110 transition-transform">🛠️</span>
+            Admin
+          </button>
+        )}
 
         <button 
           onClick={onShowLeaderboard}
