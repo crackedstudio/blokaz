@@ -246,7 +246,7 @@ const GameScreen: React.FC = () => {
 
 
   const handlePlayAgain = () => {
-    resetGame()
+    handleStartGame()
   }
 
   const handleResetDeadlock = () => {
