@@ -1,3 +1,5 @@
+
+
 // Haptic feedback stubs — will connect to Farcaster SDK in Phase 5
 export function hapticSelection(): void {
   console.log('[haptic] selection')

@@ -12,10 +12,11 @@ const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
 
 /**
  * Utility to generate a random 32-byte seed and its hash.
+ * The hash includes the player's address to match the contract's verification logic.
  */
-export function generateGameSeed() {
+export function generateGameSeed(playerAddress: `0x${string}`) {
   const seed = toHex(crypto.getRandomValues(new Uint8Array(32)))
-  const hash = keccak256(seed)
+  const hash = keccak256(encodePacked(['bytes32', 'address'], [seed as `0x${string}`, playerAddress]))
   return { seed, hash }
 }
 
@@ -45,14 +46,14 @@ export function useLeaderboard(epoch?: bigint) {
  * Hook to check if a player has an active game.
  */
 export function useActiveGame(address?: `0x${string}`) {
-  const { data: gameId, isLoading } = useReadContract({
+  const { data: gameId, isLoading, refetch } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'activeGame',
     args: address ? [address] : undefined,
   })
 
-  return { gameId, isLoading }
+  return { gameId, isLoading, refetch }
 }
 
 /**
