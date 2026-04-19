@@ -24,23 +24,14 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const nextView = getViewFromHash(window.location.hash)
-      
-      // Isolate modes by resetting state on major transitions
       setActiveView(prev => {
         if (nextView !== prev) {
-          console.log(`Transitioning from ${prev} to ${nextView} - resetting game state`)
-          // Resetting another store (gameStore) is a side-effect.
-          // We trigger it here in the event handler, not inside the updater function itself.
           setTimeout(() => forceReset(nextView === 'tournament-play'), 0)
         }
         return nextView
       })
-
-      if (nextView !== 'classic') {
-        setShowLeaderboard(false)
-      }
+      if (nextView !== 'classic') setShowLeaderboard(false)
     }
-
     window.addEventListener('hashchange', handleHashChange)
     handleHashChange()
     return () => window.removeEventListener('hashchange', handleHashChange)
@@ -60,24 +51,25 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white">
-      <Header 
-        onShowLeaderboard={activeView === 'classic' ? () => setShowLeaderboard(true) : undefined}
-        showLeaderboardAction={activeView === 'classic'}
+    <div className="min-h-screen bg-paper text-ink">
+      <Header
+        onShowLeaderboard={() => setShowLeaderboard(true)}
+        showLeaderboardAction={true}
+        isLeaderboardOpen={showLeaderboard}
         activeView={activeView}
         onViewChange={handleNavigate}
       />
-      
-      <main className={`flex flex-col items-center justify-center ${activeView === 'tournament-play' ? 'pt-0' : 'pt-24 pb-12'}`}>
+
+      <main className={`flex flex-col items-center justify-start min-h-screen ${activeView === 'tournament-play' ? 'pt-0' : 'pt-24 pb-12'}`}>
         {activeView === 'classic' ? (
           <GameScreen onOpenLeaderboard={() => setShowLeaderboard(true)} />
         ) : activeView === 'tournaments' ? (
-          <TournamentHall 
-            onBack={() => handleNavigate('classic', true)} 
-            onEnterMatch={() => handleNavigate('tournament-play', false)} 
+          <TournamentHall
+            onBack={() => handleNavigate('classic', true)}
+            onEnterMatch={() => handleNavigate('tournament-play', false)}
           />
         ) : activeView === 'tournament-play' ? (
-          <TournamentGameScreen 
+          <TournamentGameScreen
             onBackToHall={() => handleNavigate('tournaments', false)}
           />
         ) : (
@@ -85,12 +77,10 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {activeView === 'classic' && (
-        <Leaderboard 
-          isOpen={showLeaderboard} 
-          onClose={() => setShowLeaderboard(false)} 
-        />
-      )}
+      <Leaderboard
+        isOpen={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+      />
     </div>
   )
 }

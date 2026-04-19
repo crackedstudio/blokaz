@@ -1,61 +1,121 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import TournamentSection from './TournamentSection'
 import { useTournamentCount } from '../hooks/useBlokzGame'
+import { useReadContracts } from 'wagmi'
+import { formatUnits } from 'viem'
+import { BLOKZ_GAME_ABI } from '../constants/abi'
+import contractInfo from '../contract.json'
+import { BrutalIcon } from './BrutalIcon'
+
+const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
 
 interface TournamentHallProps {
   onBack: () => void
   onEnterMatch: () => void
 }
 
-const TournamentHall: React.FC<TournamentHallProps> = ({ onBack, onEnterMatch }) => {
+const TournamentHall: React.FC<TournamentHallProps> = ({
+  onBack,
+  onEnterMatch,
+}) => {
   const { count } = useTournamentCount()
+  const tournamentContracts = useMemo(
+    () =>
+      count && count > 0n
+        ? Array.from({ length: Number(count) }, (_, index) => ({
+            address: CONTRACT_ADDRESS,
+            abi: BLOKZ_GAME_ABI,
+            functionName: 'tournaments' as const,
+            args: [BigInt(index)] as const,
+          }))
+        : [],
+    [count]
+  )
+  const { data: tournamentRows } = useReadContracts({
+    contracts: tournamentContracts,
+    query: {
+      enabled: tournamentContracts.length > 0,
+    },
+  })
+  const totalPrizePool = useMemo(
+    () =>
+      (tournamentRows ?? []).reduce((sum, row) => {
+        if (row.status !== 'success' || !row.result) return sum
+        return sum + ((row.result as readonly unknown[])[7] as bigint)
+      }, 0n),
+    [tournamentRows]
+  )
+  const formattedPrizePool = useMemo(() => {
+    const raw = Number(formatUnits(totalPrizePool, 6))
+    if (!Number.isFinite(raw) || raw === 0) return '0'
+    return raw.toLocaleString(undefined, {
+      minimumFractionDigits: raw < 10 ? 1 : 0,
+      maximumFractionDigits: 1,
+    })
+  }, [totalPrizePool])
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Hero Section */}
-      <div className="relative mb-12 p-12 rounded-[2.5rem] bg-gradient-to-br from-blue-600/20 via-indigo-600/20 to-purple-600/20 border border-white/5 overflow-hidden">
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-blue-500/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-96 h-96 bg-purple-500/10 blur-[120px] rounded-full" />
-        
-        <div className="relative z-10 flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-2xl">
-            🏆
+    <div
+      className="brutal-grid-bg min-h-screen w-full"
+      style={{ background: 'var(--paper)' }}
+    >
+      <div className="relative z-10 mx-auto w-full max-w-3xl px-4 pb-16">
+        {/* Hero */}
+        <div
+          className="mb-6 border-4 border-ink p-6"
+          style={{ background: 'var(--ink)', boxShadow: '6px 6px 0 var(--ink)' }}
+        >
+          <div
+            className="mb-2 font-display text-[10px] tracking-[0.18em]"
+            style={{ color: 'var(--ink-fixed)', opacity: 0.7 }}
+          >
+            PRIZE POOL TOTAL
           </div>
-          <h1 className="text-5xl font-black tracking-tight mb-4 bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
-            TOURNAMENT HALL
-          </h1>
-          <p className="text-gray-400 max-w-lg leading-relaxed text-sm uppercase tracking-widest font-bold opacity-80">
-            Compete for native tokens in global skill-based contests. <br />
-            Join a lobby to start your climb to the top.
-          </p>
-          
-          <div className="mt-8 flex gap-4">
-            <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-400">
-              {count?.toString() || '0'} ACTIVE LOBBIES
+          <div className="flex items-baseline gap-3">
+            <div
+              className="font-display text-paper"
+              style={{ fontSize: 56, letterSpacing: '-0.04em', lineHeight: 1 }}
+            >
+              {formattedPrizePool} USDC
             </div>
-            <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-purple-400">
-              USDC PRIZES
+          </div>
+          <div className="mt-5 flex items-center gap-3">
+            <div
+              className="font-display text-paper"
+              style={{ fontSize: 32, letterSpacing: '-0.03em', lineHeight: 1 }}
+            >
+              {count?.toString() || '0'} LIVE BRACKETS
             </div>
+            <span className="font-display text-paper" style={{ fontSize: 28 }}>→</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <span
+              className="border-2 border-paper px-3 py-1 font-display text-[10px] tracking-[0.12em]"
+              style={{ background: 'var(--accent-lime)', color: 'var(--ink-fixed)' }}
+            >
+              {count?.toString() || '0'} ACTIVE
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <span className="border-2 border-paper px-3 py-1 font-display text-[10px] tracking-[0.12em] text-paper">
+              COLOR-LOCKED ARENAS
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="bg-[#1a1b24]/40 backdrop-blur-2xl border border-white/5 rounded-[2rem] p-8 min-h-[500px]">
+        {/* Tournament list */}
         <TournamentSection onStartMatch={() => onEnterMatch()} />
-      </div>
 
-      {/* Footer / Navigation */}
-      <div className="mt-12 flex justify-center pb-20">
-        <button 
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-xs font-black uppercase tracking-widest group"
-        >
-          <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Classic Mode
-        </button>
+        {/* Back */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={onBack}
+            className="brutal-btn flex items-center gap-2 border-4 border-ink bg-paper px-6 py-3 font-display text-[11px] tracking-[0.14em] text-ink"
+            style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+          >
+            <BrutalIcon name="back" size={14} /> BACK TO CLASSIC
+          </button>
+        </div>
       </div>
     </div>
   )

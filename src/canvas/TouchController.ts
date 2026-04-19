@@ -15,19 +15,23 @@ export class TouchController {
   private dragPos: { x: number; y: number } = { x: 0, y: 0 }
   private ghostPos: { row: number; col: number } | null = null
   private destroyed: boolean = false
+  private hoverIndex: number | null = null
+  private onHoverChange?: (index: number | null) => void
 
   constructor(
     canvas: HTMLCanvasElement,
     gridRenderer: GridRenderer,
     pieceRenderer: PieceRenderer,
     onPlace: (pieceIndex: number, row: number, col: number) => void,
-    canPlace: (shape: ShapeDefinition, row: number, col: number) => boolean
+    canPlace: (shape: ShapeDefinition, row: number, col: number) => boolean,
+    onHoverChange?: (index: number | null) => void
   ) {
     this.canvas = canvas
     this.gridRenderer = gridRenderer
     this.pieceRenderer = pieceRenderer
     this.onPlace = onPlace
     this.canPlace = canPlace
+    this.onHoverChange = onHoverChange
 
     this.initEvents()
   }
@@ -35,6 +39,12 @@ export class TouchController {
   private initEvents() {
     this.canvas.addEventListener('mousedown', this.handleStart.bind(this))
     this.canvas.addEventListener('mousemove', this.handleMove.bind(this))
+    this.canvas.addEventListener('mouseleave', () => {
+      if (!this.isDragging && this.hoverIndex !== null) {
+        this.hoverIndex = null
+        this.onHoverChange?.(null)
+      }
+    })
     window.addEventListener('mouseup', this.handleEnd.bind(this))
 
     this.canvas.addEventListener('touchstart', (e) => {
@@ -56,6 +66,8 @@ export class TouchController {
     this.destroyed = true
     this.isDragging = false
     this.dragIndex = null
+    this.hoverIndex = null
+    this.onHoverChange?.(null)
     ;(window as any).activeGhost = null
   }
 
@@ -73,15 +85,28 @@ export class TouchController {
       this.isDragging = true
       this.dragIndex = index
       this.dragPos = { x, y }
+      this.hoverIndex = null
+      this.onHoverChange?.(null)
     }
   }
 
   private handleMove(e: MouseEvent | Touch) {
-    if (this.destroyed || !this.isDragging || this.dragIndex === null) return
-
     const rect = this.canvas.getBoundingClientRect()
     const x = (e.clientX - rect.left) * (this.canvas.width / rect.width)
     const y = (e.clientY - rect.top) * (this.canvas.height / rect.height)
+
+    if (this.destroyed) return
+
+    if (!this.isDragging || this.dragIndex === null) {
+      const pieces = (window as any).currentPieces || []
+      const hovered = this.pieceRenderer.hitTestTray(x, y, pieces)
+      if (hovered !== this.hoverIndex) {
+        this.hoverIndex = hovered
+        this.onHoverChange?.(hovered)
+      }
+      return
+    }
+
     this.dragPos = { x, y }
 
     // Offset for ghost prediction (above finger)
@@ -121,6 +146,8 @@ export class TouchController {
     this.isDragging = false
     this.dragIndex = null
     this.ghostPos = null
+    this.hoverIndex = null
+    this.onHoverChange?.(null)
     // @ts-ignore
     window.activeGhost = null
   }

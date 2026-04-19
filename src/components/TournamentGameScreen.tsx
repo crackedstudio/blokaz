@@ -9,8 +9,16 @@ import type { ShapeDefinition } from '../engine/shapes'
 import ScoreBar from './ScoreBar'
 import GameOverModal from './GameOverModal'
 import TournamentLeaderboard from './TournamentLeaderboard'
-import { hapticImpact, hapticNotification, hapticError } from '../miniapp/haptics'
-import { useStartTournamentGame, generateGameSeed, useActiveGame } from '../hooks/useBlokzGame'
+import {
+  hapticImpact,
+  hapticNotification,
+  hapticError,
+} from '../miniapp/haptics'
+import {
+  useStartTournamentGame,
+  generateGameSeed,
+  useActiveGame,
+} from '../hooks/useBlokzGame'
 import { useAccount } from 'wagmi'
 import { keccak256, encodePacked } from 'viem'
 import contractInfo from '../contract.json'
@@ -26,27 +34,47 @@ interface TournamentGameScreenProps {
   onBackToHall: () => void
 }
 
-const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHall }) => {
+const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
+  onBackToHall,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animManagerRef = useRef<AnimationManager>(new AnimationManager())
   const lastTimeRef = useRef<number>(0)
 
-  const { 
-    gameSession, score, comboStreak, isGameOver, 
-    startGame, setOnChainData,
-    onChainStatus, tournamentId, setTournamentId, 
-    onChainSeed, onChainGameId
+  const {
+    gameSession,
+    score,
+    comboStreak,
+    isGameOver,
+    startGame,
+    setOnChainData,
+    onChainStatus,
+    tournamentId,
+    setTournamentId,
+    onChainSeed,
+    onChainGameId,
   } = useGameStore()
 
   const { address, isConnected } = useAccount()
-  const { gameId: onChainActiveGameId, isLoading: isLoadingActiveGame, refetch: refetchActiveGame } = useActiveGame(address)
-  const { startTournamentGame: contractStartTournamentGame, isPending, isConfirming, isSuccess } = useStartTournamentGame()
-  
-  const [currentSeed, setCurrentSeed] = useState<{seed: `0x${string}`, hash: `0x${string}`} | null>(null)
+  const {
+    gameId: onChainActiveGameId,
+    isLoading: isLoadingActiveGame,
+    refetch: refetchActiveGame,
+  } = useActiveGame(address)
+  const {
+    startTournamentGame: contractStartTournamentGame,
+    isPending,
+    isConfirming,
+    isSuccess,
+  } = useStartTournamentGame()
+
+  const [currentSeed, setCurrentSeed] = useState<{
+    seed: `0x${string}`
+    hash: `0x${string}`
+  } | null>(null)
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
   const [isSyncingContract, setIsSyncingContract] = useState(true)
   const [sessionConflict, setSessionConflict] = useState(false)
-
 
   // --- HYDRATION & RECONCILIATION ---
   useEffect(() => {
@@ -58,43 +86,59 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
       CONTRACT_ADDRESS
     )
 
-    const contractActiveId = onChainActiveGameId as bigint || 0n
+    const contractActiveId = (onChainActiveGameId as bigint) || 0n
 
     if (contractActiveId !== 0n) {
       // Contract says we have a game. Check if we have matching seed.
-      if (storedSession && (storedSession.gameId === contractActiveId.toString() || !storedSession.gameId)) {
+      if (
+        storedSession &&
+        (storedSession.gameId === contractActiveId.toString() ||
+          !storedSession.gameId)
+      ) {
         console.log('Recovering active on-chain session:', contractActiveId)
         setOnChainData(contractActiveId, storedSession.seed, 'none')
         setSessionConflict(false)
       } else {
-        console.warn('Session conflict: On-chain game exists but local seed is missing or mismatching.', {
-          contractActiveId: contractActiveId.toString(),
-          storedId: storedSession?.gameId
-        })
+        console.warn(
+          'Session conflict: On-chain game exists but local seed is missing or mismatching.',
+          {
+            contractActiveId: contractActiveId.toString(),
+            storedId: storedSession?.gameId,
+          }
+        )
         setSessionConflict(true)
       }
     } else {
       // Contract says no active game. If storage has one, it's stale.
       if (storedSession) {
-         console.log('Contract has no active game, clearing stale local session')
-         // We don't necessarily need to clear it, but we shouldn't use it as "registered"
-         setOnChainData(0n, null, 'none')
+        console.log('Contract has no active game, clearing stale local session')
+        // We don't necessarily need to clear it, but we shouldn't use it as "registered"
+        setOnChainData(0n, null, 'none')
       }
       setSessionConflict(false)
     }
-    
+
     setIsSyncingContract(false)
-  }, [isConnected, address, isLoadingActiveGame, onChainActiveGameId, setOnChainData])
+  }, [
+    isConnected,
+    address,
+    isLoadingActiveGame,
+    onChainActiveGameId,
+    setOnChainData,
+  ])
 
   // Basic hydration for mode state (tournamentId)
   useEffect(() => {
     if (!isConnected || !address) return
-    const storedSession = readStoredGameSession(TOURNAMENT_SESSION_STORAGE_KEY, address, CONTRACT_ADDRESS)
+    const storedSession = readStoredGameSession(
+      TOURNAMENT_SESSION_STORAGE_KEY,
+      address,
+      CONTRACT_ADDRESS
+    )
     if (storedSession?.tournamentId && !tournamentId) {
       setTournamentId(BigInt(storedSession.tournamentId))
     }
   }, [isConnected, address, setTournamentId, tournamentId])
-
 
   // Redirect if no tournamentId is active (sanity check)
   useEffect(() => {
@@ -106,38 +150,44 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
   // 1. Handle Start (On-chain ONLY)
   const handleStartGame = () => {
     if (!isConnected || !address) return
-    
+
     // ESSENTIAL: Pull freshest state from store to avoid stale closures during "Play Again"
     const freshState = useGameStore.getState()
     const { onChainSeed: latestSeed, onChainGameId: latestGameId } = freshState
 
     // Check if we HAVE a hydrated seed with an ACTIVE gameId
     if (latestSeed && latestGameId && latestGameId !== 0n) {
-      console.log('Using fresh store state for tournament match recovery:', latestSeed)
-      const localSeed = BigInt(keccak256(encodePacked(['bytes32', 'address'], [latestSeed, address])).slice(0, 18))
+      console.log(
+        'Using fresh store state for tournament match recovery:',
+        latestSeed
+      )
+      const localSeed = BigInt(
+        keccak256(
+          encodePacked(['bytes32', 'address'], [latestSeed, address])
+        ).slice(0, 18)
+      )
       startGame(localSeed, true) // TRUE to preserve onChain data
       return
     }
 
-
     const { seed, hash } = generateGameSeed(address)
-    
+
     // Start local engine
     const localSeed = BigInt(hash.slice(0, 18))
     startGame(localSeed)
-    
+
     setCurrentSeed({ seed, hash })
     setOnChainData(0n, seed, 'pending')
-    
+
     writeStoredGameSession(TOURNAMENT_SESSION_STORAGE_KEY, {
       address,
       seed,
       hash,
       gameId: null,
       tournamentId: tournamentId?.toString(),
-      contractAddress: CONTRACT_ADDRESS
+      contractAddress: CONTRACT_ADDRESS,
     })
-    
+
     contractStartTournamentGame(tournamentId!, hash)
   }
 
@@ -145,29 +195,36 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
   useEffect(() => {
     if (isSuccess && currentSeed && address) {
       setOnChainData(0n, currentSeed.seed, 'syncing')
-      
+
       const timer = setInterval(async () => {
         const res = await refetchActiveGame()
         const newGameId = res.data as bigint
         if (newGameId && newGameId !== 0n) {
           setOnChainData(newGameId, currentSeed.seed, 'registered')
-          
+
           writeStoredGameSession(TOURNAMENT_SESSION_STORAGE_KEY, {
             address,
             seed: currentSeed.seed,
             hash: currentSeed.hash,
             gameId: newGameId.toString(),
             tournamentId: tournamentId?.toString(),
-            contractAddress: CONTRACT_ADDRESS
+            contractAddress: CONTRACT_ADDRESS,
           })
-          
+
           clearInterval(timer)
         }
       }, 2000)
-      
+
       return () => clearInterval(timer)
     }
-  }, [address, currentSeed, isSuccess, refetchActiveGame, setOnChainData, tournamentId])
+  }, [
+    address,
+    currentSeed,
+    isSuccess,
+    refetchActiveGame,
+    setOnChainData,
+    tournamentId,
+  ])
 
   // Initialize canvas renderers
   useEffect(() => {
@@ -202,14 +259,19 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
 
         hapticImpact()
         const linesCleared = result.linesCleared
-        if (linesCleared && (linesCleared.rows.length > 0 || linesCleared.cols.length > 0)) {
+        if (
+          linesCleared &&
+          (linesCleared.rows.length > 0 || linesCleared.cols.length > 0)
+        ) {
           hapticNotification()
           animManager.trigger('LINE_CLEAR', {
             rows: linesCleared.rows,
             cols: linesCleared.cols,
           })
           if (result.scoreEvent && result.scoreEvent.newComboStreak > 0) {
-            animManager.trigger('COMBO', { streak: result.scoreEvent.newComboStreak })
+            animManager.trigger('COMBO', {
+              streak: result.scoreEvent.newComboStreak,
+            })
           }
         }
 
@@ -230,7 +292,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
 
     let rafHandle: number
     lastTimeRef.current = 0
-    
+
     const render = (timestamp: number) => {
       const delta = lastTimeRef.current ? timestamp - lastTimeRef.current : 16
       lastTimeRef.current = timestamp
@@ -242,7 +304,11 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
       const currentSession = useGameStore.getState().gameSession
       if (!currentSession) return
 
-      const ghost = (window as any).activeGhost as { row: number; col: number; valid: boolean } | null
+      const ghost = (window as any).activeGhost as {
+        row: number
+        col: number
+        valid: boolean
+      } | null
       const dragState = touchController.getDragState()
       let ghostCells: { row: number; col: number; valid: boolean }[] | undefined
 
@@ -255,7 +321,10 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
               col: ghost.col + dc,
               valid: ghost.valid,
             }))
-            .filter((cell) => cell.row >= 0 && cell.row < 9 && cell.col >= 0 && cell.col < 9)
+            .filter(
+              (cell) =>
+                cell.row >= 0 && cell.row < 9 && cell.col >= 0 && cell.col < 9
+            )
         }
       }
 
@@ -264,23 +333,31 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
       gridRenderer.draw(currentSession.grid, ghostCells, isTournamentMatch)
       pieceRenderer.drawTray(
         currentSession.currentPieces,
-        dragState.isDragging && dragState.dragIndex !== null ? dragState.dragIndex : undefined,
+        dragState.isDragging && dragState.dragIndex !== null
+          ? dragState.dragIndex
+          : undefined,
         isTournamentMatch
       )
 
       if (dragState.isDragging && dragState.dragIndex !== null) {
         const shape = currentSession.currentPieces[dragState.dragIndex]
         if (shape) {
-          pieceRenderer.drawDragging(shape, dragState.dragPos.x, dragState.dragPos.y, cellSize, isTournamentMatch)
+          pieceRenderer.drawDragging(
+            shape,
+            dragState.dragPos.x,
+            dragState.dragPos.y,
+            cellSize,
+            isTournamentMatch
+          )
         }
       }
 
       animManager.draw(ctx, cellSize, isTournamentMatch)
       rafHandle = requestAnimationFrame(render)
     }
-    
+
     rafHandle = requestAnimationFrame(render)
-    
+
     return () => {
       cancelAnimationFrame(rafHandle)
       touchController.destroy()
@@ -288,118 +365,179 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
   }, [!!gameSession])
 
   return (
-    <div className="flex flex-col h-screen bg-[#05050a] text-white select-none relative overflow-hidden">
-      {/* Background Ambient Glow */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="brutal-grid-bg relative flex h-screen select-none flex-col overflow-hidden bg-paper text-ink">
+      <ScoreBar
+        score={score}
+        comboStreak={comboStreak}
+        tournamentId={tournamentId}
+      />
 
-      <ScoreBar score={score} comboStreak={comboStreak} tournamentId={tournamentId} />
-      
-      {/* Tournament HUD Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-b border-white/5 flex items-center justify-between z-10 backdrop-blur-md">
+      <div className="z-10 flex items-center justify-between border-b-4 border-ink bg-paper px-6 py-4">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <span className="text-xl">🏆</span>
+          <div
+            className="flex h-10 w-10 items-center justify-center border-4 border-ink bg-accent-yellow font-display text-xl"
+            style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+          >
+            T
           </div>
           <div>
-            <div className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em]">Tournament Match</div>
-            <div className="text-lg font-black tracking-tighter">CONTENDER LOBBY #{tournamentId?.toString()}</div>
+            <div className="font-display text-[10px] uppercase tracking-[0.2em] text-danger">
+              TOURNAMENT MATCH
+            </div>
+            <div
+              className="font-display text-lg"
+              style={{ letterSpacing: '-0.03em' }}
+            >
+              CONTENDER LOBBY #{tournamentId?.toString()}
+            </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+            className="brutal-btn border-4 border-ink bg-accent-cyan px-4 py-2 font-display text-[10px] uppercase tracking-[0.14em]"
+            style={{ boxShadow: '4px 4px 0 var(--ink)' }}
           >
-            Rankings
+            RANKINGS
           </button>
           {!gameSession && (
-            <button 
+            <button
               onClick={onBackToHall}
-              className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+              className="brutal-btn border-4 border-ink bg-danger px-4 py-2 font-display text-[10px] uppercase tracking-[0.14em] text-paper"
+              style={{ boxShadow: '4px 4px 0 var(--ink)' }}
             >
-              Exit Match
+              EXIT MATCH
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 flex items-start justify-center pt-8 z-10">
-        <div className="relative">
+      <div className="z-10 flex flex-1 items-start justify-center pt-8">
+        <div
+          className="relative border-4 border-ink bg-ink"
+          style={{ boxShadow: '10px 10px 0 var(--ink)' }}
+        >
           <canvas
             ref={canvasRef}
             style={{ touchAction: 'none', display: 'block' }}
-            className="shadow-[0_0_50px_rgba(0,102,255,0.1)] rounded-xl"
           />
 
-          {/* Sync Status */}
           {gameSession && (
-            <div className="absolute top-4 right-4 z-30">
+            <div className="absolute right-4 top-4 z-30">
               {onChainStatus === 'pending' || isPending || isConfirming ? (
-                <div className="px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/30 rounded-full backdrop-blur-md text-[10px] text-yellow-500 font-black uppercase tracking-widest flex items-center gap-2 animate-pulse">
-                   <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                   Registering...
+                <div
+                  className="flex items-center gap-2 border-2 border-ink bg-accent-yellow px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
+                  style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+                >
+                  <div className="h-2 w-2 animate-pulse bg-ink" />
+                  REGISTERING
                 </div>
               ) : onChainStatus === 'syncing' ? (
-                <div className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full backdrop-blur-md text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center gap-2">
-                   <div className="w-2 h-2 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                   Finalizing...
+                <div
+                  className="flex items-center gap-2 border-2 border-ink bg-accent-cyan px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
+                  style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+                >
+                  <div className="brutal-loader" />
+                  FINALIZING
                 </div>
               ) : onChainStatus === 'registered' ? (
-                <div className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full backdrop-blur-md text-[10px] text-green-500 font-black uppercase tracking-widest flex items-center gap-2">
-                   <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                   Match Verified
+                <div
+                  className="flex items-center gap-2 border-2 border-ink bg-accent-lime px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
+                  style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+                >
+                  <div className="h-2 w-2 bg-ink" />
+                  MATCH VERIFIED
                 </div>
               ) : null}
             </div>
           )}
 
-          {/* Match Start Overlay */}
           {!gameSession && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-xl z-40">
-              <div className="text-center p-10 bg-[#0a0a0f] rounded-3xl border border-white/10 shadow-2xl max-w-xs w-full mx-4 border-blue-500/20">
-                <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/20">
-                  <span className="text-4xl">⚔️</span>
+            <div
+              className="absolute inset-0 z-40 flex items-center justify-center"
+              style={{
+                background: 'rgba(12,12,16,0.55)',
+                backdropFilter: 'blur(6px)',
+              }}
+            >
+              <div
+                className="mx-4 w-full max-w-xs border-4 border-ink bg-paper p-8 text-center"
+                style={{ boxShadow: '8px 8px 0 var(--accent-pink)' }}
+              >
+                <div
+                  className="mb-4 inline-block border-4 border-ink bg-accent-yellow px-4 py-1 font-display text-[11px] tracking-[0.14em]"
+                  style={{
+                    transform: 'rotate(-3deg)',
+                    boxShadow: '4px 4px 0 var(--ink)',
+                  }}
+                >
+                  TOURNAMENT MODE
                 </div>
-                <h2 className="text-2xl font-black mb-2 tracking-tight uppercase">Ready for Glory?</h2>
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-8 leading-relaxed">
-                  You are about to enter a competitive match. Your final score will be recorded on the leaderboard.
+                <h2
+                  className="mb-2 font-display text-[42px] leading-[0.9]"
+                  style={{ letterSpacing: '-0.04em' }}
+                >
+                  READY FOR{' '}
+                  <span
+                    style={{
+                      color: 'var(--danger)',
+                      WebkitTextStroke: '1px var(--ink)',
+                      display: 'inline-block',
+                      transform: 'rotate(-2deg)',
+                    }}
+                  >
+                    GLORY?
+                  </span>
+                </h2>
+                <p className="mb-8 font-display text-[10px] uppercase leading-relaxed tracking-[0.16em] text-ink/60">
+                  You are about to enter a competitive match. Your final score
+                  will be recorded on the leaderboard.
                 </p>
-                
+
                 <button
                   onClick={handleStartGame}
-                  disabled={isPending || isConfirming || isSyncingContract || sessionConflict}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95 text-sm uppercase tracking-widest disabled:opacity-50"
+                  disabled={
+                    isPending ||
+                    isConfirming ||
+                    isSyncingContract ||
+                    sessionConflict
+                  }
+                  className="brutal-btn w-full border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.14em] text-ink disabled:opacity-50"
+                  style={{ boxShadow: '6px 6px 0 var(--ink)' }}
                 >
                   {isSyncingContract ? (
                     <div className="flex items-center justify-center gap-2">
-                       <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                       Syncing...
+                      <div className="brutal-loader" />
+                      SYNCING...
                     </div>
                   ) : sessionConflict ? (
-                    'Session Conflict'
+                    'SESSION CONFLICT'
                   ) : isPending || isConfirming ? (
-                    'Preparing...'
+                    'PREPARING...'
                   ) : (
-                    'Commence Match'
+                    'COMMENCE MATCH'
                   )}
                 </button>
 
                 {sessionConflict && (
-                  <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-left">
-                    <p className="text-[9px] text-red-400 font-bold uppercase tracking-widest mb-2">⚠️ Matching Error</p>
-                    <p className="text-[10px] text-gray-400 leading-relaxed mb-4">
-                      An active session exists on the blockchain with a different record. You must reset to start a fresh match.
+                  <div className="mt-4 border-4 border-danger bg-paper-2 p-4 text-left">
+                    <p className="mb-2 font-display text-[9px] uppercase tracking-[0.14em] text-piece-red">
+                      MATCHING ERROR
+                    </p>
+                    <p className="mb-4 text-[10px] leading-relaxed text-ink/70">
+                      An active session exists on the blockchain with a
+                      different record. You must reset to start a fresh match.
                     </p>
                     <button
                       onClick={() => {
                         useGameStore.getState().forceReset(true)
                         setSessionConflict(false)
                       }}
-                      className="w-full py-2 bg-red-500 hover:bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                      className="brutal-btn w-full border-4 border-ink bg-danger py-2 font-display text-[10px] uppercase tracking-[0.14em] text-paper"
+                      style={{ boxShadow: '4px 4px 0 var(--ink)' }}
                     >
-                      Reset Session
+                      RESET SESSION
                     </button>
                   </div>
                 )}
@@ -407,19 +545,27 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({ onBackToHal
             </div>
           )}
 
-          {isGameOver && <GameOverModal score={score} onPlayAgain={handleStartGame} mode="tournament" />}
+          {isGameOver && (
+            <GameOverModal
+              score={score}
+              onPlayAgain={handleStartGame}
+              onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+              mode="tournament"
+            />
+          )}
         </div>
       </div>
-      
+
       <TournamentLeaderboard
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         tournamentId={tournamentId}
       />
 
-      {/* Footer Branding */}
-      <div className="p-6 text-center opacity-20 pointer-events-none">
-        <div className="text-[10px] font-black tracking-[0.5em] text-blue-400 uppercase">Tournament Edition</div>
+      <div className="pointer-events-none p-6 text-center opacity-40">
+        <div className="font-display text-[10px] uppercase tracking-[0.5em] text-ink">
+          TOURNAMENT EDITION
+        </div>
       </div>
     </div>
   )

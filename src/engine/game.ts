@@ -75,9 +75,8 @@ export class GameSession {
       return { success: false, error: 'Invalid placement', isGameOver: false }
     }
 
-    // Assign a color ID (1-8) based on family or just index
-    // For now use 1-8 based on shape catalog index or family
-    const colorId = (SHAPES.indexOf(piece) % 8) + 1
+    // Assign the color ID defined in the shape definition
+    const colorId = piece.colorId
 
     Grid.placeShape(this.grid, piece, row, col, colorId)
 

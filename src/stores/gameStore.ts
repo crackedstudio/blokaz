@@ -12,7 +12,7 @@ interface GameState {
   onChainSeed: `0x${string}` | null
   onChainStatus: 'none' | 'pending' | 'syncing' | 'registered' | 'failed'
   tournamentId: bigint | null
-  
+
   startGame: (seed: bigint, preserveOnChain?: boolean) => void
   setOnChainData: (gameId: bigint, seed: `0x${string}`, status?: 'registered' | 'pending' | 'syncing' | 'failed') => void
   setOnChainGameId: (id: bigint) => void
@@ -98,5 +98,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       onChainStatus: 'none',
       tournamentId: keepTournamentId ? get().tournamentId : null
     })
-  }
+  },
+
 }))

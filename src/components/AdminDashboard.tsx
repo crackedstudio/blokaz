@@ -1,10 +1,25 @@
 import React, { useState } from 'react'
-import { useCreateTournament, useWithdrawRevenue, useProtocolRevenue, USDC_DECIMALS } from '../hooks/useBlokzGame'
+import {
+  useCreateTournament,
+  useWithdrawRevenue,
+  useProtocolRevenue,
+  USDC_DECIMALS,
+} from '../hooks/useBlokzGame'
 import { parseUnits, formatUnits } from 'viem'
 
 const AdminDashboard: React.FC = () => {
-  const { createTournament, isPending: isCreating, isSuccess: isCreateSuccess, error: createError } = useCreateTournament()
-  const { withdraw, isPending: isWithdrawing, isSuccess: isWithdrawSuccess, error: withdrawError } = useWithdrawRevenue()
+  const {
+    createTournament,
+    isPending: isCreating,
+    isSuccess: isCreateSuccess,
+    error: createError,
+  } = useCreateTournament()
+  const {
+    withdraw,
+    isPending: isWithdrawing,
+    isSuccess: isWithdrawSuccess,
+    error: withdrawError,
+  } = useWithdrawRevenue()
   const { revenue, isLoading: isLoadingRevenue } = useProtocolRevenue()
 
   const [fee, setFee] = useState('0.1')
@@ -19,50 +34,73 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="brutal-dot-bg mx-auto w-full max-w-5xl px-6 py-24">
       <div className="mb-12">
-        <h1 className="text-4xl font-black tracking-tight mb-2">ADMIN CONSOLE</h1>
-        <p className="text-gray-500 uppercase tracking-widest text-[10px] font-bold">Manage Tournaments & Protocol Revenue</p>
+        <div
+          className="inline-block border-4 border-ink bg-accent-yellow px-4 py-2 font-display text-[11px] tracking-[0.16em]"
+          style={{ boxShadow: '4px 4px 0 var(--ink)', transform: 'rotate(-2deg)' }}
+        >
+          OWNER CONTROLS
+        </div>
+        <h1
+          className="mt-5 font-display text-[clamp(2.5rem,5vw,4.25rem)] leading-none"
+          style={{ letterSpacing: '-0.04em' }}
+        >
+          ADMIN CONSOLE
+        </h1>
+        <p className="mt-2 font-body text-[13px] uppercase tracking-[0.16em] text-ink/60">
+          Manage tournaments and protocol revenue.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Tournament Creation */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <span className="text-blue-500 text-2xl">🏆</span> 
-            Deploy New Tournament
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div
+          className="border-4 border-ink bg-accent-cyan p-8"
+          style={{ boxShadow: '8px 8px 0 var(--ink)' }}
+        >
+          <h2
+            className="mb-6 font-display text-[28px]"
+            style={{ letterSpacing: '-0.03em' }}
+          >
+            DEPLOY TOURNAMENT
           </h2>
-          
+
           <div className="space-y-6">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Entry Fee (USDC)</label>
-              <input 
-                type="number" 
+              <label className="mb-2 block font-display text-[10px] uppercase tracking-[0.14em] text-ink/60">
+                Entry Fee (USDC)
+              </label>
+              <input
+                type="number"
                 value={fee}
                 onChange={(e) => setFee(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                className="brutal-input w-full"
                 placeholder="0.1"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Duration (Hours)</label>
-              <input 
-                type="number" 
+              <label className="mb-2 block font-display text-[10px] uppercase tracking-[0.14em] text-ink/60">
+                Duration (Hours)
+              </label>
+              <input
+                type="number"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                className="brutal-input w-full"
                 placeholder="24"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Max Players</label>
-              <input 
-                type="number" 
+              <label className="mb-2 block font-display text-[10px] uppercase tracking-[0.14em] text-ink/60">
+                Max Players
+              </label>
+              <input
+                type="number"
                 value={maxPlayers}
                 onChange={(e) => setMaxPlayers(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                className="brutal-input w-full"
                 placeholder="100"
               />
             </div>
@@ -70,54 +108,86 @@ const AdminDashboard: React.FC = () => {
             <button
               onClick={handleCreate}
               disabled={isCreating}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95 uppercase tracking-widest"
+              className="brutal-btn w-full border-4 border-ink bg-danger py-4 font-display text-[12px] tracking-[0.14em] text-paper disabled:opacity-50"
+              style={{ boxShadow: '6px 6px 0 var(--ink)' }}
             >
-              {isCreating ? 'Deploying...' : 'Fire Tournament'}
+              {isCreating ? 'DEPLOYING...' : 'FIRE TOURNAMENT'}
             </button>
-            
+
             {isCreateSuccess && (
-              <p className="text-center text-green-500 text-xs font-bold animate-pulse">Tournament live on-chain!</p>
+              <p className="animate-pulse text-center font-display text-[10px] tracking-[0.12em] text-accent-lime">
+                TOURNAMENT LIVE ON-CHAIN
+              </p>
             )}
 
             {createError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-[10px] whitespace-pre-wrap break-words">
-                <span className="font-bold">Error:</span> {createError.message}
+              <div className="whitespace-pre-wrap break-words border-4 border-danger bg-paper-2 p-3 text-[10px] text-danger">
+                <span className="font-display">ERROR:</span>{' '}
+                {createError.message}
               </div>
             )}
           </div>
         </div>
 
-        {/* Revenue Management */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <span className="text-green-500 text-2xl">💰</span> 
-            Protocol Treasury
+        <div
+          className="border-4 border-ink bg-accent-pink p-8"
+          style={{ boxShadow: '8px 8px 0 var(--ink)' }}
+        >
+          <h2
+            className="mb-6 font-display text-[28px]"
+            style={{ letterSpacing: '-0.03em' }}
+          >
+            PROTOCOL TREASURY
           </h2>
-          
-          <div className="p-6 bg-black/40 rounded-2xl border border-white/5 mb-8">
-            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black mb-2">Accumulated Revenue</div>
-            <div className="text-3xl font-black text-white">
-              {isLoadingRevenue ? '...' : (revenue !== undefined ? formatUnits(revenue, USDC_DECIMALS) : '0')} USDC
+
+          <div
+            className="mb-8 border-4 border-ink bg-paper-2 p-6"
+            style={{ boxShadow: '5px 5px 0 var(--ink)' }}
+          >
+            <div className="mb-2 font-display text-[10px] uppercase tracking-[0.14em] text-ink/60">
+              Accumulated Revenue
+            </div>
+            <div
+              className="font-display text-[40px]"
+              style={{ letterSpacing: '-0.04em', lineHeight: 1 }}
+            >
+              {isLoadingRevenue
+                ? '...'
+                : revenue !== undefined
+                  ? formatUnits(revenue, USDC_DECIMALS)
+                  : '0'}{' '}
+              USDC
             </div>
           </div>
 
           <button
             onClick={() => withdraw()}
             disabled={isWithdrawing}
-            className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white font-black rounded-xl transition-all shadow-lg shadow-green-500/20 active:scale-95 uppercase tracking-widest"
+            className="brutal-btn w-full border-4 border-ink bg-accent-lime py-4 font-display text-[12px] tracking-[0.14em] text-ink disabled:opacity-50"
+            style={{ boxShadow: '6px 6px 0 var(--ink)' }}
           >
-            {isWithdrawing ? 'Processing...' : 'Withdraw Revenue'}
+            {isWithdrawing ? 'PROCESSING...' : 'WITHDRAW REVENUE'}
           </button>
-          
+
           {isWithdrawSuccess && (
-            <p className="text-center text-green-500 text-xs font-bold mt-4 animate-pulse">Success! Funds sent to owner.</p>
+            <p className="mt-4 animate-pulse text-center font-display text-[10px] tracking-[0.12em] text-accent-lime">
+              SUCCESS. FUNDS SENT TO OWNER.
+            </p>
           )}
 
-          <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-            <p className="text-[9px] text-yellow-500 leading-relaxed font-bold uppercase tracking-widest">
-              Only the contract owner can perform these actions. Ensure your connected wallet is the deployment account.
+          <div className="mt-8 border-4 border-ink bg-accent-yellow p-4">
+            <p className="font-display text-[9px] leading-relaxed tracking-[0.14em] text-ink">
+              Only the contract owner can perform these actions. Ensure your
+              connected wallet is the deployment account.
             </p>
           </div>
+
+          {withdrawError && (
+            <div className="mt-4 whitespace-pre-wrap break-words border-4 border-danger bg-paper-2 p-3 text-[10px] text-danger">
+              <span className="font-display">ERROR:</span>{' '}
+              {withdrawError.message}
+            </div>
+          )}
         </div>
       </div>
     </div>

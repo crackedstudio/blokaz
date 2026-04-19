@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react'
-import { useLeaderboard, useUsername, useSetUsername } from '../hooks/useBlokzGame'
+import {
+  useLeaderboard,
+  useUsername,
+  useSetUsername,
+} from '../hooks/useBlokzGame'
 import { useAccount } from 'wagmi'
+import { useTheme } from '../hooks/useTheme'
 import contractInfo from '../contract.json'
+import { BrutalIcon } from './BrutalIcon'
 
 interface LeaderboardProps {
   isOpen: boolean
   onClose: () => void
 }
 
-const PlayerName: React.FC<{ address: string; isCurrentUser: boolean }> = ({ address, isCurrentUser }) => {
+const PlayerName: React.FC<{ address: string; isCurrentUser: boolean }> = ({
+  address,
+  isCurrentUser,
+}) => {
   const { username, isLoading } = useUsername(address as `0x${string}`)
-  
-  const truncatedAddress = (addr: string) => 
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`
-
-  if (isLoading) return <div className="h-4 w-24 bg-white/5 animate-pulse rounded" />
-
+  const truncated = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`
+  if (isLoading) return <div className="h-4 w-24 animate-pulse bg-ink/10" />
   return (
-    <span className={`font-mono text-sm ${isCurrentUser ? 'text-white font-bold' : 'text-gray-300'}`}>
-      {username || truncatedAddress(address)}
+    <span className={`font-body text-sm ${isCurrentUser ? 'font-bold' : ''}`} style={{ color: 'inherit' }}>
+      {username || truncated(address)}
     </span>
   )
 }
@@ -39,183 +44,236 @@ const UsernameRegistration: React.FC = () => {
   if (!address) return null
 
   return (
-    <div className="p-4 mx-4 mb-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-400">
-          {username ? 'Update Identity' : 'Set your Identity'}
-        </h3>
+    <div
+      className="relative z-20 mx-4 mb-4 border-4 border-ink p-4"
+      style={{ background: 'var(--paper-2)', boxShadow: '4px 4px 0 var(--ink)' }}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <div className="font-display text-[10px] tracking-[0.14em]">
+          {username ? 'UPDATE IDENTITY' : 'SET YOUR IDENTITY'}
+        </div>
         {username && (
-          <span className="text-[10px] text-gray-500">
-            Current: <span className="text-white font-bold">{username}</span>
+          <span className="font-body text-xs opacity-60">
+            Current: <span className="font-bold">{username}</span>
           </span>
         )}
       </div>
-      
       <div className="flex gap-2">
-        <input 
+        <input
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="3-16 characters"
+          placeholder="3–16 characters"
           maxLength={16}
           disabled={isPending || isConfirming}
-          className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50 transition-colors disabled:opacity-50"
+          className="brutal-input flex-1 disabled:opacity-50"
         />
-        <button 
+        <button
           onClick={() => setUsername(newName)}
           disabled={!newName || newName.length < 3 || isPending || isConfirming}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95"
+          className="brutal-btn border-4 border-ink px-4 py-2 font-display text-[11px] tracking-[0.1em] disabled:opacity-40"
+          style={{
+            background: 'var(--accent-lime)',
+            color: 'var(--ink-fixed)',
+            boxShadow: '4px 4px 0 var(--ink)',
+          }}
         >
           {isPending || isConfirming ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="brutal-loader" />
           ) : (
-            'Save'
+            'SAVE'
           )}
         </button>
       </div>
       {isConfirming && (
-        <p className="text-[9px] text-blue-400 mt-2 animate-pulse font-medium">
-          Confirming on-chain...
-        </p>
+        <div className="mt-2 animate-pulse font-display text-[9px] tracking-[0.1em] text-accent-cyan">
+          CONFIRMING ON-CHAIN...
+        </div>
       )}
     </div>
   )
 }
 
+const RANK_ACCENT: Record<number, string> = { 
+  1: 'var(--accent-yellow)', 
+  2: 'var(--accent-lime)', 
+  3: 'var(--accent-cyan)' 
+}
+
 const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
   const { address } = useAccount()
   const { leaderboard, isLoading, currentEpoch } = useLeaderboard()
+  const { isDark } = useTheme()
 
   return (
     <>
-      {/* Backdrop */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity"
+        <div
+          className="fixed inset-0 z-[80]"
+          style={{ background: 'var(--overlay)' }}
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-[#0a0a0c]/90 backdrop-blur-2xl border-l border-white/10 z-[70] transform transition-transform duration-500 ease-out shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 mb-4">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                CLASSIC RANKINGS
-              </h2>
-              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">
-                {currentEpoch !== undefined ? `Epoch #${currentEpoch.toString()}` : 'Loading Epoch...'}
-              </p>
-            </div>
-            <button 
-              onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors group"
+      <div
+        className="fixed right-0 top-0 z-[90] flex h-full w-full transform flex-col border-l-4 border-ink transition-transform duration-300 ease-out md:w-[480px]"
+        style={{
+          background: 'var(--paper)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+          boxShadow: '-8px 0 0 var(--ink)',
+        }}
+      >
+        {/* Background Pattern Layer */}
+        <div className="brutal-dot-bg absolute inset-0 pointer-events-none" />
+        {/* Header */}
+        <div
+          className="flex items-center justify-between border-b-4 border-ink p-5"
+          style={{ background: 'var(--ink)' }}
+        >
+          <div className="relative z-10">
+            <div
+              className="font-display text-paper"
+              style={{ fontSize: 28, letterSpacing: '-0.03em', lineHeight: 1 }}
             >
-              <svg className="w-6 h-6 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              CLASSIC RANKINGS
+            </div>
+            <div className="mt-3 inline-flex items-center border-2 border-paper bg-accent-yellow px-3 py-1 font-display text-[11px] tracking-[0.16em] text-ink">
+              {currentEpoch !== undefined
+                ? `EPOCH #${currentEpoch.toString()}`
+                : 'LOADING...'}
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="brutal-btn flex h-10 w-10 items-center justify-center border-[3px] border-paper bg-paper font-display text-ink"
+            style={{ boxShadow: '4px 4px 0 var(--paper)', color: 'var(--ink)' }}
+          >
+            <BrutalIcon name="back" size={20} />
+          </button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {/* Identity Registration */}
-            <UsernameRegistration />
+        <div className="relative z-10 flex flex-1 flex-col overflow-y-auto px-4 py-6">
+          <UsernameRegistration />
 
-            {/* List */}
-            <div className="p-4 space-y-2">
-            <h3 className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
-              Classic Players
-            </h3>
-            
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="px-2 pb-2 font-display text-[10px] tracking-[0.16em] opacity-70">
+              CLASSIC PLAYERS
+            </div>
+
             {isLoading ? (
-              // Loading State
               Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />
+                <div
+                  key={i}
+                  className="h-16 animate-pulse border-4 border-ink"
+                  style={{ background: 'var(--paper-2)' }}
+                />
               ))
             ) : leaderboard && leaderboard.length > 0 ? (
               leaderboard
                 .sort((a, b) => b.score - a.score)
                 .map((entry, index) => {
-                  const isCurrentUser = address?.toLowerCase() === entry.player.toLowerCase()
+                  const isCurrentUser =
+                    address?.toLowerCase() === entry.player.toLowerCase()
                   const rank = index + 1
-                  
+                  const rowBg = isCurrentUser
+                    ? 'var(--ink)'
+                    : (RANK_ACCENT[rank] ?? 'var(--paper-2)')
+                  const textColor = isCurrentUser 
+                    ? (isDark ? 'var(--paper)' : 'var(--paper)') 
+                    : (RANK_ACCENT[rank] ? 'var(--ink-fixed)' : 'var(--ink)')
+
                   return (
-                    <div 
+                    <div
                       key={`${entry.gameId.toString()}-${entry.player}`}
-                      className={`group flex items-center gap-4 p-4 rounded-xl border transition-all duration-300 ${
-                        isCurrentUser 
-                          ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_4px_20px_rgba(59,130,246,0.1)]' 
-                          : 'bg-white/5 border-transparent hover:border-white/10 hover:bg-white/10'
-                      }`}
+                      className="flex items-center gap-3 border-4 border-ink px-3 py-3"
+                      style={{
+                        background: rowBg,
+                        transform: isCurrentUser ? 'scale(1.03)' : 'none',
+                        boxShadow: isCurrentUser
+                          ? '0 0 0 3px var(--accent-yellow), 6px 6px 0 var(--ink)'
+                          : '4px 4px 0 var(--ink)',
+                        color: textColor,
+                      }}
                     >
-                      {/* Rank Indicator */}
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg ${
-                        rank === 1 ? 'bg-yellow-500/20 text-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)]' :
-                        rank === 2 ? 'bg-gray-400/20 text-gray-400' :
-                        rank === 3 ? 'bg-orange-600/20 text-orange-600' :
-                        'bg-white/5 text-gray-500'
-                      }`}>
+                      {/* Rank */}
+                      <div
+                        className="w-8 shrink-0 text-center font-display"
+                        style={{ fontSize: 18, letterSpacing: '-0.02em' }}
+                      >
                         {rank}
                       </div>
 
-                      {/* Player Info */}
-                      <div className="flex-1 min-w-0">
+                      {/* Name */}
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <PlayerName address={entry.player} isCurrentUser={isCurrentUser} />
+                          <PlayerName
+                            address={entry.player}
+                            isCurrentUser={isCurrentUser}
+                          />
                           {isCurrentUser && (
-                            <span className="text-[8px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
-                              You
+                            <span
+                              className="px-1.5 py-0.5 font-display text-[9px] tracking-[0.1em]"
+                              style={{
+                                background: 'var(--accent-yellow)',
+                                color: 'var(--ink)',
+                                border: '2px solid var(--ink)',
+                              }}
+                            >
+                              YOU
                             </span>
                           )}
                         </div>
-                        <a 
+                        <a
                           href={`${contractInfo.explorer}/${entry.player}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[10px] text-gray-600 hover:text-blue-400 transition-colors inline-flex items-center gap-1 mt-0.5"
+                          className="mt-0.5 inline-flex items-center gap-1 font-body text-[10px] opacity-50 transition-opacity hover:opacity-80"
+                          style={{ color: textColor }}
                         >
-                          Details
-                          <svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
+                          Details →
                         </a>
                       </div>
 
                       {/* Score */}
-                      <div className="text-right">
-                        <div className="text-xl font-black text-white tabular-nums">
+                      <div className="shrink-0 text-right">
+                        <div
+                          className="font-display tabular-nums"
+                          style={{ fontSize: 20 }}
+                        >
                           {entry.score.toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                          Pts
+                        <div className="font-display text-[9px] tracking-[0.12em] opacity-50">
+                          PTS
                         </div>
                       </div>
                     </div>
                   )
                 })
-              ) : (
-                // Empty State
-                <div className="flex flex-col items-center justify-center h-64 text-center opacity-30">
-                  <div className="w-16 h-16 border-2 border-dashed border-white/20 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium">Competition hasn't started</p>
-                  <p className="text-[10px] uppercase tracking-widest mt-1 italic">Be the bridge-head</p>
+            ) : (
+              <div
+                className="border-4 border-ink p-8 text-center"
+                style={{ background: 'var(--paper-2)' }}
+              >
+                <div className="mb-2 font-display text-xl">NO SCORES YET</div>
+                <div className="font-body text-sm italic opacity-50">
+                  Be the first to claim the throne
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Footer */}
-          <div className="p-6 border-t border-white/5 bg-black/40 text-center">
-            <p className="text-[9px] text-gray-600 uppercase tracking-[0.2em] leading-relaxed">
-              Global identities are permanent. <br />
-              Top players share native reward pool.
-            </p>
+        <div
+          className="border-t-4 border-ink p-4 text-center"
+          style={{ background: 'var(--ink)' }}
+        >
+          <div
+            className="font-display text-[9px] leading-relaxed tracking-[0.14em] opacity-60"
+            style={{ color: 'var(--paper)' }}
+          >
+            GLOBAL IDENTITIES ARE PERMANENT.
+            <br />
+            TOP PLAYERS SHARE NATIVE REWARD POOL.
           </div>
         </div>
       </div>

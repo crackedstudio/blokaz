@@ -6,6 +6,7 @@ export interface ShapeDefinition {
   height: number // bounding box height
   cellCount: number // total filled cells
   spawnWeight: number // probability weight for RNG selection
+  colorId: number // ID in COLOR_PALETTE (1-9)
 }
 
 export const SHAPES: ShapeDefinition[] = [
@@ -18,6 +19,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 1,
     cellCount: 1,
     spawnWeight: 5,
+    colorId: 1,
   },
   {
     id: 'D1',
@@ -30,6 +32,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 1,
     cellCount: 2,
     spawnWeight: 8,
+    colorId: 1,
   },
   {
     id: 'D2',
@@ -42,6 +45,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 2,
     spawnWeight: 8,
+    colorId: 1,
   },
 
   // Straight Lines
@@ -57,6 +61,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 1,
     cellCount: 3,
     spawnWeight: 10,
+    colorId: 6,
   },
   {
     id: 'I3V',
@@ -70,6 +75,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 3,
     cellCount: 3,
     spawnWeight: 10,
+    colorId: 6,
   },
   {
     id: 'I4H',
@@ -84,6 +90,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 1,
     cellCount: 4,
     spawnWeight: 8,
+    colorId: 6,
   },
   {
     id: 'I4V',
@@ -98,6 +105,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 4,
     cellCount: 4,
     spawnWeight: 8,
+    colorId: 6,
   },
   {
     id: 'I5H',
@@ -113,6 +121,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 1,
     cellCount: 5,
     spawnWeight: 4,
+    colorId: 6,
   },
   {
     id: 'I5V',
@@ -128,6 +137,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 5,
     cellCount: 5,
     spawnWeight: 4,
+    colorId: 6,
   },
 
   // Squares
@@ -144,6 +154,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 4,
     spawnWeight: 10,
+    colorId: 3,
   },
   {
     id: 'O3',
@@ -163,6 +174,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 3,
     cellCount: 9,
     spawnWeight: 3,
+    colorId: 3,
   },
   {
     id: 'O23',
@@ -179,6 +191,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 3,
     cellCount: 6,
     spawnWeight: 6,
+    colorId: 3,
   },
 
   // Small L-shapes
@@ -194,6 +207,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 3,
     spawnWeight: 8,
+    colorId: 2,
   },
   {
     id: 'L2B',
@@ -207,6 +221,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 3,
     spawnWeight: 8,
+    colorId: 2,
   },
   {
     id: 'L2C',
@@ -220,6 +235,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 3,
     spawnWeight: 8,
+    colorId: 2,
   },
   {
     id: 'L2D',
@@ -233,6 +249,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 3,
     spawnWeight: 8,
+    colorId: 2,
   },
 
   // Large L-shapes
@@ -250,6 +267,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 3,
     cellCount: 5,
     spawnWeight: 5,
+    colorId: 4,
   },
   {
     id: 'L3B',
@@ -264,6 +282,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 4,
     spawnWeight: 5,
+    colorId: 4,
   },
   {
     id: 'L3C',
@@ -278,6 +297,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 4,
     spawnWeight: 5,
+    colorId: 4,
   },
   {
     id: 'L3D',
@@ -293,6 +313,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 3,
     cellCount: 5,
     spawnWeight: 5,
+    colorId: 4,
   },
 
   // T-shape
@@ -309,6 +330,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 4,
     spawnWeight: 6,
+    colorId: 8,
   },
 
   // Zigzag
@@ -325,6 +347,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 4,
     spawnWeight: 6,
+    colorId: 9,
   },
   {
     id: 'Z1Z',
@@ -339,6 +362,7 @@ export const SHAPES: ShapeDefinition[] = [
     height: 2,
     cellCount: 4,
     spawnWeight: 6,
+    colorId: 9,
   },
 ]
 
