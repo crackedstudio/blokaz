@@ -2,6 +2,8 @@ import React from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useOwner } from '../hooks/useBlokzGame'
+import { useTheme } from '../hooks/useTheme'
+import { BrutalIcon } from './BrutalIcon'
 
 type HeaderView = 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
@@ -10,95 +12,156 @@ interface HeaderProps {
   onViewChange: (view: 'classic' | 'tournaments' | 'admin') => void
   activeView: HeaderView
   showLeaderboardAction: boolean
+  isLeaderboardOpen?: boolean
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  onShowLeaderboard, 
-  onViewChange, 
+const truncateAddress = (value?: string) =>
+  value ? `${value.slice(0, 4)}…${value.slice(-2)}` : 'CONNECT'
+
+export const Header: React.FC<HeaderProps> = ({
+  onShowLeaderboard,
+  onViewChange,
   activeView,
-  showLeaderboardAction
+  showLeaderboardAction,
+  isLeaderboardOpen = false,
 }) => {
   const { address } = useAccount()
   const { owner } = useOwner()
+  const { isDark, toggle } = useTheme()
 
-  const isOwner = address && owner && address.toLowerCase() === owner.toLowerCase()
-  const isTournamentView = activeView === 'tournaments' || activeView === 'tournament-play'
+  const isOwner =
+    address && owner && address.toLowerCase() === owner.toLowerCase()
+  const isTournamentView =
+    activeView === 'tournaments' || activeView === 'tournament-play'
 
   const safeNavigate = (view: 'classic' | 'tournaments' | 'admin') => {
-    console.log('Header: attempting to navigate to', view)
-    if (typeof onViewChange === 'function') {
-      onViewChange(view)
-    }
+    if (typeof onViewChange === 'function') onViewChange(view)
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/20 backdrop-blur-md border-b border-white/10">
-      <div 
-        className="flex items-center gap-2 cursor-pointer group"
+    <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b-4 border-ink bg-paper px-6 py-4" style={{ borderBottomColor: 'var(--ink)' }}>
+      {/* Logo */}
+      <div
+        className="flex cursor-pointer items-center gap-2 group"
         onClick={() => safeNavigate('classic')}
       >
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
+        <div
+          className="flex h-10 w-10 items-center justify-center border-4 border-ink bg-accent-yellow font-display text-xl transition-transform group-hover:-rotate-3"
+          style={{ boxShadow: '3px 3px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+        >
           B
         </div>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent tracking-tight">
-          BLOKAZ
-        </h1>
+        <span
+          className="font-display text-2xl tracking-tighter text-ink"
+        >
+          BLOKAZ.
+        </span>
       </div>
-      
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => safeNavigate('classic')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-medium group ${
-            activeView === 'classic' 
-              ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400' 
-              : 'bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white'
-          }`}
-        >
-          <span className="text-base group-hover:scale-110 transition-transform">🎮</span>
-          Classic
-        </button>
 
-        <button 
-          onClick={() => safeNavigate('tournaments')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-medium group ${
-            isTournamentView 
-              ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400' 
-              : 'bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white'
-          }`}
-        >
-          <span className="text-base group-hover:scale-110 transition-transform">🏆</span>
-          Tournaments
-        </button>
-
-        {isOwner && (
-          <button 
-            onClick={() => safeNavigate('admin')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm font-medium group ${
-              activeView === 'admin' 
-                ? 'bg-purple-500/20 border border-purple-500/40 text-purple-400' 
-                : 'bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white'
+      {/* Nav tabs */}
+      <div className="flex items-center gap-3">
+        {[
+          {
+            label: 'CLASSIC',
+            active: activeView === 'classic',
+            view: 'classic' as const,
+          },
+          {
+            label: 'TOURNAMENTS',
+            active: isTournamentView,
+            view: 'tournaments' as const,
+          },
+          {
+            label: 'LEADERBOARD',
+            active: isLeaderboardOpen,
+            onClick: onShowLeaderboard
+          },
+          {
+            label: 'MY STATS',
+            active: false,
+          },
+          ...(isOwner
+            ? [
+                {
+                  label: 'ADMIN',
+                  active: activeView === 'admin',
+                  view: 'admin' as const,
+                },
+              ]
+            : []),
+        ].map((tab) => (
+          <button
+            key={tab.label}
+            onClick={() => tab.onClick ? tab.onClick() : tab.view && safeNavigate(tab.view)}
+            className={`hidden font-display uppercase lg:block ${
+              tab.active
+                ? 'border-[3px] border-ink bg-ink px-[18px] py-[10px] text-[13px] tracking-[0.08em]'
+                : 'brutal-btn border-[3px] border-ink bg-paper-2 px-4 py-2 text-[12px] tracking-[0.12em] text-ink'
             }`}
+            style={{ boxShadow: tab.active ? 'none' : '4px 4px 0 var(--ink)' }}
           >
-            <span className="text-base group-hover:scale-110 transition-transform">🛠️</span>
-            Admin
+            <span style={{ color: tab.active ? 'var(--paper)' : 'inherit' }}>
+              {tab.label}
+            </span>
           </button>
-        )}
+        ))}
 
-        {showLeaderboardAction && onShowLeaderboard && (
-          <button 
-            onClick={onShowLeaderboard}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium group text-gray-400 hover:text-white"
-          >
-            Classic Rankings
-          </button>
-        )}
-
-        <ConnectButton 
-          accountStatus="avatar" 
-          chainStatus="icon" 
-          showBalance={false}
-        />
+        {/* Theme Toggle */}
+        <button
+          onClick={toggle}
+          className="brutal-btn ml-2 border-[3px] border-ink bg-paper-2 p-2"
+          style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          <BrutalIcon name={isDark ? 'sun' : 'moon'} size={18} />
+        </button>
       </div>
+
+      {/* Wallet connect */}
+      <ConnectButton.Custom>
+        {({
+          account,
+          chain,
+          mounted,
+          openAccountModal,
+          openChainModal,
+          openConnectModal,
+        }) => {
+          const ready = mounted
+          const connected = ready && account && chain
+
+          const handleClick = () => {
+            if (!connected) {
+              openConnectModal()
+              return
+            }
+
+            if (chain.unsupported) {
+              openChainModal()
+              return
+            }
+
+            openAccountModal()
+          }
+
+          return (
+            <button
+              onClick={handleClick}
+              className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
+              style={{
+                boxShadow: '4px 4px 0 var(--ink)',
+                opacity: ready ? 1 : 0,
+              }}
+            >
+              {connected
+                ? truncateAddress(account.address)
+                : chain?.unsupported
+                  ? 'NETWORK'
+                  : 'CONNECT'}
+            </button>
+          )
+        }}
+      </ConnectButton.Custom>
     </header>
   )
 }

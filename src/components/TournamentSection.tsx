@@ -1,34 +1,74 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TournamentLeaderboard from './TournamentLeaderboard'
-import { 
-  useTournamentCount, 
-  useTournament, 
-  useInTournament, 
-  useUSDCAllowance, 
-  useApproveUSDC, 
+import {
+  useTournamentCount,
+  useTournament,
+  useInTournament,
+  useUSDCAllowance,
+  useApproveUSDC,
   useJoinTournament,
   useFinalizeTournament,
-  USDC_DECIMALS
+  USDC_DECIMALS,
 } from '../hooks/useBlokzGame'
 import { useAccount } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useGameStore } from '../stores/gameStore'
 
+const ROW_COLORS = ['#FF3D3D', '#B7FF3B', '#8A3DFF', '#29E6E6']
+const TAG_STYLES = [
+  { bg: 'var(--accent-yellow)', label: 'HOT' },
+  { bg: 'var(--paper-2)', label: 'CASUAL' },
+  { bg: 'var(--accent-pink)', label: 'PRO' },
+  { bg: 'var(--accent-orange)', label: 'NEW' },
+]
+
 interface TournamentCardProps {
   id: bigint
+  index: number
   onStartMatch: (id: bigint) => void
   onViewRankings: (id: bigint, prizePool: bigint) => void
 }
 
-const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch, onViewRankings }) => {
+const TournamentCard: React.FC<TournamentCardProps> = ({
+  id,
+  index,
+  onStartMatch,
+  onViewRankings,
+}) => {
   const { address } = useAccount()
-  const { tournament, isLoading: isLoadingDetails, refetch: refetchTournament } = useTournament(id)
-  const { isIn, isLoading: isLoadingIn, refetch: refetchIn } = useInTournament(id, address)
+  const {
+    tournament,
+    isLoading: isLoadingDetails,
+    refetch: refetchTournament,
+  } = useTournament(id)
+  const {
+    isIn,
+    isLoading: isLoadingIn,
+    refetch: refetchIn,
+  } = useInTournament(id, address)
   const { allowance, refetch: refetchAllowance } = useUSDCAllowance(address)
-  
-  const { approve, isPending: isApproving, isConfirming: isConfirmingApprove, isSuccess: isApproveSuccess, error: approveError } = useApproveUSDC()
-  const { joinTournament, isPending: isJoining, isConfirming: isConfirmingJoin, isSuccess: isJoinSuccess, error: joinError } = useJoinTournament()
-  const { finalizeTournament, isPending: isFinalizing, isSuccess: isFinalizeSuccess } = useFinalizeTournament()
+  const {
+    approve,
+    isPending: isApproving,
+    isConfirming: isConfirmingApprove,
+    isSuccess: isApproveSuccess,
+    error: approveError,
+  } = useApproveUSDC()
+  const {
+    joinTournament,
+    isPending: isJoining,
+    isConfirming: isConfirmingJoin,
+    isSuccess: isJoinSuccess,
+    error: joinError,
+  } = useJoinTournament()
+  const {
+    finalizeTournament,
+    isPending: isFinalizing,
+    isSuccess: isFinalizeSuccess,
+  } = useFinalizeTournament()
+
+  const [hover, setHover] = useState(false)
+  const offset = hover ? 4 : 7
 
   useEffect(() => {
     if (isApproveSuccess) refetchAllowance()
@@ -40,160 +80,349 @@ const TournamentCard: React.FC<TournamentCardProps> = ({ id, onStartMatch, onVie
       joinTriggeredRef.current = true
       refetchIn()
       refetchTournament()
-      // Automatically jump to the game board
       onStartMatch(id)
     }
   }, [isJoinSuccess, id, onStartMatch, refetchIn, refetchTournament])
 
   useEffect(() => {
-    if (isFinalizeSuccess) {
-      refetchTournament()
-    }
+    if (isFinalizeSuccess) refetchTournament()
   }, [isFinalizeSuccess, refetchTournament])
 
   const [now, setNow] = useState(BigInt(Math.floor(Date.now() / 1000)))
-
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(BigInt(Math.floor(Date.now() / 1000)))
-    }, 1000)
+    const timer = setInterval(
+      () => setNow(BigInt(Math.floor(Date.now() / 1000))),
+      1000
+    )
     return () => clearInterval(timer)
   }, [])
 
   if (isLoadingDetails || !tournament) {
-    return <div className="h-32 bg-white/5 rounded-2xl animate-pulse" />
+    return (
+      <div
+        className="animate-pulse border-4 border-ink"
+        style={{
+          background: ROW_COLORS[index % 4],
+          height: 120,
+          boxShadow: '7px 7px 0 var(--ink)',
+        }}
+      />
+    )
   }
 
-  const [creator, entryFee, startTime, endTime, maxPlayers, playerCount, finalized, prizePool] = tournament as any
-
+  const [
+    creator,
+    entryFee,
+    startTime,
+    endTime,
+    maxPlayers,
+    playerCount,
+    finalized,
+    prizePool,
+  ] = tournament as any
   const isStarted = now >= startTime
   const isEnded = now >= endTime
   const isFull = playerCount >= maxPlayers
   const needsApproval = allowance !== undefined && allowance < entryFee
-
-  const formatTime = (ts: bigint) => new Date(Number(ts) * 1000).toLocaleDateString()
-  const formatDateTime = (ts: bigint) => new Date(Number(ts) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const formatTime = (ts: bigint) =>
+    new Date(Number(ts) * 1000).toLocaleDateString()
+  const formatDateTime = (ts: bigint) =>
+    new Date(Number(ts) * 1000).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   const formatAmount = (amt: bigint) => formatUnits(amt, USDC_DECIMALS)
 
-  const handleJoin = async () => {
-    if (needsApproval) {
-      approve(entryFee)
-    } else {
-      joinTournament(id)
-    }
+  const rowBg = ROW_COLORS[index % 4]
+  const tagStyle = TAG_STYLES[index % 4]
+
+  const handleJoin = () =>
+    needsApproval ? approve(entryFee) : joinTournament(id)
+  const insetFullWidthCtaStyle = {
+    width: 'calc(100% - 8px)',
+    margin: '0 4px 4px',
+    background: 'var(--accent-lime)',
+    color: 'var(--ink-fixed)',
+    border: '3px solid var(--ink)',
+    padding: '12px 0',
+    fontSize: 14,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    fontFamily: "'Archivo Black'",
+    boxShadow: '4px 4px 0 var(--ink)',
   }
 
   return (
-    <div className={`p-5 rounded-2xl border transition-all duration-300 ${
-      isEnded ? 'bg-black/20 border-white/5 opacity-60' : 'bg-white/5 border-white/10 hover:border-blue-500/30 shadow-lg'
-    }`}>
-      <div className="flex justify-between items-start mb-4">
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: rowBg,
+        border: '4px solid var(--ink)',
+        boxShadow: `${offset}px ${offset}px 0 var(--ink)`,
+        transform: `translate(${7 - offset}px, ${7 - offset}px)`,
+        transition: 'all 100ms',
+        padding: '14px 16px',
+        filter: isEnded ? 'grayscale(0.5)' : 'none',
+        opacity: isEnded ? 0.85 : 1,
+        color: 'var(--ink-fixed)',
+      }}
+    >
+      {/* Top row */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}
+      >
         <div>
-          <h4 className="font-black text-lg tracking-tight">Tournament #{id.toString()}</h4>
-          <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
-            Ends {formatTime(endTime)}
-          </p>
+          {/* Tag sticker */}
+          <div
+            className="inline-block font-display"
+            style={{
+              background: tagStyle.bg,
+              color: 'var(--ink-contrast)',
+              border: '3px solid var(--ink)',
+              padding: '2px 8px',
+              fontSize: 9,
+              letterSpacing: '0.1em',
+              transform: 'rotate(-3deg)',
+              boxShadow: '3px 3px 0 var(--ink)',
+              marginBottom: 6,
+            }}
+          >
+            {tagStyle.label}
+          </div>
+          <div
+            className="font-display"
+            style={{ fontFamily: "'Archivo Black'", fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1 }}
+          >
+            Tournament #{id.toString()}
+          </div>
+          <div
+            className="font-body"
+            style={{
+              fontSize: 10,
+              opacity: 0.75,
+              marginTop: 2,
+              letterSpacing: '0.06em',
+            }}
+          >
+            Ends {formatTime(endTime)} @ {formatDateTime(endTime)}
+          </div>
         </div>
-        <div className="text-right">
-          <div className="text-blue-400 font-black text-xl">{formatAmount(prizePool)} USDC</div>
-          <p className="text-[10px] text-gray-600 uppercase font-bold">Prize Pool</p>
+        <div style={{ textAlign: 'right' }}>
+          <div
+            className="font-display"
+            style={{ fontSize: 9, letterSpacing: '0.14em', opacity: 0.7 }}
+          >
+            ENTRY
+          </div>
+          <div
+            className="font-display"
+            style={{
+              background: 'var(--ink)',
+              color: 'var(--paper)',
+              border: '2px solid var(--ink)',
+              padding: '2px 8px',
+              display: 'inline-block',
+              fontSize: 18,
+            }}
+          >
+            {formatAmount(entryFee)} USDC
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-          <div className="text-[9px] text-gray-500 uppercase tracking-tighter mb-1">Entry Fee</div>
-          <div className="font-mono text-sm">{formatAmount(entryFee)} USDC</div>
-        </div>
-        <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-          <div className="text-[9px] text-gray-500 uppercase tracking-tighter mb-1">Players</div>
-          <div className="font-mono text-sm">{playerCount}/{maxPlayers}</div>
-        </div>
-      </div>
+      {/* Divider */}
+      <div
+        style={{
+          height: 2,
+          background: 'var(--ink)',
+          margin: '10px 0 8px',
+        }}
+      />
 
-      {isIn ? (
-        <div className="space-y-2">
-          {!isEnded && isStarted && (
-            <div className="flex gap-2">
-              <button 
-                onClick={() => onStartMatch(id)}
-                className="flex-[2] py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-black rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 text-sm uppercase tracking-widest"
-              >
-                Start Match
-              </button>
-              <button 
-                onClick={() => onViewRankings(id, prizePool)}
-                className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold rounded-xl transition-all text-xs uppercase"
-              >
-                Rankings
-              </button>
+      {/* Meta tiles */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {[
+          { label: 'POOL', value: `${formatAmount(prizePool)} USDC` },
+          {
+            label: 'PLAYERS',
+            value: `${playerCount}/${maxPlayers === 0n ? '∞' : maxPlayers}`,
+          },
+          { label: 'ENDS', value: formatTime(endTime) },
+        ].map((m) => (
+          <div
+            key={m.label}
+            style={{
+              flex: 1,
+              background: 'rgba(255,255,255,0.25)',
+              border: '2px solid var(--ink)',
+              padding: '4px 6px',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              className="font-display"
+              style={{ fontSize: 8, letterSpacing: '0.12em', opacity: 0.6 }}
+            >
+              {m.label}
             </div>
+            <div className="font-display" style={{ fontSize: 12 }}>
+              {m.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Actions */}
+      {isIn ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!isEnded && isStarted && (
+            <>
+              <button
+                onClick={() => onStartMatch(id)}
+                className="brutal-btn font-display"
+                style={{
+                  flex: 2,
+                  background: 'var(--ink)',
+                  color: 'var(--paper)',
+                  border: '4px solid var(--ink)',
+                  padding: '10px 0',
+                  fontSize: 12,
+                  letterSpacing: '0.1em',
+                  boxShadow: '4px 4px 0 var(--ink)',
+                }}
+              >
+                START MATCH
+              </button>
+              <button
+                onClick={() => onViewRankings(id, prizePool)}
+                className="brutal-btn font-display"
+                style={{
+                  flex: 1,
+                  background: 'var(--accent-lime)',
+                  color: 'var(--ink-fixed)',
+                  border: '3px solid var(--ink)',
+                  padding: '10px 0',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontFamily: "'Archivo Black'",
+                  boxShadow: '4px 4px 0 var(--ink)',
+                }}
+              >
+                RANKS
+              </button>
+            </>
           )}
           {isEnded && !finalized && (
-            <div className="flex gap-2">
-              <button 
+            <>
+              <button
                 onClick={() => finalizeTournament(id)}
                 disabled={isFinalizing}
-                className="flex-[2] py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl transition-all text-sm uppercase"
+                className="brutal-btn font-display"
+                style={{
+                  flex: 2,
+                  background: 'var(--accent-lime)',
+                  color: 'var(--ink-contrast)',
+                  border: '3px solid var(--ink)',
+                  padding: '10px 0',
+                  fontSize: 12,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  fontFamily: "'Archivo Black'",
+                  boxShadow: '4px 4px 0 var(--ink)',
+                }}
               >
-                {isFinalizing ? 'Finalizing...' : 'Finalize'}
+                {isFinalizing ? 'FINALIZING...' : 'FINALIZE'}
               </button>
-              <button 
+              <button
                 onClick={() => onViewRankings(id, prizePool)}
-                className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold rounded-xl transition-all text-xs uppercase"
+                className="brutal-btn font-display"
+                style={{
+                  flex: 1,
+                  background: 'var(--accent-lime)',
+                  color: 'var(--ink-fixed)',
+                  border: '3px solid var(--ink)',
+                  padding: '10px 0',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontFamily: "'Archivo Black'",
+                  boxShadow: '4px 4px 0 var(--ink)',
+                }}
               >
-                Board
+                BOARD
               </button>
-            </div>
+            </>
           )}
           {isEnded && finalized && (
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 text-center py-2 bg-white/5 rounded-lg border border-white/5 text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                Finalized
-              </div>
-              <button 
-                onClick={() => onViewRankings(id, prizePool)}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold rounded-lg transition-all text-[9px] uppercase"
-              >
-                Final Results
-              </button>
-            </div>
+            <button
+              onClick={() => onViewRankings(id, prizePool)}
+              className="brutal-btn w-full font-display"
+              style={insetFullWidthCtaStyle}
+            >
+              FINAL RESULTS
+            </button>
           )}
           {!isEnded && !isStarted && (
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 text-center py-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20 text-[10px] text-yellow-500 uppercase tracking-widest font-black">
-                {startTime - now < 3600n ? (
-                  `Starting in ${Math.floor(Number(startTime - now) / 60)}m ${Number(startTime - now) % 60}s`
-                ) : (
-                  `Starts ${formatTime(startTime)} @ ${formatDateTime(startTime)}`
-                )}
-              </div>
-              <button 
-                onClick={() => onViewRankings(id, prizePool)}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold rounded-lg transition-all text-[9px] uppercase"
-              >
-                Players
-              </button>
+            <div
+              className="flex-1 border-4 border-ink py-2 text-center font-display"
+              style={{
+                background: 'var(--accent-yellow)',
+                color: 'var(--ink-contrast)',
+                fontSize: 10,
+                letterSpacing: '0.12em',
+              }}
+            >
+              {startTime - now < 3600n
+                ? `STARTS IN ${Math.floor(Number(startTime - now) / 60)}M ${Number(startTime - now) % 60}S`
+                : `STARTS ${formatTime(startTime)} @ ${formatDateTime(startTime)}`}
             </div>
           )}
         </div>
       ) : (
         <>
-          <button 
+          <button
             onClick={handleJoin}
-            className="w-full py-3 bg-white text-black hover:bg-white/90 disabled:bg-white/20 disabled:text-white/40 font-black rounded-xl transition-all active:scale-95 text-sm uppercase tracking-widest shadow-xl shadow-white/5"
-            disabled={isEnded || isFull || isJoining || isApproving || isConfirmingApprove || isConfirmingJoin}
+            className="brutal-btn w-full font-display"
+            disabled={
+              isEnded ||
+              isFull ||
+              isJoining ||
+              isApproving ||
+              isConfirmingApprove ||
+              isConfirmingJoin
+            }
+            style={{
+              ...insetFullWidthCtaStyle,
+              opacity: isEnded || isFull ? 0.5 : 1,
+            }}
           >
-            {isApproving || isConfirmingApprove ? 'Approving USDC...' :
-             isJoining || isConfirmingJoin ? 'Joining...' :
-             isFull ? 'Tournament Full' :
-             needsApproval ? 'Approve USDC' : 'Join Tournament'}
+            {isApproving || isConfirmingApprove
+              ? 'APPROVING USDC...'
+              : isJoining || isConfirmingJoin
+                ? 'JOINING...'
+                : isFull
+                  ? 'TOURNAMENT FULL'
+                  : needsApproval
+                    ? 'APPROVE USDC'
+                    : 'JOIN TOURNAMENT'}
           </button>
-
           {(approveError || joinError) && (
-            <p className="mt-2 text-[10px] text-red-500 font-bold uppercase tracking-tight text-center bg-red-500/10 p-2 rounded-lg border border-red-500/20">
-              {approveError?.message || joinError?.message || 'Transaction failed'}
-            </p>
+            <div
+              className="mt-2 border-2 border-danger py-1 text-center font-display"
+              style={{
+                background: 'var(--danger-glow)',
+                color: 'var(--danger)',
+                fontSize: 10,
+              }}
+            >
+              {approveError?.message ||
+                joinError?.message ||
+                'Transaction failed'}
+            </div>
           )}
         </>
       )}
@@ -205,22 +434,25 @@ interface TournamentSectionProps {
   onStartMatch?: (id: bigint) => void
 }
 
-const TournamentSection: React.FC<TournamentSectionProps> = ({ onStartMatch }) => {
+const TournamentSection: React.FC<TournamentSectionProps> = ({
+  onStartMatch,
+}) => {
   const { count, isLoading } = useTournamentCount()
   const { setTournamentId } = useGameStore()
-  
-  const [selectedTournament, setSelectedTournament] = useState<{id: bigint, prizePool: bigint} | null>(null)
+  const [selectedTournament, setSelectedTournament] = useState<{
+    id: bigint
+    prizePool: bigint
+  } | null>(null)
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
 
-  const handleStartMatch = useCallback((id: bigint) => {
-    setTournamentId(id)
-    if (onStartMatch) {
-      onStartMatch(id)
-    } else {
-      // Fallback
-      window.location.hash = '#/classic'
-    }
-  }, [onStartMatch, setTournamentId])
+  const handleStartMatch = useCallback(
+    (id: bigint) => {
+      setTournamentId(id)
+      if (onStartMatch) onStartMatch(id)
+      else window.location.hash = '#/classic'
+    },
+    [onStartMatch, setTournamentId]
+  )
 
   const handleOpenLeaderboard = useCallback((id: bigint, prizePool: bigint) => {
     setSelectedTournament({ id, prizePool })
@@ -228,40 +460,56 @@ const TournamentSection: React.FC<TournamentSectionProps> = ({ onStartMatch }) =
   }, [])
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="mb-6">
-        <h3 className="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-2">Available Contests</h3>
-        <p className="text-[10px] text-gray-500 leading-relaxed">
-          Join premium tournaments with USDC entry fees. Perform at your best to win a share of the prize pool.
-        </p>
+    <div>
+      <div
+        className="mb-4 font-display"
+        style={{ fontSize: 11, letterSpacing: '0.14em', opacity: 0.7 }}
+      >
+        AVAILABLE CONTESTS
       </div>
 
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+      <div className="custom-scrollbar max-h-[70vh] space-y-5 overflow-y-auto pr-1">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-40 bg-white/5 rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="animate-pulse border-4 border-ink"
+              style={{
+                background: ROW_COLORS[i % 4],
+                height: 120,
+                boxShadow: '7px 7px 0 var(--ink)',
+              }}
+            />
           ))
         ) : count && count > 0n ? (
           Array.from({ length: Number(count) }).map((_, i) => (
-            <TournamentCard 
-              key={i} 
-              id={BigInt(i)} 
-              onStartMatch={handleStartMatch} 
+            <TournamentCard
+              key={i}
+              id={BigInt(i)}
+              index={i}
+              onStartMatch={handleStartMatch}
               onViewRankings={handleOpenLeaderboard}
             />
           ))
         ) : (
-          <div className="text-center py-12 opacity-30">
-            <div className="w-12 h-12 border-2 border-dashed border-white/20 rounded-full mx-auto flex items-center justify-center mb-4 text-xl">
-              🏆
+          <div
+            className="border-4 border-ink p-8 text-center"
+            style={{ background: 'var(--paper-2)', boxShadow: '6px 6px 0 var(--ink)' }}
+          >
+            <div
+              className="mb-2 font-display text-2xl"
+              style={{ letterSpacing: '-0.02em' }}
+            >
+              NO ACTIVE CONTESTS
             </div>
-            <p className="text-sm font-medium">No tournaments active</p>
-            <p className="text-[10px] uppercase tracking-widest mt-1">Check back soon for new contests</p>
+            <div className="font-body text-sm opacity-60">
+              Check back soon for new tournaments
+            </div>
           </div>
         )}
       </div>
 
-      <TournamentLeaderboard 
+      <TournamentLeaderboard
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         tournamentId={selectedTournament?.id ?? null}
