@@ -37,7 +37,7 @@ contract MockERC20 {
 contract BlokzGameTest is Test {
     BlokzGame public game;
     MockERC20 public cusd;
-    address constant CUSD = 0x01C5C0122039549AD1493B8220cABEdD739BC44E;
+    address constant USDC = 0xcebA9300f2b948710d2653dD7B07f33A8B32118C;
 
     address public owner = makeAddr("owner");
     address public alice = makeAddr("alice");
@@ -50,9 +50,9 @@ contract BlokzGameTest is Test {
         vm.label(bob, "Bob");
         vm.label(david, "David");
 
-        // 1. Etch MockERC20 onto cUSD address
-        vm.etch(CUSD, address(new MockERC20()).code);
-        cusd = MockERC20(CUSD);
+        // 1. Etch MockERC20 onto USDC address
+        vm.etch(USDC, address(new MockERC20()).code);
+        cusd = MockERC20(USDC);
 
         // 2. Deploy BlokzGame directly
         game = new BlokzGame(owner);

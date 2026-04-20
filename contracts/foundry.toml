@@ -11,6 +11,7 @@ via_ir = true
 [rpc_endpoints]
 celo-sepolia = "https://forno.celo-sepolia.celo-testnet.org/"
 celo = "https://forno.celo.org"
+celo-mainnet = "https://celo-mainnet.infura.io/v3/2DmS9CrnVeU2Caun612yGaPQ2aq"
 
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

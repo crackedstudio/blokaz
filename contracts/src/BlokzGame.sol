@@ -15,7 +15,7 @@ contract BlokzGame is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     // ─────────────────────────────────────────────────────────── Constants ──
 
-    address public constant USDC = 0x01C5C0122039549AD1493B8220cABEdD739BC44E;
+    address public constant USDC = 0xcebA9300f2b948710d2653dD7B07f33A8B32118C;
     uint256 public constant EPOCH_DURATION = 7 days;
     uint8 public constant LEADERBOARD_SIZE = 50;
     uint256 public constant PROTOCOL_FEE_BPS = 500; // 5 %
@@ -117,6 +117,8 @@ contract BlokzGame is Ownable, ReentrancyGuard {
     // ────────────────────────────────────────────────────── Game Registry ──
 
     function startGame(bytes32 seedHash) external returns (uint256 gameId) {
+        if (activeGame[msg.sender] != 0) revert AlreadyHasActiveGame();
+        
         gameId = nextGameId++;
         games[gameId] = Game({
             player: msg.sender,
@@ -133,6 +135,7 @@ contract BlokzGame is Ownable, ReentrancyGuard {
 
     function startTournamentGame(uint256 tid, bytes32 seedHash) external returns (uint256 gameId) {
         if (!inTournament[tid][msg.sender]) revert NotInTournament();
+        if (activeGame[msg.sender] != 0) revert AlreadyHasActiveGame();
         
         Tournament storage t = tournaments[tid];
         if (block.timestamp < t.startTime) revert TournamentNotStarted();
