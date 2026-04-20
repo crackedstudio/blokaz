@@ -60,7 +60,7 @@ const App: React.FC = () => {
         onViewChange={handleNavigate}
       />
 
-      <main className={`flex flex-col items-center justify-start min-h-screen ${activeView === 'tournament-play' ? 'pt-0' : 'pt-24 pb-12'}`}>
+      <main className={`flex flex-col items-center justify-start min-h-screen ${activeView === 'tournament-play' ? 'pt-0' : 'pt-24 pb-24 lg:pb-12'}`}>
         {activeView === 'classic' ? (
           <GameScreen onOpenLeaderboard={() => setShowLeaderboard(true)} />
         ) : activeView === 'tournaments' ? (

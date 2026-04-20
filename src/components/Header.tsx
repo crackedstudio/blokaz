@@ -15,6 +15,66 @@ interface HeaderProps {
   isLeaderboardOpen?: boolean
 }
 
+const MobileBottomNav: React.FC<{
+  activeView: HeaderView
+  isLeaderboardOpen: boolean
+  onViewChange: (view: 'classic' | 'tournaments' | 'admin') => void
+  onShowLeaderboard?: () => void
+  isOwner: boolean
+}> = ({ activeView, isLeaderboardOpen, onViewChange, onShowLeaderboard, isOwner }) => {
+  const tabs = [
+    {
+      label: 'CLASSIC',
+      icon: 'zap' as const,
+      active: activeView === 'classic' && !isLeaderboardOpen,
+      onClick: () => onViewChange('classic'),
+    },
+    {
+      label: 'TOURNEY',
+      icon: 'trophy' as const,
+      active: activeView === 'tournaments' || activeView === 'tournament-play',
+      onClick: () => onViewChange('tournaments'),
+    },
+    {
+      label: 'RANKS',
+      icon: 'trending' as const,
+      active: isLeaderboardOpen,
+      onClick: onShowLeaderboard,
+    },
+    ...(isOwner
+      ? [
+          {
+            label: 'ADMIN',
+            icon: 'alert' as const,
+            active: activeView === 'admin',
+            onClick: () => onViewChange('admin'),
+          },
+        ]
+      : []),
+  ]
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 flex h-16 border-t-4 border-ink bg-paper lg:hidden"
+      style={{ boxShadow: '0 -3px 0 var(--ink)' }}
+    >
+      {tabs.map((tab) => (
+        <button
+          key={tab.label}
+          onClick={tab.onClick}
+          className={`flex flex-1 flex-col items-center justify-center gap-1 font-display text-[8px] tracking-[0.14em] uppercase ${
+            tab.active ? 'bg-ink' : ''
+          }`}
+          style={{ color: tab.active ? 'var(--paper)' : 'var(--ink)' }}
+        >
+          <BrutalIcon name={tab.icon} size={18} strokeWidth={2.5} />
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 const truncateAddress = (value?: string) =>
   value ? `${value.slice(0, 4)}…${value.slice(-2)}` : 'CONNECT'
 
@@ -39,6 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
   }
 
   return (
+    <>
     <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b-4 border-ink bg-paper px-6 py-4" style={{ borderBottomColor: 'var(--ink)' }}>
       {/* Logo */}
       <div
@@ -163,6 +224,14 @@ export const Header: React.FC<HeaderProps> = ({
         }}
       </ConnectButton.Custom>
     </header>
+    <MobileBottomNav
+      activeView={activeView}
+      isLeaderboardOpen={isLeaderboardOpen ?? false}
+      onViewChange={onViewChange}
+      onShowLeaderboard={onShowLeaderboard}
+      isOwner={!!isOwner}
+    />
+    </>
   )
 }
 

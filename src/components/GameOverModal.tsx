@@ -284,7 +284,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
           className="border-4 border-ink p-6"
           style={{ background: 'var(--paper)', boxShadow: `10px 10px 0 ${shadowColor}` }}
         >
-          <div className="mb-1 font-display text-[11px] tracking-[0.18em] text-ink opacity-60">
+          <div className="mb-1 font-display text-[11px] tracking-[0.18em] text-ink opacity-80">
             FINAL SCORE
           </div>
           <div
@@ -295,10 +295,10 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
           </div>
 
           <div className="mb-6 flex flex-wrap gap-2">
-            <div className="border-4 border-ink bg-accent-lime px-3 py-1 font-display text-[10px] tracking-widest text-white uppercase shadow-[3px_3px_0_var(--ink)]">
+            <div className="border-4 border-ink bg-accent-lime px-3 py-1 font-display text-[10px] tracking-widest text-ink uppercase shadow-[3px_3px_0_var(--ink)]">
               NEW HIGH SCORE
             </div>
-            <div className="border-4 border-ink bg-accent-pink px-3 py-1 font-display text-[10px] tracking-widest text-white uppercase shadow-[3px_3px_0_var(--ink)]">
+            <div className="border-4 border-ink bg-accent-pink px-3 py-1 font-display text-[10px] tracking-widest text-ink uppercase shadow-[3px_3px_0_var(--ink)]">
               {achievementChips[1]}
             </div>
           </div>
@@ -315,7 +315,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                 className="border-[3px] border-ink p-2.5 relative"
                 style={{ background: stat.bg }}
               >
-                <div className="flex items-center gap-1 font-display text-[8px] tracking-[0.15em] opacity-50 uppercase mb-0.5">
+                <div className="flex items-center gap-1 font-display text-[8px] tracking-[0.15em] opacity-80 uppercase mb-0.5">
                   <BrutalIcon name={stat.icon} size={10} strokeWidth={2} />
                   {stat.label}
                 </div>
@@ -336,7 +336,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
         >
           <div className="mb-2 flex items-center justify-between font-display text-[10px] tracking-widest uppercase">
             <span>WEEKLY LADDER</span>
-            <span className="opacity-60">#{rankData.currentRank} NEXT</span>
+            <span>#{rankData.currentRank} NEXT</span>
           </div>
           <div className="relative h-4 border-4 border-ink bg-paper-2">
             <div
@@ -348,7 +348,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
               style={{ left: `calc(${rankData.progress}% - 2px)` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between font-display text-[9px] tracking-widest opacity-60">
+          <div className="mt-2 flex items-center justify-between font-display text-[9px] tracking-widest opacity-90">
             <span>#{userIdx + 2 || '143'}</span>
             <span>#{rankData.currentRank - 1 || '89'} NEXT</span>
           </div>

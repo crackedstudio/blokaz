@@ -227,7 +227,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
                           href={`${contractInfo.explorer}/${entry.player}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-0.5 inline-flex items-center gap-1 font-body text-[10px] opacity-50 transition-opacity hover:opacity-80"
+                          className="mt-0.5 inline-flex items-center gap-1 font-body text-[10px] opacity-70 transition-opacity hover:opacity-100"
                           style={{ color: textColor }}
                         >
                           Details →
@@ -242,7 +242,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
                         >
                           {entry.score.toLocaleString()}
                         </div>
-                        <div className="font-display text-[9px] tracking-[0.12em] opacity-50">
+                        <div className="font-display text-[9px] tracking-[0.12em] opacity-70">
                           PTS
                         </div>
                       </div>
@@ -255,7 +255,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
                 style={{ background: 'var(--paper-2)' }}
               >
                 <div className="mb-2 font-display text-xl">NO SCORES YET</div>
-                <div className="font-body text-sm italic opacity-50">
+                <div className="font-body text-sm italic opacity-80">
                   Be the first to claim the throne
                 </div>
               </div>

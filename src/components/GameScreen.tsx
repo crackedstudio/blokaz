@@ -181,7 +181,7 @@ const LiveLadder: React.FC<{ currentScore: number }> = ({ currentScore }) => {
         style={{ background: 'var(--paper)' }}
       >
         <span className="flex items-center uppercase tracking-[0.2em]"><BrutalIcon name="trending" size={12} className="mr-2" /> WEEKLY LADDER</span>
-        <span className="font-display text-[9px] text-ink/60">2D 14H</span>
+        <span className="font-display text-[9px] text-ink/80">2D 14H</span>
       </div>
       {isLoading ? (
         <div className="space-y-2 p-4">
@@ -254,7 +254,7 @@ const ShareCard: React.FC<{ score: number }> = ({ score }) => (
       >
         BLOKAZ.
       </div>
-      <div className="mt-4 font-display text-[10px] tracking-widest text-ink/60 uppercase">
+      <div className="mt-4 font-display text-[10px] tracking-widest text-ink/80 uppercase">
         CLASSIC RUN SCORE
       </div>
       <div
@@ -282,7 +282,7 @@ const StatBlock: React.FC<{ label: string; value: string; bg: string }> = ({
       color: (bg.includes('accent') && !bg.includes('pink') && !bg.includes('purple')) ? 'var(--ink-fixed)' : 'inherit'
     }}
   >
-    <div className={`font-display text-[9px] tracking-[0.2em] uppercase ${(bg.includes('accent') && !bg.includes('pink') && !bg.includes('purple')) ? 'text-black/50' : 'text-ink/70'}`}>
+    <div className={`font-display text-[9px] tracking-[0.2em] uppercase ${(bg.includes('accent') && !bg.includes('pink') && !bg.includes('purple')) ? 'text-black/70' : 'text-ink/80'}`}>
       {label}
     </div>
     <div className="font-display text-2xl uppercase" style={{ letterSpacing: '-0.02em', lineHeight: 1 }}>
@@ -292,6 +292,19 @@ const StatBlock: React.FC<{ label: string; value: string; bg: string }> = ({
 )
 
 // ─── Main component ──────────────────────────────────────────────────────────
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
 
 const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -340,6 +353,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
     trayY: number
     trayH: number
   } | null>(null)
+  const isMobile = useIsMobile()
 
   // 0. Account Switch Protection
   const lastAddressRef = useRef<`0x${string}` | undefined>(address)
@@ -650,29 +664,28 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
     onOpenLeaderboard,
   }
 
+  const canvasArea = <CanvasArea {...commonCanvasProps} />
+
+  if (isMobile) {
+    return (
+      <MobileLayout
+        score={score}
+        comboStreak={comboStreak}
+        gameSession={gameSession}
+        onOpenLeaderboard={onOpenLeaderboard}
+        canvasArea={canvasArea}
+      />
+    )
+  }
+
   return (
-    <>
-      {/* Mobile (default) */}
-      <div className="lg:hidden">
-        <MobileLayout
-          score={score}
-          comboStreak={comboStreak}
-          gameSession={gameSession}
-          onOpenLeaderboard={onOpenLeaderboard}
-          canvasArea={<CanvasArea {...commonCanvasProps} />}
-        />
-      </div>
-      {/* Desktop */}
-      <div className="hidden lg:block">
-        <DesktopLayout
-          score={score}
-          comboStreak={comboStreak}
-          gameSession={gameSession}
-          onOpenLeaderboard={onOpenLeaderboard}
-          canvasArea={<CanvasArea {...commonCanvasProps} />}
-        />
-      </div>
-    </>
+    <DesktopLayout
+      score={score}
+      comboStreak={comboStreak}
+      gameSession={gameSession}
+      onOpenLeaderboard={onOpenLeaderboard}
+      canvasArea={canvasArea}
+    />
   )
 }
 
@@ -1133,7 +1146,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   onOpenLeaderboard,
   canvasArea,
 }) => (
-  <div className="min-h-screen bg-paper pt-[88px] lg:hidden">
+  <div className="min-h-screen bg-paper pt-[88px]">
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pb-6">
       {gameSession && (
         <>
@@ -1212,7 +1225,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
   onOpenLeaderboard,
   canvasArea,
 }) => (
-  <div className="hidden min-h-screen bg-paper lg:block">
+  <div className="min-h-screen bg-paper">
     <div
       className="mx-auto grid w-full max-w-[1600px] items-start px-10 py-6"
       style={{
