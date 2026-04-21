@@ -117,7 +117,6 @@ contract BlokzGame is Ownable, ReentrancyGuard {
     // ────────────────────────────────────────────────────── Game Registry ──
 
     function startGame(bytes32 seedHash) external returns (uint256 gameId) {
-        if (activeGame[msg.sender] != 0) revert AlreadyHasActiveGame();
         
         gameId = nextGameId++;
         games[gameId] = Game({
@@ -135,7 +134,6 @@ contract BlokzGame is Ownable, ReentrancyGuard {
 
     function startTournamentGame(uint256 tid, bytes32 seedHash) external returns (uint256 gameId) {
         if (!inTournament[tid][msg.sender]) revert NotInTournament();
-        if (activeGame[msg.sender] != 0) revert AlreadyHasActiveGame();
         
         Tournament storage t = tournaments[tid];
         if (block.timestamp < t.startTime) revert TournamentNotStarted();

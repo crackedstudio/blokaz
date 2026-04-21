@@ -65,14 +65,7 @@ contract BlokzGameTest is Test {
 
     // ────────────────────────────────────────────────────────── CORE REVERTS ──
 
-    function test_startGame_reverts_if_already_active() public {
-        vm.prank(alice);
-        game.startGame(keccak256("seed1"));
-        
-        vm.expectRevert(BlokzGame.AlreadyHasActiveGame.selector);
-        vm.prank(alice);
-        game.startGame(keccak256("seed2"));
-    }
+
 
     function test_submitScore_reverts_if_wrong_owner() public {
         vm.prank(alice);
