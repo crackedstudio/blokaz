@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi'
 import { useOwner } from '../hooks/useBlokzGame'
 import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
+import { IS_MINIPAY } from '../utils/miniPay'
 
 type HeaderView = 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
@@ -13,6 +14,19 @@ interface HeaderProps {
   activeView: HeaderView
   showLeaderboardAction: boolean
   isLeaderboardOpen?: boolean
+}
+
+const MiniPayWalletBadge: React.FC = () => {
+  const { address, isConnected } = useAccount()
+  return (
+    <div
+      className="flex items-center gap-2 border-[3px] border-ink bg-accent-lime px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
+      style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+    >
+      <div className="h-2 w-2 rounded-full bg-ink animate-pulse" />
+      {isConnected && address ? truncateAddress(address) : 'MINIPAY'}
+    </div>
+  )
 }
 
 const MobileBottomNav: React.FC<{
@@ -179,50 +193,52 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Wallet connect */}
-      <ConnectButton.Custom>
-        {({
-          account,
-          chain,
-          mounted,
-          openAccountModal,
-          openChainModal,
-          openConnectModal,
-        }) => {
-          const ready = mounted
-          const connected = ready && account && chain
+      {IS_MINIPAY ? (
+        <MiniPayWalletBadge />
+      ) : (
+        <ConnectButton.Custom>
+          {({
+            account,
+            chain,
+            mounted,
+            openAccountModal,
+            openChainModal,
+            openConnectModal,
+          }) => {
+            const ready = mounted
+            const connected = ready && account && chain
 
-          const handleClick = () => {
-            if (!connected) {
-              openConnectModal()
-              return
+            const handleClick = () => {
+              if (!connected) {
+                openConnectModal()
+                return
+              }
+              if (chain.unsupported) {
+                openChainModal()
+                return
+              }
+              openAccountModal()
             }
 
-            if (chain.unsupported) {
-              openChainModal()
-              return
-            }
-
-            openAccountModal()
-          }
-
-          return (
-            <button
-              onClick={handleClick}
-              className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
-              style={{
-                boxShadow: '4px 4px 0 var(--ink)',
-                opacity: ready ? 1 : 0,
-              }}
-            >
-              {connected
-                ? truncateAddress(account.address)
-                : chain?.unsupported
-                  ? 'NETWORK'
-                  : 'CONNECT'}
-            </button>
-          )
-        }}
-      </ConnectButton.Custom>
+            return (
+              <button
+                onClick={handleClick}
+                className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
+                style={{
+                  boxShadow: '4px 4px 0 var(--ink)',
+                  opacity: ready ? 1 : 0,
+                }}
+              >
+                {connected
+                  ? truncateAddress(account.address)
+                  : chain?.unsupported
+                    ? 'NETWORK'
+                    : 'CONNECT'}
+              </button>
+            )
+          }}
+        </ConnectButton.Custom>
+      )}
     </header>
     <MobileBottomNav
       activeView={activeView}

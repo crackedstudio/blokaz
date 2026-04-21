@@ -1,18 +1,23 @@
+import { IS_MINIPAY } from '../utils/miniPay'
 
+const vibrate = (pattern: number | number[]) => {
+  if (IS_MINIPAY && typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate(pattern)
+  }
+}
 
-// Haptic feedback stubs — will connect to Farcaster SDK in Phase 5
 export function hapticSelection(): void {
-  console.log('[haptic] selection')
+  vibrate(10)
 }
 
 export function hapticImpact(): void {
-  console.log('[haptic] impact')
+  vibrate(20)
 }
 
 export function hapticNotification(): void {
-  console.log('[haptic] notification')
+  vibrate([20, 10, 20])
 }
 
 export function hapticError(): void {
-  console.log('[haptic] error')
+  vibrate([30, 15, 30, 15, 30])
 }
