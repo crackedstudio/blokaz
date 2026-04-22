@@ -340,6 +340,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
     isPending,
     isConfirming,
     isSuccess,
+    error: startGameError,
   } = useStartGame()
 
   const [currentSeed, setCurrentSeed] = useState<{
@@ -669,6 +670,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
     forceReset,
     setSessionConflict,
     onOpenLeaderboard,
+    startGameError,
   }
 
   const canvasArea = <CanvasArea {...commonCanvasProps} />
@@ -782,6 +784,7 @@ interface CanvasAreaProps {
   forceReset: () => void
   setSessionConflict: (v: boolean) => void
   onOpenLeaderboard?: () => void
+  startGameError?: Error | null
 }
 
 const ClassicStartCard: React.FC<{
@@ -794,6 +797,7 @@ const ClassicStartCard: React.FC<{
   sessionConflict: boolean
   forceReset: () => void
   setSessionConflict: (v: boolean) => void
+  startGameError?: Error | null
 }> = ({
   isConnected,
   handleStartGame,
@@ -804,6 +808,7 @@ const ClassicStartCard: React.FC<{
   sessionConflict,
   forceReset,
   setSessionConflict,
+  startGameError,
 }) => (
   <div
     className="relative z-10 flex w-full flex-col gap-5 rounded-[6px] border-4 border-ink bg-paper px-7 py-8"
@@ -901,6 +906,13 @@ const ClassicStartCard: React.FC<{
           ? <><BrutalIcon name="zap" size={10} strokeWidth={2} /> Connecting MiniPay wallet...</>
           : <><BrutalIcon name="alert" size={10} strokeWidth={2} /> PRACTICE MODE — connect wallet for rewards</>}
     </div>
+
+    {startGameError && (
+      <div className="mt-2 border-4 border-red-500 bg-red-50 p-3 font-display text-[10px] tracking-widest text-red-700 uppercase break-all">
+        <BrutalIcon name="alert" size={12} className="mr-1" />
+        TX ERROR: {startGameError.message?.slice(0, 120)}
+      </div>
+    )}
   </div>
 )
 
@@ -924,6 +936,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   forceReset,
   setSessionConflict,
   onOpenLeaderboard,
+  startGameError,
 }) => {
   if (!gameSession) {
     return (
@@ -937,6 +950,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
         sessionConflict={sessionConflict}
         forceReset={forceReset}
         setSessionConflict={setSessionConflict}
+        startGameError={startGameError}
       />
     )
   }

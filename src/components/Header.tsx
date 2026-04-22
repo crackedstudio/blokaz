@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
-import { useOwner } from '../hooks/useBlokzGame'
+import { useOwner, useSetUsername } from '../hooks/useBlokzGame'
 import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
 import { IS_MINIPAY } from '../utils/miniPay'
@@ -18,13 +18,52 @@ interface HeaderProps {
 
 const MiniPayWalletBadge: React.FC = () => {
   const { address, isConnected } = useAccount()
+  const { setUsername, isPending, isConfirming, isSuccess, error } = useSetUsername()
+  const [label, setLabel] = useState<string | null>(null)
+
+  const handleTest = () => {
+    // Guard: Ensure we are fully connected in wagmi before attempting a write.
+    // This avoids "Permission denied" errors that occur when a transaction is
+    // requested before the session handshake completes.
+    if (!isConnected || !address) {
+      console.warn('MiniPay not yet connected')
+      return
+    }
+
+    const testName = `tester_${Date.now().toString(36).slice(-4)}`
+    setLabel(testName)
+    setUsername(testName)
+  }
+
   return (
-    <div
-      className="flex items-center gap-2 border-[3px] border-ink bg-accent-lime px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
-      style={{ boxShadow: '4px 4px 0 var(--ink)' }}
-    >
-      <div className="h-2 w-2 rounded-full bg-ink animate-pulse" />
-      {isConnected && address ? truncateAddress(address) : 'MINIPAY'}
+    <div className="flex items-center gap-2">
+      {/* Test TX button — only visible in MiniPay for debugging */}
+      <button
+        onClick={handleTest}
+        disabled={isPending || isConfirming}
+        className="brutal-btn border-[3px] border-ink px-3 py-[8px] font-display text-[10px] tracking-widest uppercase"
+        style={{
+          background: isSuccess ? 'var(--accent-lime)' : error ? '#ff4444' : 'var(--accent-yellow)',
+          boxShadow: '3px 3px 0 var(--ink)',
+          color: 'var(--ink-fixed)',
+        }}
+      >
+        {isPending || isConfirming ? '⏳ SENDING...' : isSuccess ? '✅ TX OK!' : error ? '❌ FAILED' : '🔧 TEST TX'}
+      </button>
+
+      {error && (
+        <div className="max-w-[180px] truncate font-display text-[8px] text-red-600 uppercase">
+          {error.message?.slice(0, 60)}
+        </div>
+      )}
+
+      <div
+        className="flex items-center gap-2 border-[3px] border-ink bg-accent-lime px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
+        style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+      >
+        <div className="h-2 w-2 rounded-full bg-ink animate-pulse" />
+        {isConnected && address ? truncateAddress(address) : 'MINIPAY'}
+      </div>
     </div>
   )
 }
