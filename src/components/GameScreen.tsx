@@ -30,6 +30,7 @@ import {
   readStoredGameSession,
   writeStoredGameSession,
 } from '../utils/gameSessionStorage'
+import { IS_MINIPAY } from '../utils/miniPay'
 
 const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -463,8 +464,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
   }, [address, currentSeed, isSuccess, refetchActiveGame, setOnChainData])
 
   // 3. Practice Mode Fallback
+  // Skip in MiniPay: isConnected is always false on first render because
+  // MiniPayAutoConnect hasn't resolved yet. Without this guard the game
+  // silently starts in practice mode and contractStartGame is never called.
   useEffect(() => {
-    if (!isConnected && !gameSession) handleStartGame()
+    if (!isConnected && !gameSession && !IS_MINIPAY) handleStartGame()
   }, [isConnected, gameSession])
 
   // Canvas init
@@ -643,6 +647,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
 
   const handlePlayAgain = () => handleStartGame()
 
+  const isMiniPayConnecting = IS_MINIPAY && !isConnected
+
   const commonCanvasProps = {
     canvasRef,
     boardContainerRef,
@@ -658,6 +664,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
     score,
     handleStartGame,
     isSyncingContract,
+    isMiniPayConnecting,
     sessionConflict,
     forceReset,
     setSessionConflict,
@@ -770,6 +777,7 @@ interface CanvasAreaProps {
   score: number
   handleStartGame: () => void
   isSyncingContract: boolean
+  isMiniPayConnecting: boolean
   sessionConflict: boolean
   forceReset: () => void
   setSessionConflict: (v: boolean) => void
@@ -782,6 +790,7 @@ const ClassicStartCard: React.FC<{
   isPending: boolean
   isConfirming: boolean
   isSyncingContract: boolean
+  isMiniPayConnecting: boolean
   sessionConflict: boolean
   forceReset: () => void
   setSessionConflict: (v: boolean) => void
@@ -791,6 +800,7 @@ const ClassicStartCard: React.FC<{
   isPending,
   isConfirming,
   isSyncingContract,
+  isMiniPayConnecting,
   sessionConflict,
   forceReset,
   setSessionConflict,
@@ -842,11 +852,16 @@ const ClassicStartCard: React.FC<{
     <button
       onClick={handleStartGame}
       disabled={
-        isPending || isConfirming || isSyncingContract || sessionConflict
+        isPending || isConfirming || isSyncingContract || isMiniPayConnecting || sessionConflict
       }
       className="brutal-btn flex w-full items-center justify-center gap-3 border-4 border-ink bg-accent-lime py-5 font-display text-sm tracking-[0.15em] uppercase shadow-[6px_6px_0_var(--ink)] disabled:opacity-70"
     >
-      {isSyncingContract ? (
+      {isMiniPayConnecting ? (
+        <>
+          <div className="brutal-loader" />
+          CONNECTING...
+        </>
+      ) : isSyncingContract ? (
         <>
           <div className="brutal-loader" />
           SYNCING...
@@ -882,7 +897,9 @@ const ClassicStartCard: React.FC<{
     <div className="flex items-center justify-center gap-2 text-center font-display text-[10px] tracking-widest opacity-70 uppercase">
       {isConnected
         ? <><BrutalIcon name="zap" size={10} strokeWidth={2} /> Score flows into the leaderboard automatically</>
-        : <><BrutalIcon name="alert" size={10} strokeWidth={2} /> PRACTICE MODE — connect wallet for rewards</>}
+        : isMiniPayConnecting
+          ? <><BrutalIcon name="zap" size={10} strokeWidth={2} /> Connecting MiniPay wallet...</>
+          : <><BrutalIcon name="alert" size={10} strokeWidth={2} /> PRACTICE MODE — connect wallet for rewards</>}
     </div>
   </div>
 )
@@ -902,6 +919,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   score,
   handleStartGame,
   isSyncingContract,
+  isMiniPayConnecting,
   sessionConflict,
   forceReset,
   setSessionConflict,
@@ -915,6 +933,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
         isPending={isPending}
         isConfirming={isConfirming}
         isSyncingContract={isSyncingContract}
+        isMiniPayConnecting={isMiniPayConnecting}
         sessionConflict={sessionConflict}
         forceReset={forceReset}
         setSessionConflict={setSessionConflict}
