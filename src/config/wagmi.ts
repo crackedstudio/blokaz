@@ -12,7 +12,7 @@ const miniPayConfig = createConfig({
 
 const rainbowConfig = getDefaultConfig({
   appName: 'Blokaz',
-  projectId: 'YOUR_PROJECT_ID',
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? '',
   chains: [celo],
   ssr: false,
 })
