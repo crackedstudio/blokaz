@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { 
   useReadContract, 
   useWriteContract, 
@@ -7,6 +8,15 @@ import {
 import { keccak256, encodePacked, toHex } from 'viem'
 import { BLOKZ_GAME_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
+import { isMiniPay } from '../utils/miniPay'
+
+// MiniPay only supports legacy (type 0) transactions — EIP-1559 is not supported.
+// Wagmi tx overrides. For MiniPay users, we MUST force type: 'legacy' (0x0).
+// Modern wallets default to EIP-1559 (0x2), which MiniPay explicitly rejects.
+const getTxOverrides = () =>
+  isMiniPay()
+    ? { type: 'legacy' as const }
+    : {}
 
 const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
 const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as const
@@ -220,6 +230,7 @@ export function useStartGame() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'startGame',
       args: [seedHash],
+      ...getTxOverrides(),
     })
   }
 
@@ -239,6 +250,7 @@ export function useStartTournamentGame() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'startTournamentGame',
       args: [tournamentId, seedHash],
+      ...getTxOverrides(),
     })
   }
 
@@ -264,6 +276,7 @@ export function useSubmitScore() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'submitScore',
       args: [gameId, seed, packedMoves, score, moveCount],
+      ...getTxOverrides(),
     })
   }
 
@@ -283,6 +296,7 @@ export function useJoinTournament() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'joinTournament',
       args: [tournamentId],
+      ...getTxOverrides(),
     })
   }
 
@@ -309,6 +323,7 @@ export function useSubmitTournamentScore() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'submitTournamentScore',
       args: [tournamentId, gameId, seed, packedMoves, score, moveCount],
+      ...getTxOverrides(),
     })
   }
 
@@ -328,6 +343,7 @@ export function useFinalizeTournament() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'finalizeTournament',
       args: [tournamentId],
+      ...getTxOverrides(),
     })
   }
 
@@ -346,6 +362,7 @@ export function useCreateTournament() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'createTournament',
       args: [fee, start, end, max],
+      ...getTxOverrides(),
     })
   }
 
@@ -361,6 +378,7 @@ export function useWithdrawRevenue() {
       address: CONTRACT_ADDRESS,
       abi: BLOKZ_GAME_ABI,
       functionName: 'withdrawProtocolRevenue',
+      ...getTxOverrides(),
     })
   }
 
@@ -380,6 +398,7 @@ export function useSetUsername() {
       abi: BLOKZ_GAME_ABI,
       functionName: 'setUsername',
       args: [name],
+      ...getTxOverrides(),
     })
   }
 
@@ -399,6 +418,7 @@ export function useApproveUSDC() {
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [CONTRACT_ADDRESS, amount],
+      ...getTxOverrides(),
     })
   }
 
