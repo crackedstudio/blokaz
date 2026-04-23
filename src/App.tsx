@@ -5,42 +5,54 @@ import Header from './components/Header'
 import Leaderboard from './components/Leaderboard'
 import TournamentHall from './components/TournamentHall'
 import AdminDashboard from './components/AdminDashboard'
+import LobbyScreen from './components/LobbyScreen'
 import { useGameStore } from './stores/gameStore'
 
-type AppView = 'classic' | 'tournaments' | 'tournament-play' | 'admin'
+type AppView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
-const getViewFromHash = (hash: string): AppView => {
+// Only tournaments and admin are hash-routed (deep-linkable).
+// Lobby and classic are state-only — refresh always returns to lobby.
+const getViewFromHash = (hash: string): AppView | null => {
   if (hash === '#/tournaments') return 'tournaments'
   if (hash === '#/tournaments/play' || hash === '#/tournament-game') return 'tournament-play'
   if (hash === '#/admin') return 'admin'
-  return 'classic'
+  return null
 }
 
 const App: React.FC = () => {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const { setTournamentId, forceReset } = useGameStore()
-  const [activeView, setActiveView] = useState<AppView>('classic')
+  const [activeView, setActiveView] = useState<AppView>('lobby')
 
   useEffect(() => {
     const handleHashChange = () => {
       const nextView = getViewFromHash(window.location.hash)
+      if (nextView === null) return // lobby/classic managed via direct state
       setActiveView(prev => {
         if (nextView !== prev) {
-          setTimeout(() => forceReset(nextView === 'tournament-play'), 0)
+          setTimeout(() => forceReset(), 0)
         }
         return nextView
       })
-      if (nextView !== 'classic') setShowLeaderboard(false)
+      setShowLeaderboard(false)
     }
     window.addEventListener('hashchange', handleHashChange)
+    // On initial load only honour tournament/admin deep links
     handleHashChange()
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [forceReset])
 
   const handleNavigate = (view: AppView, clearTournament: boolean = true) => {
-    if (view === 'classic') {
+    if (view === 'lobby') {
+      // Clear any leftover hash then update state directly
+      if (window.location.hash) history.replaceState(null, '', window.location.pathname)
+      forceReset()
+      setActiveView('lobby')
+    } else if (view === 'classic') {
       if (clearTournament) setTournamentId(null)
-      window.location.hash = '#/classic'
+      forceReset()
+      setActiveView('classic')
+      // No hash change — refresh always returns to lobby
     } else if (view === 'tournaments') {
       window.location.hash = '#/tournaments'
     } else if (view === 'tournament-play') {
@@ -60,12 +72,20 @@ const App: React.FC = () => {
         onViewChange={handleNavigate}
       />
 
-      <main className={`flex flex-col items-center justify-start min-h-screen ${activeView === 'tournament-play' ? 'pt-0' : 'pt-24 pb-24 lg:pb-12'}`}>
-        {activeView === 'classic' ? (
-          <GameScreen onOpenLeaderboard={() => setShowLeaderboard(true)} />
+      <main className={`flex flex-col min-h-screen ${activeView === 'lobby' ? 'pt-[64px] pb-20' : activeView === 'tournament-play' ? 'pt-0' : 'pt-[64px] pb-20 lg:items-center lg:pb-12'}`}>
+        {activeView === 'lobby' ? (
+          <LobbyScreen
+            onPlayClassic={() => handleNavigate('classic')}
+            onPlayTournaments={() => handleNavigate('tournaments')}
+          />
+        ) : activeView === 'classic' ? (
+          <GameScreen
+            onOpenLeaderboard={() => setShowLeaderboard(true)}
+            onBack={() => handleNavigate('lobby')}
+          />
         ) : activeView === 'tournaments' ? (
           <TournamentHall
-            onBack={() => handleNavigate('classic', true)}
+            onBack={() => handleNavigate('lobby')}
             onEnterMatch={() => handleNavigate('tournament-play', false)}
           />
         ) : activeView === 'tournament-play' ? (

@@ -21,6 +21,7 @@ import {
   generateGameSeed,
   useActiveGame,
   useLeaderboard,
+  useUsername,
 } from '../hooks/useBlokzGame'
 import { useAccount } from 'wagmi'
 import { keccak256, encodePacked } from 'viem'
@@ -38,6 +39,7 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 interface GameScreenProps {
   onOpenLeaderboard?: () => void
+  onBack?: () => void
 }
 
 // ─── Desktop sidebar widgets ────────────────────────────────────────────────
@@ -53,10 +55,15 @@ const DailyStreakPanel: React.FC = () => {
       style={{ background: 'var(--paper-2)', boxShadow: '4px 4px 0 var(--ink)' }}
     >
       <div className="flex items-center justify-between border-b-4 border-ink px-4 py-3" style={{ background: 'var(--accent-yellow)' }}>
-        <div className="flex items-center font-display text-[10px] tracking-[0.16em] text-ink">
+        <div
+          className="flex items-center font-display text-[10px] tracking-[0.16em]"
+          style={{ color: 'var(--ink-fixed)' }}
+        >
           <BrutalIcon name="flame" size={12} className="mr-2" /> DAILY STREAK
         </div>
-        <div className="font-display text-sm text-ink">DAY 7</div>
+        <div className="font-display text-sm" style={{ color: 'var(--ink-fixed)' }}>
+          DAY 7
+        </div>
       </div>
       <div className="px-4 py-3">
         <div className="mb-2 flex gap-1.5">
@@ -151,7 +158,11 @@ const DangerWatch: React.FC<{ currentPieces?: (ShapeDefinition | null)[] }> = ({
                     background: isLive ? 'white' : 'var(--ink)',
                   }}
                 />
-                <span className="text-ink">{isLive ? 'LIVE' : danger.risk}</span>
+                <span
+                  style={{ color: isLive ? 'var(--ink-fixed)' : 'var(--ink)' }}
+                >
+                  {isLive ? 'LIVE' : danger.risk}
+                </span>
               </div>
             </div>
           )
@@ -212,7 +223,10 @@ const LiveLadder: React.FC<{ currentScore: number }> = ({ currentScore }) => {
             )
           })}
           {userIdx > 2 && (
-            <div className="flex items-center gap-2 border-b-2 border-ink px-3 py-2.5" style={{ background: 'var(--accent-cyan)' }}>
+            <div
+              className="flex items-center gap-2 border-b-2 border-ink px-3 py-2.5"
+              style={{ background: 'var(--accent-cyan)', color: 'var(--ink-fixed)' }}
+            >
               <span className="w-6 font-display text-sm">#{userIdx + 1}</span>
               <span className="flex-1 font-display text-xs uppercase">YOU</span>
               <span className="font-display text-[9px] tabular-nums text-white border border-ink bg-ink px-1 ml-1">YOU</span>
@@ -230,10 +244,10 @@ const LiveLadder: React.FC<{ currentScore: number }> = ({ currentScore }) => {
 const ShareCard: React.FC<{ score: number }> = ({ score }) => (
   <div
     className="border-4 border-ink bg-accent-pink p-5"
-    style={{ boxShadow: '6px 6px 0 var(--ink)' }}
+    style={{ boxShadow: '6px 6px 0 var(--ink)', color: 'var(--ink-fixed)' }}
   >
     <div className="flex items-center justify-between mb-4">
-      <div className="font-display text-[10px] tracking-widest text-ink/80 uppercase">
+      <div className="font-display text-[10px] tracking-widest uppercase opacity-80">
         SHARE CARD
       </div>
       <div className="h-2 w-2 rounded-full bg-ink animate-pulse" />
@@ -307,7 +321,7 @@ const useIsMobile = () => {
   return isMobile
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard, onBack }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const boardContainerRef = useRef<HTMLDivElement>(null)
   const animManagerRef = useRef<AnimationManager>(new AnimationManager())
@@ -330,6 +344,14 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
   } = useGameStore()
 
   const { address, isConnected } = useAccount()
+  const { leaderboard: lbData } = useLeaderboard()
+  const bestScore = React.useMemo(() => {
+    if (!lbData || !address) return undefined
+    const entries = lbData as readonly { player: `0x${string}`; score: number; gameId: bigint }[]
+    const mine = entries.filter(e => e.player.toLowerCase() === address.toLowerCase())
+    return mine.length > 0 ? Math.max(...mine.map(e => e.score)) : undefined
+  }, [lbData, address])
+
   const {
     gameId: onChainActiveGameId,
     isLoading: isLoadingActiveGame,
@@ -680,8 +702,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard }) => {
       <MobileLayout
         score={score}
         comboStreak={comboStreak}
+        bestScore={bestScore}
         gameSession={gameSession}
         onOpenLeaderboard={onOpenLeaderboard}
+        onBack={onBack}
         canvasArea={canvasArea}
       />
     )
@@ -722,7 +746,7 @@ const SyncStatusChip: React.FC<SyncChipProps> = ({
         className="flex items-center gap-2 border-2 border-ink px-2 py-1 font-display text-[10px] tracking-[0.12em]"
         style={{
           background: 'var(--accent-yellow)',
-          color: 'var(--ink)',
+          color: 'var(--ink-fixed)',
           boxShadow: '2px 2px 0 var(--ink)',
         }}
       >
@@ -737,7 +761,7 @@ const SyncStatusChip: React.FC<SyncChipProps> = ({
         className="flex items-center gap-2 border-2 border-ink px-2 py-1 font-display text-[10px] tracking-[0.12em]"
         style={{
           background: 'var(--accent-cyan)',
-          color: 'var(--ink)',
+          color: 'var(--ink-fixed)',
           boxShadow: '2px 2px 0 var(--ink)',
         }}
       >
@@ -752,7 +776,7 @@ const SyncStatusChip: React.FC<SyncChipProps> = ({
         className="flex items-center gap-2 border-2 border-ink px-2 py-1 font-display text-[10px] tracking-[0.12em]"
         style={{
           background: 'var(--accent-lime)',
-          color: 'var(--ink)',
+          color: 'var(--ink-fixed)',
           boxShadow: '2px 2px 0 var(--ink)',
         }}
       >
@@ -816,7 +840,7 @@ const ClassicStartCard: React.FC<{
   >
     <div
       className="w-fit border-4 border-ink bg-accent-yellow px-6 py-2 font-display text-sm tracking-[0.15em]"
-      style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+      style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
     >
       CLASSIC MODE
     </div>
@@ -860,6 +884,7 @@ const ClassicStartCard: React.FC<{
         isPending || isConfirming || isSyncingContract || isMiniPayConnecting || sessionConflict
       }
       className="brutal-btn flex w-full items-center justify-center gap-3 border-4 border-ink bg-accent-lime py-5 font-display text-sm tracking-[0.15em] uppercase shadow-[6px_6px_0_var(--ink)] disabled:opacity-70"
+      style={{ color: 'var(--ink-fixed)' }}
     >
       {isMiniPayConnecting ? (
         <>
@@ -969,8 +994,9 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
               }}
             />
             <div
-              className="pointer-events-none absolute left-0 z-[1] grid grid-cols-3 border-[3px] border-ink bg-paper p-5"
+              className="pointer-events-none absolute left-0 z-[1] grid grid-cols-3 border-[3px] border-ink p-5"
               style={{
+                background: 'var(--accent-yellow)',
                 top: canvasDims.trayY,
                 width: canvasDims.gridSize,
                 height: canvasDims.trayH,
@@ -1024,8 +1050,10 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
 interface MobileLayoutProps {
   score: number
   comboStreak: number
+  bestScore?: number
   gameSession: any
   onOpenLeaderboard?: () => void
+  onBack?: () => void
   canvasArea: React.ReactNode
 }
 
@@ -1087,7 +1115,10 @@ const LeftRail: React.FC<{
       {comboStreak > 0 && (
         <div className="mt-4 flex gap-2">
           <div className="brutal-sticker text-[14px]">COMBO ×{comboStreak}</div>
-          <div className="border-2 border-ink bg-accent-yellow px-2 py-1 font-display text-[11px] tracking-widest text-ink">
+          <div
+            className="border-2 border-ink bg-accent-yellow px-2 py-1 font-display text-[11px] tracking-widest"
+            style={{ color: 'var(--ink-fixed)' }}
+          >
             +{Math.floor(score * 0.05)}
           </div>
         </div>
@@ -1163,6 +1194,7 @@ const RightRail: React.FC<{
 
     <button
       className="brutal-btn flex w-full items-center justify-between border-4 border-ink bg-accent-lime p-5 font-display text-xs tracking-[0.2em] shadow-[5px_5px_0_var(--ink)] uppercase"
+      style={{ color: 'var(--ink-fixed)' }}
     >
         <span className="flex items-center">
           <BrutalIcon name="rocket" size={16} className="mr-2" /> SHARE BEST SCORE
@@ -1175,70 +1207,49 @@ const RightRail: React.FC<{
 const MobileLayout: React.FC<MobileLayoutProps> = ({
   score,
   comboStreak,
+  bestScore,
   gameSession,
   onOpenLeaderboard,
+  onBack,
   canvasArea,
 }) => (
-  <div className="min-h-screen bg-paper pt-[88px]">
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pb-6">
-      {gameSession && (
-        <>
-          <div className="flex items-center justify-between py-3">
-            <button
-              className="brutal-btn border-4 border-ink bg-paper-2 p-2 shadow-[2px_2px_0_var(--ink)]"
-              onClick={() => window.history.back()}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-              >
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
+  <div className="flex flex-col w-full">
+    {gameSession && (
+      <>
+        {/* ── Game chrome: back / status / pause ──────────────────── */}
+        <div className="flex items-center justify-between px-3 py-2 border-b-4 border-ink bg-paper">
+          <button
+            className="brutal-btn border-[3px] border-ink bg-paper p-2"
+            style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+            onClick={onBack ?? (() => window.history.back())}
+          >
+            <BrutalIcon name="back" size={18} strokeWidth={3} />
+          </button>
 
-            <div className="flex items-center gap-2 border-4 border-ink bg-accent-lime px-4 py-1.5 font-display text-[10px] tracking-[0.2em] shadow-[3px_3px_0_var(--ink)] uppercase">
-              <div className="h-2 w-2 rounded-full bg-ink animate-pulse" />
-              ON-CHAIN
-            </div>
-
-            <button className="brutal-btn border-4 border-ink bg-paper-2 p-2 shadow-[2px_2px_0_var(--ink)]">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-              >
-                <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-              </svg>
-            </button>
+          <div
+            className="flex items-center gap-2 border-[3px] border-ink px-3 py-1 font-display text-[10px] tracking-[0.18em] uppercase"
+            style={{ background: 'var(--accent-lime)', boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+          >
+            <div className="h-2 w-2 animate-pulse" style={{ background: 'var(--ink-fixed)', borderRadius: '50%' }} />
+            ON-CHAIN
           </div>
 
-          <ScoreBar score={score} comboStreak={comboStreak} />
-        </>
-      )}
+          <button
+            className="brutal-btn border-[3px] border-ink bg-paper p-2"
+            style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+          >
+            <BrutalIcon name="pause" size={18} strokeWidth={3} />
+          </button>
+        </div>
 
-      <ClassicTabStrip onOpenLeaderboard={onOpenLeaderboard} mobile />
+        {/* ── Compact score + tension bar ──────────────────────────── */}
+        <ScoreBar score={score} comboStreak={comboStreak} bestScore={bestScore} compact />
+      </>
+    )}
 
-      <div
-        className={`w-full ${
-          gameSession ? 'flex justify-center' : 'mx-auto max-w-[380px]'
-        }`}
-      >
-        {canvasArea}
-      </div>
-
-      <LeftRail
-        score={score}
-        comboStreak={comboStreak}
-        gameSession={gameSession}
-      />
-      <RightRail score={score} gameSession={gameSession} />
+    {/* ── Canvas (fills remaining width) ──────────────────────────── */}
+    <div className={`w-full ${gameSession ? 'flex justify-center' : 'mx-auto max-w-[400px] px-4 pt-4'}`}>
+      {canvasArea}
     </div>
   </div>
 )

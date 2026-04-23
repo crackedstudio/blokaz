@@ -180,6 +180,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
   }, [isTournamentMode, canSubmit, isRegistering, isAllSuccess])
 
   const shadowColor = isTournamentMode ? 'var(--accent-pink)' : 'var(--accent-yellow)'
+  const accentTextColor = 'var(--ink-fixed)'
   const stats = useMemo(() => {
     const moves = gameSession?.moveHistory ?? []
     const linesCleared = moves.reduce(
@@ -238,155 +239,218 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
   )
 
   return (
-    <div
-      className="absolute inset-0 z-50 overflow-y-auto p-4 flex flex-col items-center justify-center"
-
-      style={{ 
-        background: 'rgba(12,12,16,0.95)', 
-        backgroundImage: 'repeating-linear-gradient(45deg, var(--ink), var(--ink) 10px, var(--paper-2) 10px, var(--paper-2) 20px)',
-        opacity: 0.98
-      }}
-    >
-      <div className="relative w-full max-w-sm">
-        {/* Close Button */}
-        <button 
-          onClick={handleAbandon}
-          className="absolute -top-4 -right-4 z-50 brutal-btn border-4 border-ink bg-paper-2 p-2 text-ink flex items-center justify-center h-12 w-12" style={{ boxShadow: '4px 4px 0 var(--ink)' }}
-        >
-          <BrutalIcon name="back" size={24} strokeWidth={4} />
-        </button>
-
-        {/* Game Over Sticker */}
-        <div className="mb-6 flex justify-center">
-          <div
-            className="brutal-sticker text-center"
-            style={{
-              background: 'var(--danger)',
-              padding: '12px 30px',
-              fontSize: 48,
-              letterSpacing: '-0.03em',
-              lineHeight: 0.9,
-              transform: 'rotate(-4deg) scale(1.1)',
-              boxShadow: `8px 8px 0 var(--ink)`,
-              zIndex: 30
-            }}
-          >
-            <div className="border-t-4 border-white pt-1">
-              GAME
-              <br />
-              OVER
-            </div>
-          </div>
-        </div>
-
-        {/* Main Stats Card */}
+    <div className="absolute inset-0 z-50 overflow-hidden">
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'var(--overlay)',
+          backdropFilter: 'blur(8px)',
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-[0.14]"
+        style={{
+          backgroundImage:
+            'linear-gradient(135deg, transparent 0%, transparent 42%, var(--ink) 42%, var(--ink) 45%, transparent 45%, transparent 100%)',
+          backgroundSize: '28px 28px',
+        }}
+      />
+      <div className="relative flex h-full items-center justify-center p-2 sm:p-4">
         <div
-          className="border-4 border-ink p-6"
-          style={{ background: 'var(--paper)', boxShadow: `10px 10px 0 ${shadowColor}` }}
+          className="relative flex w-full max-w-sm flex-col gap-3 text-ink"
+          style={{ maxHeight: 'calc(100dvh - 1rem)' }}
         >
-          <div className="mb-1 font-display text-[11px] tracking-[0.18em] text-ink opacity-80">
-            FINAL SCORE
-          </div>
-          <div
-            className="mb-4 font-display tabular-nums"
-            style={{ fontSize: 72, letterSpacing: '-0.04em', lineHeight: 0.9 }}
-          >
-            {score.toLocaleString()}
-          </div>
-
-          <div className="mb-6 flex flex-wrap gap-2">
-            <div className="border-4 border-ink bg-accent-lime px-3 py-1 font-display text-[10px] tracking-widest text-ink uppercase shadow-[3px_3px_0_var(--ink)]">
-              NEW HIGH SCORE
-            </div>
-            <div className="border-4 border-ink bg-accent-pink px-3 py-1 font-display text-[10px] tracking-widest text-ink uppercase shadow-[3px_3px_0_var(--ink)]">
-              {achievementChips[1]}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'BIGGEST COMBO', value: `×${stats.bestCombo}`, bg: 'var(--paper-2)', icon: 'zap' as const },
-              { label: 'LINES CLEARED', value: stats.linesCleared, bg: 'var(--paper-2)', icon: 'star' as const },
-              { label: 'PIECES PLACED', value: stats.piecesPlaced, bg: 'var(--paper-2)', icon: 'history' as const },
-              { label: 'TIME', value: stats.time, bg: 'var(--paper-2)', icon: 'timer' as const },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="border-[3px] border-ink p-2.5 relative"
-                style={{ background: stat.bg }}
-              >
-                <div className="flex items-center gap-1 font-display text-[8px] tracking-[0.15em] opacity-80 uppercase mb-0.5">
-                  <BrutalIcon name={stat.icon} size={10} strokeWidth={2} />
-                  {stat.label}
-                </div>
-                <div
-                  className="font-display text-xl leading-none"
-                  style={{ letterSpacing: '-0.02em' }}
-                >
-                  {stat.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Weekly Ladder Progress */}
-        <div
-          className="mt-4 border-4 border-ink bg-accent-yellow p-4" style={{ boxShadow: '6px 6px 0 var(--ink)' }}
-        >
-          <div className="mb-2 flex items-center justify-between font-display text-[10px] tracking-widest uppercase">
-            <span>WEEKLY LADDER</span>
-            <span>#{rankData.currentRank} NEXT</span>
-          </div>
-          <div className="relative h-4 border-4 border-ink bg-paper-2">
-            <div
-              className="absolute inset-y-0 left-0 bg-danger"
-              style={{ width: `${rankData.progress}%` }}
-            />
-            <div
-              className="absolute -top-1 h-6 w-1 bg-ink"
-              style={{ left: `calc(${rankData.progress}% - 2px)` }}
-            />
-          </div>
-          <div className="mt-2 flex items-center justify-between font-display text-[9px] tracking-widest opacity-90">
-            <span>#{userIdx + 2 || '143'}</span>
-            <span>#{rankData.currentRank - 1 || '89'} NEXT</span>
-          </div>
-        </div>
-
-        {/* Main Action Button */}
-        <div className="mt-6 flex flex-col gap-3">
           <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="brutal-btn flex w-full items-center justify-center gap-3 border-4 border-ink bg-accent-lime py-5 font-display text-base tracking-[0.15em] uppercase text-ink disabled:opacity-50" style={{ boxShadow: '6px 6px 0 var(--ink)' }}
+            onClick={handleAbandon}
+            className="absolute right-2 top-2 z-50 brutal-btn flex h-11 w-11 items-center justify-center border-4 border-ink bg-paper-2 p-2 text-ink sm:h-12 sm:w-12"
+            style={{ boxShadow: '4px 4px 0 var(--ink)' }}
           >
-            {isRegistering ? <div className="brutal-loader" /> : <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>}
-            {isAllSuccess ? 'REPLAYING...' : 'SUBMIT + PLAY AGAIN'}
+            <BrutalIcon name="back" size={20} strokeWidth={4} />
           </button>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              className="brutal-btn border-4 border-ink bg-paper-2 py-4 font-display text-xs tracking-wider uppercase text-ink" style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+          <div className="flex shrink-0 justify-center px-14 pt-2">
+            <div
+              className="brutal-sticker text-center"
+              style={{
+                background: 'var(--danger)',
+                padding: '10px 22px',
+                fontSize: 'clamp(2.25rem, 10vw, 3rem)',
+                letterSpacing: '-0.03em',
+                lineHeight: 0.9,
+                transform: 'rotate(-4deg) scale(1.02)',
+                boxShadow: `8px 8px 0 var(--ink)`,
+                zIndex: 30,
+              }}
             >
-              SHARE CAST
-            </button>
-            <button
-              onClick={onOpenLeaderboard}
-              className="brutal-btn border-4 border-ink bg-accent-orange py-4 font-display text-xs tracking-wider shadow-[4px_4px_0_var(--ink)] uppercase text-ink"
+              <div className="border-t-4 border-white pt-1">
+                GAME
+                <br />
+                OVER
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
+            <div
+              className="border-4 border-ink p-4 sm:p-6"
+              style={{
+                background: 'var(--paper)',
+                boxShadow: `10px 10px 0 ${shadowColor}`,
+              }}
             >
-              LEADERBOARD
-            </button>
+              <div className="mb-1 font-display text-[11px] tracking-[0.18em] text-ink opacity-80">
+                FINAL SCORE
+              </div>
+              <div
+                className="mb-4 font-display tabular-nums"
+                style={{
+                  fontSize: 'clamp(3.25rem, 13vw, 4.5rem)',
+                  letterSpacing: '-0.04em',
+                  lineHeight: 0.9,
+                }}
+              >
+                {score.toLocaleString()}
+              </div>
+
+              <div className="mb-5 flex flex-wrap gap-2">
+                <div
+                  className="border-4 border-ink bg-accent-lime px-3 py-1 font-display text-[10px] tracking-widest uppercase shadow-[3px_3px_0_var(--ink)]"
+                  style={{ color: accentTextColor }}
+                >
+                  NEW HIGH SCORE
+                </div>
+                <div
+                  className="border-4 border-ink bg-accent-pink px-3 py-1 font-display text-[10px] tracking-widest uppercase shadow-[3px_3px_0_var(--ink)]"
+                  style={{ color: accentTextColor }}
+                >
+                  {achievementChips[1]}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    label: 'BIGGEST COMBO',
+                    value: `×${stats.bestCombo}`,
+                    bg: 'var(--paper-2)',
+                    icon: 'zap' as const,
+                  },
+                  {
+                    label: 'LINES CLEARED',
+                    value: stats.linesCleared,
+                    bg: 'var(--paper-2)',
+                    icon: 'star' as const,
+                  },
+                  {
+                    label: 'PIECES PLACED',
+                    value: stats.piecesPlaced,
+                    bg: 'var(--paper-2)',
+                    icon: 'history' as const,
+                  },
+                  {
+                    label: 'TIME',
+                    value: stats.time,
+                    bg: 'var(--paper-2)',
+                    icon: 'timer' as const,
+                  },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="relative border-[3px] border-ink p-2.5"
+                    style={{ background: stat.bg }}
+                  >
+                    <div className="mb-0.5 flex items-center gap-1 font-display text-[8px] tracking-[0.15em] uppercase opacity-80">
+                      <BrutalIcon name={stat.icon} size={10} strokeWidth={2} />
+                      {stat.label}
+                    </div>
+                    <div
+                      className="font-display text-xl leading-none"
+                      style={{ letterSpacing: '-0.02em' }}
+                    >
+                      {stat.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className="border-4 border-ink bg-accent-yellow p-4"
+              style={{ boxShadow: '6px 6px 0 var(--ink)', color: accentTextColor }}
+            >
+              <div className="mb-2 flex items-center justify-between font-display text-[10px] tracking-widest uppercase">
+                <span>WEEKLY LADDER</span>
+                <span>#{rankData.currentRank} NEXT</span>
+              </div>
+              <div className="relative h-4 border-4 border-ink bg-paper-2">
+                <div
+                  className="absolute inset-y-0 left-0 bg-danger"
+                  style={{ width: `${rankData.progress}%` }}
+                />
+                <div
+                  className="absolute -top-1 h-6 w-1 bg-ink"
+                  style={{ left: `calc(${rankData.progress}% - 2px)` }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between font-display text-[9px] tracking-widest opacity-90">
+                <span>#{userIdx + 2 || '143'}</span>
+                <span>#{rankData.currentRank - 1 || '89'} NEXT</span>
+              </div>
+            </div>
+
+            {hasError && (
+              <div className="border-4 border-danger bg-paper-2 p-3 text-center">
+                <p className="font-display text-[10px] uppercase text-danger">
+                  Submission Failed
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div
+            className="shrink-0 border-4 border-ink bg-paper p-3"
+            style={{ boxShadow: '8px 8px 0 var(--ink)' }}
+          >
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className="brutal-btn flex w-full items-center justify-center gap-3 border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.15em] disabled:opacity-50 sm:py-5 sm:text-base"
+                style={{ boxShadow: '6px 6px 0 var(--ink)', color: accentTextColor }}
+              >
+                {isRegistering ? (
+                  <div className="brutal-loader" />
+                ) : (
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+                {isAllSuccess ? 'REPLAYING...' : 'SUBMIT + PLAY AGAIN'}
+              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  className="brutal-btn border-4 border-ink bg-paper-2 py-3.5 font-display text-[11px] uppercase tracking-wider text-ink sm:py-4 sm:text-xs"
+                  style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+                >
+                  SHARE CAST
+                </button>
+                <button
+                  onClick={onOpenLeaderboard}
+                  className="brutal-btn border-4 border-ink bg-accent-orange py-3.5 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)] sm:py-4 sm:text-xs"
+                  style={{ color: accentTextColor }}
+                >
+                  LEADERBOARD
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        {hasError && (
-          <div className="mt-4 border-4 border-danger bg-paper-2 p-3 text-center">
-            <p className="font-display text-[10px] uppercase text-danger">
-              Submission Failed
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -6,11 +6,11 @@ import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
 import { IS_MINIPAY } from '../utils/miniPay'
 
-type HeaderView = 'classic' | 'tournaments' | 'tournament-play' | 'admin'
+type HeaderView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
 interface HeaderProps {
   onShowLeaderboard?: () => void
-  onViewChange: (view: 'classic' | 'tournaments' | 'admin') => void
+  onViewChange: (view: 'lobby' | 'classic' | 'tournaments' | 'admin') => void
   activeView: HeaderView
   showLeaderboardAction: boolean
   isLeaderboardOpen?: boolean
@@ -48,7 +48,15 @@ const MiniPayWalletBadge: React.FC = () => {
           color: 'var(--ink-fixed)',
         }}
       >
-        {isPending || isConfirming ? '⏳ SENDING...' : isSuccess ? '✅ TX OK!' : error ? '❌ FAILED' : '🔧 TEST TX'}
+        {isPending || isConfirming ? (
+          <span className="flex items-center gap-1"><BrutalIcon name="loader" size={10} strokeWidth={2.5} /> SENDING...</span>
+        ) : isSuccess ? (
+          <span className="flex items-center gap-1"><BrutalIcon name="check" size={10} strokeWidth={2.5} /> TX OK!</span>
+        ) : error ? (
+          <span className="flex items-center gap-1"><BrutalIcon name="close" size={10} strokeWidth={2.5} /> FAILED</span>
+        ) : (
+          <span className="flex items-center gap-1"><BrutalIcon name="wrench" size={10} strokeWidth={2.5} /> TEST TX</span>
+        )}
       </button>
 
       {error && (
@@ -71,11 +79,17 @@ const MiniPayWalletBadge: React.FC = () => {
 const MobileBottomNav: React.FC<{
   activeView: HeaderView
   isLeaderboardOpen: boolean
-  onViewChange: (view: 'classic' | 'tournaments' | 'admin') => void
+  onViewChange: (view: 'lobby' | 'classic' | 'tournaments' | 'admin') => void
   onShowLeaderboard?: () => void
   isOwner: boolean
 }> = ({ activeView, isLeaderboardOpen, onViewChange, onShowLeaderboard, isOwner }) => {
   const tabs = [
+    {
+      label: 'HOME',
+      icon: 'home' as const,
+      active: activeView === 'lobby',
+      onClick: () => onViewChange('lobby'),
+    },
     {
       label: 'CLASSIC',
       icon: 'zap' as const,
@@ -147,28 +161,26 @@ export const Header: React.FC<HeaderProps> = ({
   const isTournamentView =
     activeView === 'tournaments' || activeView === 'tournament-play'
 
-  const safeNavigate = (view: 'classic' | 'tournaments' | 'admin') => {
+  const safeNavigate = (view: 'lobby' | 'classic' | 'tournaments' | 'admin') => {
     if (typeof onViewChange === 'function') onViewChange(view)
   }
 
   return (
     <>
-    <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b-4 border-ink bg-paper px-6 py-4" style={{ borderBottomColor: 'var(--ink)' }}>
+    <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b-4 border-ink bg-paper px-4 py-3 lg:px-6 lg:py-4" style={{ borderBottomColor: 'var(--ink)' }}>
       {/* Logo */}
       <div
         className="flex cursor-pointer items-center gap-2 group"
-        onClick={() => safeNavigate('classic')}
+        onClick={() => safeNavigate('lobby')}
       >
         <div
-          className="flex h-10 w-10 items-center justify-center border-4 border-ink bg-accent-yellow font-display text-xl transition-transform group-hover:-rotate-3"
-          style={{ boxShadow: '3px 3px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+          className="flex h-9 w-9 items-center justify-center border-[3px] border-ink font-display text-lg transition-transform group-hover:-rotate-3"
+          style={{ background: 'var(--accent-yellow)', boxShadow: '3px 3px 0 var(--ink)', color: 'var(--ink-fixed)' }}
         >
           B
         </div>
-        <span
-          className="font-display text-2xl tracking-tighter text-ink"
-        >
-          BLOKAZ.
+        <span className="font-display text-xl tracking-tight text-ink">
+          BLOKAZ
         </span>
       </div>
 

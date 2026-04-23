@@ -376,7 +376,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
         <div className="flex items-center gap-4">
           <div
             className="flex h-10 w-10 items-center justify-center border-4 border-ink bg-accent-yellow font-display text-xl"
-            style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+            style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
           >
             T
           </div>
@@ -397,7 +397,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
           <button
             onClick={() => setIsLeaderboardOpen(true)}
             className="brutal-btn border-4 border-ink bg-accent-cyan px-4 py-2 font-display text-[10px] uppercase tracking-[0.14em]"
-            style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+            style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
           >
             RANKINGS
           </button>
@@ -428,7 +428,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
               {onChainStatus === 'pending' || isPending || isConfirming ? (
                 <div
                   className="flex items-center gap-2 border-2 border-ink bg-accent-yellow px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
-                  style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+                  style={{ boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
                 >
                   <div className="h-2 w-2 animate-pulse bg-ink" />
                   REGISTERING
@@ -436,7 +436,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
               ) : onChainStatus === 'syncing' ? (
                 <div
                   className="flex items-center gap-2 border-2 border-ink bg-accent-cyan px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
-                  style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+                  style={{ boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
                 >
                   <div className="brutal-loader" />
                   FINALIZING
@@ -444,7 +444,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
               ) : onChainStatus === 'registered' ? (
                 <div
                   className="flex items-center gap-2 border-2 border-ink bg-accent-lime px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
-                  style={{ boxShadow: '2px 2px 0 var(--ink)' }}
+                  style={{ boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
                 >
                   <div className="h-2 w-2 bg-ink" />
                   MATCH VERIFIED
@@ -470,6 +470,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
                   style={{
                     transform: 'rotate(-3deg)',
                     boxShadow: '4px 4px 0 var(--ink)',
+                    color: 'var(--ink-fixed)',
                   }}
                 >
                   TOURNAMENT MODE
@@ -503,8 +504,8 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
                     isSyncingContract ||
                     sessionConflict
                   }
-                  className="brutal-btn w-full border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.14em] text-ink disabled:opacity-50"
-                  style={{ boxShadow: '6px 6px 0 var(--ink)' }}
+                  className="brutal-btn w-full border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.14em] disabled:opacity-50"
+                  style={{ boxShadow: '6px 6px 0 var(--ink)', color: 'var(--ink-fixed)' }}
                 >
                   {isSyncingContract ? (
                     <div className="flex items-center justify-center gap-2">

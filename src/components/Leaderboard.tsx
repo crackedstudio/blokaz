@@ -20,10 +20,13 @@ const PlayerName: React.FC<{ address: string; isCurrentUser: boolean }> = ({
 }) => {
   const { username, isLoading } = useUsername(address as `0x${string}`)
   const truncated = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`
-  if (isLoading) return <div className="h-4 w-24 animate-pulse bg-ink/10" />
   return (
     <span className={`font-body text-sm ${isCurrentUser ? 'font-bold' : ''}`} style={{ color: 'inherit' }}>
-      {username || truncated(address)}
+      {isLoading ? (
+        <span className="inline-block h-3 w-20 animate-pulse rounded-sm bg-current opacity-20" />
+      ) : (
+        username || truncated(address)
+      )}
     </span>
   )
 }
@@ -184,7 +187,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
 
                   return (
                     <div
-                      key={`${entry.gameId.toString()}-${entry.player}`}
+                      key={entry.player}
                       className="flex items-center gap-3 border-4 border-ink px-3 py-3"
                       style={{
                         background: rowBg,

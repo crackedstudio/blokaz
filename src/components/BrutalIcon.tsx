@@ -1,16 +1,16 @@
 import React from 'react'
 
-type IconName = 
-  | 'flame' 
-  | 'alert' 
-  | 'rocket' 
-  | 'history' 
-  | 'trophy' 
-  | 'zap' 
-  | 'timer' 
-  | 'skull' 
-  | 'star' 
-  | 'crown' 
+type IconName =
+  | 'flame'
+  | 'alert'
+  | 'rocket'
+  | 'history'
+  | 'trophy'
+  | 'zap'
+  | 'timer'
+  | 'skull'
+  | 'star'
+  | 'crown'
   | 'trending'
   | 'share'
   | 'pause'
@@ -18,6 +18,11 @@ type IconName =
   | 'back'
   | 'sun'
   | 'moon'
+  | 'home'
+  | 'check'
+  | 'close'
+  | 'wrench'
+  | 'loader'
 
 interface BrutalIconProps {
   name: IconName
@@ -142,7 +147,37 @@ export const BrutalIcon: React.FC<BrutalIconProps> = ({
     ),
     moon: (
       <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-    )
+    ),
+    home: (
+      <>
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </>
+    ),
+    check: (
+      <polyline points="20 6 9 17 4 12" />
+    ),
+    close: (
+      <>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </>
+    ),
+    wrench: (
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    ),
+    loader: (
+      <>
+        <line x1="12" y1="2" x2="12" y2="6" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+        <line x1="2" y1="12" x2="6" y2="12" />
+        <line x1="18" y1="12" x2="22" y2="12" />
+        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+      </>
+    ),
   }
 
   return (
@@ -155,7 +190,9 @@ export const BrutalIcon: React.FC<BrutalIconProps> = ({
       strokeWidth={strokeWidth}
       strokeLinecap="square"
       strokeLinejoin="miter"
-      className={className}
+      className={['block shrink-0', className].filter(Boolean).join(' ')}
+      aria-hidden="true"
+      focusable="false"
     >
       {icons[name]}
     </svg>
