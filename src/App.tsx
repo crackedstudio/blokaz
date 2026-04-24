@@ -74,7 +74,7 @@ const App: React.FC = () => {
 
       <main className={`flex flex-col ${
         activeView === 'lobby' ? 'min-h-screen pt-[64px] pb-20'
-        : activeView === 'classic' ? 'h-screen overflow-hidden pt-16 pb-16 lg:h-auto lg:min-h-screen lg:overflow-visible lg:pt-[64px] lg:pb-20 lg:items-center'
+        : activeView === 'classic' ? 'min-h-screen pt-16 pb-16 lg:h-auto lg:overflow-visible lg:pt-[64px] lg:pb-20 lg:items-center'
         : activeView === 'tournament-play' ? 'pt-0 min-h-screen'
         : 'min-h-screen pt-[64px] pb-20 lg:items-center lg:pb-12'
       }`}>
