@@ -59,10 +59,11 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
     isWhitelisted,
     gBalance,
     payForRetry,
-    verificationUrl
+    verificationUrl,
   } = useGoodDollar()
 
   const [isPayingRetry, setIsPayingRetry] = React.useState(false)
+  const [showShareSheet, setShowShareSheet] = React.useState(false)
 
   const handleGRetry = async () => {
     setIsPayingRetry(true)
@@ -200,7 +201,9 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
     }
   }, [isTournamentMode, canSubmit, isRegistering, isAllSuccess])
 
-  const shadowColor = isTournamentMode ? 'var(--accent-pink)' : 'var(--accent-yellow)'
+  const shadowColor = isTournamentMode
+    ? 'var(--accent-pink)'
+    : 'var(--accent-yellow)'
   const accentTextColor = 'var(--ink-fixed)'
   const stats = useMemo(() => {
     const moves = gameSession?.moveHistory ?? []
@@ -248,6 +251,48 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
     }
   }, [leaderboard, score])
 
+  const buildBoardEmoji = (grid: Uint8Array): string => {
+    const EMOJI = ['⬛', '🟦', '🟥', '🟩', '🟨', '🟪', '🟧', '🟫', '⬜', '🔴']
+    const SIZE = 9
+    const rows: string[] = []
+    for (let r = 0; r < SIZE; r++) {
+      let row = ''
+      for (let c = 0; c < SIZE; c++) {
+        const cell = grid[r * SIZE + c]
+        row += EMOJI[Math.min(cell, EMOJI.length - 1)] ?? '⬛'
+      }
+      rows.push(row)
+    }
+    return rows.join('\n')
+  }
+
+  const HASHTAGS = `#miniapps #minipay #playblokaz #celo`
+
+  const buildShareText = (withUrl: boolean) => {
+    const parts = [`just scored ${score.toLocaleString()} on BLOKAZ 🎮`]
+    if (stats.bestCombo > 1) parts.push(`×${stats.bestCombo} combo 🔥 · ${stats.linesCleared} lines`)
+    else parts.push(`${stats.linesCleared} lines cleared · rank #${rankData.currentRank}`)
+    parts.push(``)
+    if (gameSession?.grid) parts.push(buildBoardEmoji(gameSession.grid))
+    parts.push(``)
+    if (withUrl) parts.push(`can you beat it? blokaz.xyz\n`)
+    parts.push(HASHTAGS)
+    return parts.join('\n')
+  }
+
+  const handleShareWarpcast = () => {
+    const text = buildShareText(true)
+    const url = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent('https://blokaz.xyz')}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleShareTwitter = () => {
+    // No &url= param — emoji board + hashtags fill ~270 chars, adding a URL would exceed 280
+    const text = buildShareText(false)
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   const achievementChips = [
     score >= 1000 ? 'NEW HIGH ENERGY' : 'RUN BANKED',
     rankData.currentRank <= 10
@@ -283,7 +328,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
         >
           <button
             onClick={handleAbandon}
-            className="absolute right-2 top-2 z-50 brutal-btn flex h-11 w-11 items-center justify-center border-4 border-ink bg-paper-2 p-2 text-ink sm:h-12 sm:w-12"
+            className="brutal-btn absolute right-2 top-2 z-50 flex h-11 w-11 items-center justify-center border-4 border-ink bg-paper-2 p-2 text-ink sm:h-12 sm:w-12"
             style={{ boxShadow: '4px 4px 0 var(--ink)' }}
           >
             <BrutalIcon name="back" size={20} strokeWidth={4} />
@@ -335,13 +380,13 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
 
               <div className="mb-5 flex flex-wrap gap-2">
                 <div
-                  className="border-4 border-ink bg-accent-lime px-3 py-1 font-display text-[10px] tracking-widest uppercase shadow-[3px_3px_0_var(--ink)]"
+                  className="border-4 border-ink bg-accent-lime px-3 py-1 font-display text-[10px] uppercase tracking-widest shadow-[3px_3px_0_var(--ink)]"
                   style={{ color: accentTextColor }}
                 >
                   NEW HIGH SCORE
                 </div>
                 <div
-                  className="border-4 border-ink bg-accent-pink px-3 py-1 font-display text-[10px] tracking-widest uppercase shadow-[3px_3px_0_var(--ink)]"
+                  className="border-4 border-ink bg-accent-pink px-3 py-1 font-display text-[10px] uppercase tracking-widest shadow-[3px_3px_0_var(--ink)]"
                   style={{ color: accentTextColor }}
                 >
                   {achievementChips[1]}
@@ -380,7 +425,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                     className="relative border-[3px] border-ink p-2.5"
                     style={{ background: stat.bg }}
                   >
-                    <div className="mb-0.5 flex items-center gap-1 font-display text-[8px] tracking-[0.15em] uppercase opacity-80">
+                    <div className="mb-0.5 flex items-center gap-1 font-display text-[8px] uppercase tracking-[0.15em] opacity-80">
                       <BrutalIcon name={stat.icon} size={10} strokeWidth={2} />
                       {stat.label}
                     </div>
@@ -397,9 +442,12 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
 
             <div
               className="border-4 border-ink bg-accent-yellow p-4"
-              style={{ boxShadow: '6px 6px 0 var(--ink)', color: accentTextColor }}
+              style={{
+                boxShadow: '6px 6px 0 var(--ink)',
+                color: accentTextColor,
+              }}
             >
-              <div className="mb-2 flex items-center justify-between font-display text-[10px] tracking-widest uppercase">
+              <div className="mb-2 flex items-center justify-between font-display text-[10px] uppercase tracking-widest">
                 <span>WEEKLY LADDER</span>
                 <span>#{rankData.currentRank} NEXT</span>
               </div>
@@ -437,38 +485,50 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                 onClick={handleSubmit}
                 disabled={!canSubmit}
                 className="brutal-btn flex w-full items-center justify-center gap-3 border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.15em] disabled:opacity-50 sm:py-5 sm:text-base"
-                style={{ boxShadow: '6px 6px 0 var(--ink)', color: accentTextColor }}
+                style={{
+                  boxShadow: '6px 6px 0 var(--ink)',
+                  color: accentTextColor,
+                }}
               >
                 {isRegistering ? (
                   <div className="brutal-loader" />
                 ) : (
                   <BrutalIcon name="play" size={20} strokeWidth={2.5} />
                 )}
-                 {isAllSuccess ? 'REPLAYING...' : 'SUBMIT + PLAY AGAIN'}
+                {isAllSuccess ? 'REPLAYING...' : 'SUBMIT + PLAY AGAIN'}
               </button>
 
               {/* GoodDollar Retry Option */}
               {gModeEnabled && mode === 'classic' && (
                 <div
                   className="border-4 border-ink"
-                  style={{ background: 'var(--paper-2)', boxShadow: '6px 6px 0 var(--ink)' }}
+                  style={{
+                    background: 'var(--paper-2)',
+                    boxShadow: '6px 6px 0 var(--ink)',
+                  }}
                 >
                   <div
                     className="flex items-center justify-between border-b-4 border-ink px-4 py-2.5"
                     style={{ background: 'var(--paper)' }}
                   >
-                    <div className="flex items-center gap-2 font-display text-[10px] tracking-[0.18em] uppercase">
+                    <div className="flex items-center gap-2 font-display text-[10px] uppercase tracking-[0.18em]">
                       <div
                         className="flex h-5 w-5 items-center justify-center border-2 border-ink font-display text-[8px] font-bold"
-                        style={{ background: 'var(--accent-lime)', color: 'var(--ink-fixed)' }}
+                        style={{
+                          background: 'var(--accent-lime)',
+                          color: 'var(--ink-fixed)',
+                        }}
                       >
                         G$
                       </div>
                       GOODDOLLAR REVIVAL
                     </div>
                     <div
-                      className="border-2 border-ink px-2 py-0.5 font-display text-[8px] tracking-[0.15em] uppercase"
-                      style={{ background: 'var(--accent-yellow)', color: 'var(--ink-fixed)' }}
+                      className="border-2 border-ink px-2 py-0.5 font-display text-[8px] uppercase tracking-[0.15em]"
+                      style={{
+                        background: 'var(--accent-yellow)',
+                        color: 'var(--ink-fixed)',
+                      }}
                     >
                       LIVE
                     </div>
@@ -477,7 +537,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                   <div className="p-3">
                     {!isWhitelisted ? (
                       <>
-                        <div className="mb-3 font-body text-[10px] text-ink/60 leading-relaxed">
+                        <div className="mb-3 font-body text-[10px] leading-relaxed text-ink/60">
                           Verify your identity once to unlock G$ revival power.
                         </div>
                         <a
@@ -494,20 +554,47 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                     ) : (
                       <>
                         <div className="mb-3 grid grid-cols-2 gap-2">
-                          <div className="border-[3px] border-ink p-2" style={{ background: 'var(--paper)' }}>
-                            <div className="mb-0.5 font-display text-[7px] tracking-[0.15em] uppercase opacity-60">BALANCE</div>
-                            <div className="font-display text-sm" style={{ letterSpacing: '-0.02em' }}>
-                              {gBalance ? (Number(gBalance.value) / 1e18).toFixed(1) : '0'} G$
+                          <div
+                            className="border-[3px] border-ink p-2"
+                            style={{ background: 'var(--paper)' }}
+                          >
+                            <div className="mb-0.5 font-display text-[7px] uppercase tracking-[0.15em] opacity-60">
+                              BALANCE
+                            </div>
+                            <div
+                              className="font-display text-sm"
+                              style={{ letterSpacing: '-0.02em' }}
+                            >
+                              {gBalance
+                                ? (Number(gBalance.value) / 1e18).toFixed(1)
+                                : '0'}{' '}
+                              G$
                             </div>
                           </div>
-                          <div className="border-[3px] border-ink p-2" style={{ background: 'var(--accent-lime)', color: 'var(--ink-fixed)' }}>
-                            <div className="mb-0.5 font-display text-[7px] tracking-[0.15em] uppercase opacity-70">COST</div>
-                            <div className="font-display text-sm" style={{ letterSpacing: '-0.02em' }}>10 G$</div>
+                          <div
+                            className="border-[3px] border-ink p-2"
+                            style={{
+                              background: 'var(--accent-lime)',
+                              color: 'var(--ink-fixed)',
+                            }}
+                          >
+                            <div className="mb-0.5 font-display text-[7px] uppercase tracking-[0.15em] opacity-70">
+                              COST
+                            </div>
+                            <div
+                              className="font-display text-sm"
+                              style={{ letterSpacing: '-0.02em' }}
+                            >
+                              10 G$
+                            </div>
                           </div>
                         </div>
                         <button
                           onClick={handleGRetry}
-                          disabled={isPayingRetry || (gBalance?.value || 0n) < (10n * 10n**18n)}
+                          disabled={
+                            isPayingRetry ||
+                            (gBalance?.value || 0n) < 10n * 10n ** 18n
+                          }
                           className="brutal-btn flex w-full items-center justify-center gap-2 border-4 border-ink bg-accent-lime py-3.5 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)] disabled:opacity-50"
                           style={{ color: 'var(--ink-fixed)' }}
                         >
@@ -515,12 +602,16 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                             <div className="brutal-loader" />
                           ) : (
                             <>
-                              <BrutalIcon name="zap" size={14} strokeWidth={2.5} />
+                              <BrutalIcon
+                                name="zap"
+                                size={14}
+                                strokeWidth={2.5}
+                              />
                               REVIVE — CONTINUE RUN
                             </>
                           )}
                         </button>
-                        <div className="mt-2 text-center font-display text-[8px] tracking-[0.18em] text-ink/50 uppercase">
+                        <div className="mt-2 text-center font-display text-[8px] uppercase tracking-[0.18em] text-ink/50">
                           RESTORES 3 CLEARANCE SHAPES
                         </div>
                       </>
@@ -529,21 +620,100 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  className="brutal-btn border-4 border-ink bg-paper-2 py-3.5 font-display text-[11px] uppercase tracking-wider text-ink sm:py-4 sm:text-xs"
-                  style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+              {showShareSheet ? (
+                <div
+                  className="border-4 border-ink"
+                  style={{
+                    background: 'var(--paper-2)',
+                    boxShadow: '6px 6px 0 var(--ink)',
+                  }}
                 >
-                  SHARE CAST
-                </button>
-                <button
-                  onClick={onOpenLeaderboard}
-                  className="brutal-btn border-4 border-ink bg-accent-cyan py-3.5 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)] sm:py-4 sm:text-xs"
-                  style={{ color: accentTextColor }}
-                >
-                  LEADERBOARD
-                </button>
-              </div>
+                  <div
+                    className="flex items-center justify-between border-b-4 border-ink px-3 py-2"
+                    style={{ background: 'var(--paper)' }}
+                  >
+                    <span className="font-display text-[10px] uppercase tracking-[0.18em]">
+                      SHARE YOUR RUN
+                    </span>
+                    <button
+                      onClick={() => setShowShareSheet(false)}
+                      className="brutal-btn flex h-7 w-7 items-center justify-center border-2 border-ink"
+                      style={{
+                        background: 'var(--paper-2)',
+                        boxShadow: '2px 2px 0 var(--ink)',
+                      }}
+                    >
+                      <BrutalIcon name="back" size={12} strokeWidth={3} />
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3">
+                    <button
+                      onClick={handleShareWarpcast}
+                      className="brutal-btn flex w-full items-center justify-between border-4 border-ink px-4 py-3 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)]"
+                      style={{
+                        background: 'var(--accent-pink)',
+                        color: 'var(--ink-fixed)',
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="flex h-5 w-5 items-center justify-center border-2 border-ink text-[9px] font-bold"
+                          style={{
+                            background: 'var(--ink-fixed)',
+                            color: 'var(--accent-pink)',
+                          }}
+                        >
+                          W
+                        </span>
+                        CAST ON WARPCAST
+                      </span>
+                      <span className="text-base">→</span>
+                    </button>
+                    <button
+                      onClick={handleShareTwitter}
+                      className="brutal-btn flex w-full items-center justify-between border-4 border-ink px-4 py-3 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)]"
+                      style={{
+                        background: 'var(--ink)',
+                        color: 'var(--paper)',
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="flex h-5 w-5 items-center justify-center border-2 border-paper text-[9px] font-bold"
+                          style={{
+                            background: 'var(--paper)',
+                            color: 'var(--ink)',
+                          }}
+                        >
+                          X
+                        </span>
+                        POST ON X / TWITTER
+                      </span>
+                      <span className="text-base">→</span>
+                    </button>
+                    <div className="text-center font-display text-[8px] uppercase tracking-[0.18em] text-ink/40">
+                      blokaz.xyz · @playblokaz
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setShowShareSheet(true)}
+                    className="brutal-btn flex items-center justify-center gap-1.5 border-4 border-ink bg-paper-2 py-3.5 font-display text-[11px] uppercase tracking-wider text-ink shadow-[4px_4px_0_var(--ink)] sm:py-4 sm:text-xs"
+                  >
+                    <BrutalIcon name="rocket" size={13} strokeWidth={2} />
+                    SHARE RUN
+                  </button>
+                  <button
+                    onClick={onOpenLeaderboard}
+                    className="brutal-btn border-4 border-ink bg-accent-cyan py-3.5 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)] sm:py-4 sm:text-xs"
+                    style={{ color: accentTextColor }}
+                  >
+                    LEADERBOARD
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
