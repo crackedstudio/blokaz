@@ -183,7 +183,14 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
     !isPotentialConflict
 
   React.useEffect(() => {
-    if (isAllSuccess) clearStoredGameSession(storageKey)
+    if (isAllSuccess) {
+      clearStoredGameSession(storageKey)
+      const timer = setTimeout(() => {
+        resetForNextGame()
+        onPlayAgain()
+      }, 800)
+      return () => clearTimeout(timer)
+    }
   }, [isAllSuccess, storageKey])
 
   const submissionTriggeredRef = React.useRef(false)
@@ -305,7 +312,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
   )
 
   return (
-    <div className="absolute inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-hidden">
       <div
         className="absolute inset-0"
         style={{

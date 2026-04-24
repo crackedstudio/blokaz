@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
-import { useOwner, useSetUsername } from '../hooks/useBlokzGame'
+import { useOwner } from '../hooks/useBlokzGame'
 import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
 import { IS_MINIPAY } from '../utils/miniPay'
@@ -19,53 +19,10 @@ interface HeaderProps {
 
 const MiniPayWalletBadge: React.FC = () => {
   const { address, isConnected } = useAccount()
-  const { setUsername, isPending, isConfirming, isSuccess, error } = useSetUsername()
   const { gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
-  const [label, setLabel] = useState<string | null>(null)
-
-  const handleTest = () => {
-    // Guard: Ensure we are fully connected in wagmi before attempting a write.
-    // This avoids "Permission denied" errors that occur when a transaction is
-    // requested before the session handshake completes.
-    if (!isConnected || !address) {
-      console.warn('MiniPay not yet connected')
-      return
-    }
-
-    const testName = `tester_${Date.now().toString(36).slice(-4)}`
-    setLabel(testName)
-    setUsername(testName)
-  }
 
   return (
     <div className="flex items-center gap-2">
-      {/* Test TX button — only visible in MiniPay for debugging */}
-      <button
-        onClick={handleTest}
-        disabled={isPending || isConfirming}
-        className="brutal-btn border-[3px] border-ink px-3 py-[8px] font-display text-[10px] tracking-widest uppercase"
-        style={{
-          background: isSuccess ? 'var(--accent-lime)' : error ? '#ff4444' : 'var(--accent-yellow)',
-          boxShadow: '3px 3px 0 var(--ink)',
-          color: 'var(--ink-fixed)',
-        }}
-      >
-        {isPending || isConfirming ? (
-          <span className="flex items-center gap-1"><BrutalIcon name="loader" size={10} strokeWidth={2.5} /> SENDING...</span>
-        ) : isSuccess ? (
-          <span className="flex items-center gap-1"><BrutalIcon name="check" size={10} strokeWidth={2.5} /> TX OK!</span>
-        ) : error ? (
-          <span className="flex items-center gap-1"><BrutalIcon name="close" size={10} strokeWidth={2.5} /> FAILED</span>
-        ) : (
-          <span className="flex items-center gap-1"><BrutalIcon name="wrench" size={10} strokeWidth={2.5} /> TEST TX</span>
-        )}
-      </button>
-
-      {error && (
-        <div className="max-w-[180px] truncate font-display text-[8px] text-red-600 uppercase">
-          {error.message?.slice(0, 60)}
-        </div>
-      )}
 
       <div
         className="flex items-center gap-2 border-[3px] border-ink bg-accent-lime px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
