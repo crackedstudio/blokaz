@@ -378,3 +378,12 @@ export const TOTAL_WEIGHT: number = SHAPES.reduce(
   (sum, shape) => sum + shape.spawnWeight,
   0
 )
+
+// Simple shapes for GoodDollar Clearance Mode
+export const SIMPLE_SHAPES: ShapeDefinition[] = SHAPES.filter(s => 
+  s.id === 'S1' ||   // 1x1
+  s.id === 'D1' ||   // 2x1
+  s.id === 'D2' ||   // 1x2 
+  s.id === 'I3H' ||  // 3x1
+  s.id === 'I3V'     // 1x3
+)

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { useGameStore } from '../stores/gameStore'
+import { useGoodDollar } from '../hooks/useGoodDollar'
 import { packMoves } from '../engine/replay'
 import {
   useSubmitScore,
@@ -50,7 +51,27 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
     tournamentId,
     setTournamentId,
     comboStreak,
+    reviveGame,
   } = useGameStore()
+
+  const {
+    gModeEnabled,
+    isWhitelisted,
+    gBalance,
+    payForRetry,
+    verificationUrl
+  } = useGoodDollar()
+
+  const [isPayingRetry, setIsPayingRetry] = React.useState(false)
+
+  const handleGRetry = async () => {
+    setIsPayingRetry(true)
+    const success = await payForRetry()
+    if (success) {
+      reviveGame()
+    }
+    setIsPayingRetry(false)
+  }
   const { submitScore, isPending, isConfirming, isSuccess, error } =
     useSubmitScore()
   const {
@@ -430,8 +451,43 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 )}
-                {isAllSuccess ? 'REPLAYING...' : 'SUBMIT + PLAY AGAIN'}
+                 {isAllSuccess ? 'REPLAYING...' : 'SUBMIT + PLAY AGAIN'}
               </button>
+
+              {/* GoodDollar Retry Option */}
+              {gModeEnabled && mode === 'classic' && (
+                <div className="flex flex-col gap-2">
+                  {!isWhitelisted ? (
+                    <a
+                      href={verificationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="brutal-btn flex w-full items-center justify-center gap-2 border-4 border-ink bg-accent-pink py-3 font-display text-[11px] uppercase tracking-wider text-white shadow-[4px_4px_0_var(--ink)]"
+                    >
+                      VERIFY TO REVIVE WITH G$
+                    </a>
+                  ) : (
+                    <button
+                      onClick={handleGRetry}
+                      disabled={isPayingRetry || (gBalance?.value || 0n) < (10n * 10n**18n)}
+                      className="brutal-btn flex w-full items-center justify-center gap-2 border-4 border-ink bg-accent-lime py-3 font-display text-[11px] uppercase tracking-wider shadow-[4px_4px_0_var(--ink)] disabled:opacity-50"
+                      style={{ color: 'var(--ink-fixed)' }}
+                    >
+                      {isPayingRetry ? (
+                        <div className="brutal-loader" />
+                      ) : (
+                        <>
+                          <BrutalIcon name="zap" size={14} />
+                          REVIVE WITH 10 G$
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <div className="text-center font-display text-[8px] tracking-[0.2em] text-ink/60 uppercase">
+                    Unlocks 3 clearance shapes
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <button

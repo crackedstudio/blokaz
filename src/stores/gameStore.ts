@@ -12,14 +12,25 @@ interface GameState {
   onChainSeed: `0x${string}` | null
   onChainStatus: 'none' | 'pending' | 'syncing' | 'registered' | 'failed'
   tournamentId: bigint | null
+  
+  // GoodDollar Integration States
+  gModeEnabled: boolean
+  isWhitelisted: boolean
+  isStreaming: boolean
+  clearanceTurns: number
 
   startGame: (seed: bigint, preserveOnChain?: boolean) => void
   setOnChainData: (gameId: bigint, seed: `0x${string}`, status?: 'registered' | 'pending' | 'syncing' | 'failed') => void
   setOnChainGameId: (id: bigint) => void
   setOnChainSeed: (seed: `0x${string}`) => void
   setTournamentId: (id: bigint | null) => void
+  setGModeEnabled: (enabled: boolean) => void
+  setIsWhitelisted: (whitelisted: boolean) => void
+  setIsStreaming: (streaming: boolean) => void
+  setClearanceTurns: (turns: number) => void
   placePiece: (index: number, r: number, c: number) => any
   resetGame: () => void
+  reviveGame: () => void
   forceReset: () => void
 }
 
@@ -33,6 +44,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   onChainSeed: null,
   onChainStatus: 'none',
   tournamentId: null,
+  gModeEnabled: false,
+  isWhitelisted: false,
+  isStreaming: false,
+  clearanceTurns: 0,
 
   startGame: (seed, preserveOnChain = false) => {
     const session = new GameSession(seed)
@@ -63,6 +78,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setOnChainGameId: (id) => set({ onChainGameId: id }),
   setOnChainSeed: (seed) => set({ onChainSeed: seed }),
   setTournamentId: (id) => set({ tournamentId: id }),
+  setGModeEnabled: (enabled) => set({ gModeEnabled: enabled }),
+  setIsWhitelisted: (whitelisted) => set({ isWhitelisted: whitelisted }),
+  setIsStreaming: (streaming) => set({ isStreaming: streaming }),
+  setClearanceTurns: (turns) => set({ clearanceTurns: turns }),
 
   placePiece: (index, r, c) => {
     const { gameSession } = get()
@@ -84,6 +103,24 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   resetGame: () => {
     get().startGame(BigInt(Date.now()))
+  },
+  
+  reviveGame: () => {
+    const { gameSession, clearanceTurns } = get()
+    if (!gameSession) return
+    
+    // Default turns to 3 if not set yet
+    const turns = clearanceTurns > 0 ? clearanceTurns : 3
+    gameSession.activateClearance(turns)
+    
+    set({
+      isGameOver: false,
+      currentPieces: [...gameSession.currentPieces],
+      clearanceTurns: gameSession.clearanceTurns
+    })
+    
+    // @ts-ignore
+    window.currentPieces = gameSession.currentPieces
   },
 
   forceReset: (keepTournamentId = false) => {

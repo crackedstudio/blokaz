@@ -1,5 +1,5 @@
 import { Grid } from './grid'
-import { SHAPES } from './shapes'
+import { SHAPES, SIMPLE_SHAPES } from './shapes'
 import type { ShapeDefinition } from './shapes'
 import { DeterministicRNG, dealThree } from './rng'
 import { calculateScore } from './scoring'
@@ -31,6 +31,7 @@ export class GameSession {
   isGameOver: boolean = false
   dealCount: number = 0
   seed: bigint
+  clearanceTurns: number = 0
 
   private rng: DeterministicRNG
 
@@ -41,11 +42,22 @@ export class GameSession {
     this.deal()
   }
 
+  activateClearance(turns: number): void {
+    this.clearanceTurns = turns
+    this.isGameOver = false // Revive
+    this.deal() // Force new easy pieces
+  }
+
   deal(): void {
-    const trio = dealThree(this.rng, SHAPES)
+    const pool = this.clearanceTurns > 0 ? SIMPLE_SHAPES : SHAPES
+    const trio = dealThree(this.rng, pool)
     this.currentPieces = [...trio]
     this.piecesPlaced = 0
     this.dealCount++
+
+    if (this.clearanceTurns > 0) {
+      this.clearanceTurns--
+    }
 
     // Check if any of the new pieces can be placed
     if (!Grid.canPlaceAny(this.grid, trio)) {

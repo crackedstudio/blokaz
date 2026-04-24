@@ -11,6 +11,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@goodsdks/citizen-sdk": "^1.2.3",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@tanstack/react-query": "^5.99.0",
     "react": "^18.2.0",

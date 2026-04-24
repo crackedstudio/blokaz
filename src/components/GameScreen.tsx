@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useGoodDollar } from '../hooks/useGoodDollar'
 import { useGameStore } from '../stores/gameStore'
 import { GridRenderer } from '../canvas/GridRenderer'
 import { PieceRenderer } from '../canvas/PieceRenderer'
@@ -344,6 +345,25 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard, onBack }) =>
   } = useGameStore()
 
   const { address, isConnected } = useAccount()
+  const {
+    gModeEnabled,
+    setGModeEnabled,
+    isWhitelisted,
+    isStreaming,
+    startGStream,
+    stopGStream,
+    payForRetry,
+    verificationUrl
+  } = useGoodDollar()
+
+  // G$ Auto-stream Effect
+  useEffect(() => {
+    if (gModeEnabled && isWhitelisted && gameSession && !isStreaming) {
+      startGStream()
+    } else if ((!gameSession || !gModeEnabled) && isStreaming) {
+      stopGStream()
+    }
+  }, [gModeEnabled, isWhitelisted, !!gameSession, isStreaming, startGStream, stopGStream])
   const { leaderboard: lbData } = useLeaderboard()
   const bestScore = React.useMemo(() => {
     if (!lbData || !address) return undefined
@@ -685,6 +705,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard, onBack }) =>
     comboTrigger,
     isGameOver,
     score,
+    address,
     handleStartGame,
     isSyncingContract,
     isMiniPayConnecting,
@@ -695,7 +716,13 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard, onBack }) =>
     startGameError,
   }
 
-  const canvasArea = <CanvasArea {...commonCanvasProps} />
+  const canvasArea = <CanvasArea 
+    {...commonCanvasProps} 
+    gModeEnabled={gModeEnabled}
+    setGModeEnabled={setGModeEnabled}
+    isWhitelisted={isWhitelisted}
+    verificationUrl={verificationUrl}
+  />
 
   if (isMobile) {
     return (
@@ -809,6 +836,13 @@ interface CanvasAreaProps {
   setSessionConflict: (v: boolean) => void
   onOpenLeaderboard?: () => void
   startGameError?: Error | null
+  
+  // GoodDollar Props
+  gModeEnabled: boolean
+  setGModeEnabled: (v: boolean) => void
+  isWhitelisted: boolean
+  verificationUrl: string
+  address: string | undefined
 }
 
 const ClassicStartCard: React.FC<{
@@ -822,6 +856,13 @@ const ClassicStartCard: React.FC<{
   forceReset: () => void
   setSessionConflict: (v: boolean) => void
   startGameError?: Error | null
+  
+  // GoodDollar Props
+  gModeEnabled: boolean
+  setGModeEnabled: (v: boolean) => void
+  isWhitelisted: boolean
+  verificationUrl: string
+  address: string | undefined
 }> = ({
   isConnected,
   handleStartGame,
@@ -833,6 +874,11 @@ const ClassicStartCard: React.FC<{
   forceReset,
   setSessionConflict,
   startGameError,
+  gModeEnabled,
+  setGModeEnabled,
+  isWhitelisted,
+  verificationUrl,
+  address,
 }) => (
   <div
     className="relative z-10 flex w-full flex-col gap-5 rounded-[6px] border-4 border-ink bg-paper px-7 py-8"
@@ -877,7 +923,6 @@ const ClassicStartCard: React.FC<{
       </span>{' '}
       RUN?
     </div>
-
     <button
       onClick={handleStartGame}
       disabled={
@@ -902,6 +947,84 @@ const ClassicStartCard: React.FC<{
         'START CLASSIC GAME'
       )}
     </button>
+
+    {/* GoodDollar (G$) Reward Mode Toggle */}
+    {isConnected && (
+      <div className="border-4 border-ink bg-paper-2 p-4 shadow-[4px_4px_0_var(--ink)]">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-display text-[10px] tracking-widest text-ink/70 uppercase">
+            <img src="https://docs.gooddollar.org/~gitbook/image?url=https%3A%2F%2F1693836101-files.gitbook.io%2F~%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252F-LfsEjhezedCgGFXCkms%252Ficon%252F7UuO7n9qO2vO6Z3z7N2N%252FGoodDollar_Icon_Green.png%3Falt%3Dmedia%26token%3D7f3b8b1b-7f1b-4f1b-8f1b-7f1b8f1b7f1b&width=32&dpr=2" alt="G$" className="w-4 h-4" />
+            G$ Reward Mode
+          </div>
+          <button 
+            onClick={() => setGModeEnabled(!gModeEnabled)}
+            className={`h-6 w-12 border-2 border-ink shadow-[2px_2px_0_var(--ink)] transition-colors ${gModeEnabled ? 'bg-accent-lime' : 'bg-paper'}`}
+          >
+            <div className={`h-4 w-4 border-2 border-ink bg-white transition-transform ${gModeEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        {gModeEnabled && !isWhitelisted && (
+          <div className="mt-3 border-2 border-dashed border-accent-pink bg-white p-3">
+            <div className="mb-2 font-display text-[9px] tracking-widest text-accent-pink uppercase leading-tight">
+              Identity Verification Required
+            </div>
+            <div className="mb-3 break-all font-mono text-[8px] text-ink/50 bg-paper p-1 border border-ink/10">
+              {isConnected && address ? address : 'No wallet connected'}
+            </div>
+            <a 
+              href={verificationUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="brutal-btn block w-full border-2 border-ink bg-accent-pink py-2 text-center font-display text-[9px] tracking-widest text-white uppercase shadow-[2px_2px_0_var(--ink)]"
+            >
+              Verify Face on GoodDollar
+            </a>
+
+            {/* Mobile Handoff Options */}
+            <div className="mt-4 border-t-2 border-ink/5 pt-3">
+              <div className="mb-2 font-display text-[8px] text-ink/40 uppercase tracking-widest text-center">
+                Hardware issues? Try on mobile:
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(verificationUrl)
+                    // Custom alert logic could be added here, for now using standard
+                    alert('Verification link copied! Send it to your phone to finish verification.')
+                  }}
+                  className="flex-1 border-2 border-ink bg-paper py-2 font-display text-[8px] uppercase tracking-wider hover:bg-accent-lime/10 transition-colors"
+                >
+                  Copy Link
+                </button>
+                <div className="group relative">
+                  <button className="border-2 border-ink bg-paper px-3 py-2 font-display text-[8px] uppercase tracking-wider hover:bg-accent-lime/10">
+                    QR Code
+                  </button>
+                  {/* Tooltip with QR Code */}
+                  <div className="absolute bottom-full left-1/2 mb-3 hidden -translate-x-1/2 border-2 border-ink bg-white p-3 shadow-[6px_6px_0_var(--ink)] group-hover:block z-50">
+                     <img 
+                       src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}`} 
+                       alt="Verification QR Code"
+                       className="w-32 h-32"
+                     />
+                     <div className="mt-2 text-center font-display text-[7px] uppercase text-ink/50 whitespace-nowrap">
+                       Scan to Verify on Mobile
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {gModeEnabled && isWhitelisted && (
+          <div className="font-body text-[10px] text-accent-lime font-bold uppercase tracking-widest">
+            ✅ Verified Human - Streaming Active
+          </div>
+        )}
+      </div>
+    )}
 
     {sessionConflict && (
       <div className="mt-6 border-4 border-danger bg-paper-2 p-4 shadow-[4px_4px_0_var(--ink)]">
@@ -954,6 +1077,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   comboTrigger,
   isGameOver,
   score,
+  address,
   handleStartGame,
   isSyncingContract,
   isMiniPayConnecting,
@@ -962,6 +1086,10 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   setSessionConflict,
   onOpenLeaderboard,
   startGameError,
+  gModeEnabled,
+  setGModeEnabled,
+  isWhitelisted,
+  verificationUrl,
 }) => {
   if (!gameSession) {
     return (
@@ -976,6 +1104,11 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
         forceReset={forceReset}
         setSessionConflict={setSessionConflict}
         startGameError={startGameError}
+        gModeEnabled={gModeEnabled}
+        setGModeEnabled={setGModeEnabled}
+        isWhitelisted={isWhitelisted}
+        verificationUrl={verificationUrl}
+        address={address}
       />
     )
   }

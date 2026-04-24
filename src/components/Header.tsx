@@ -5,6 +5,7 @@ import { useOwner, useSetUsername } from '../hooks/useBlokzGame'
 import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
 import { IS_MINIPAY } from '../utils/miniPay'
+import { useGoodDollar } from '../hooks/useGoodDollar'
 
 type HeaderView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
@@ -19,6 +20,7 @@ interface HeaderProps {
 const MiniPayWalletBadge: React.FC = () => {
   const { address, isConnected } = useAccount()
   const { setUsername, isPending, isConfirming, isSuccess, error } = useSetUsername()
+  const { gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
   const [label, setLabel] = useState<string | null>(null)
 
   const handleTest = () => {
@@ -72,6 +74,24 @@ const MiniPayWalletBadge: React.FC = () => {
         <div className="h-2 w-2 rounded-full bg-ink animate-pulse" />
         {isConnected && address ? truncateAddress(address) : 'MINIPAY'}
       </div>
+
+      {gModeEnabled && isConnected && (
+        <div 
+          className={`flex items-center gap-2 border-[3px] border-ink px-3 py-[10px] font-display text-[10px] tracking-widest uppercase shadow-[3px_3px_0_var(--ink)] ${isWhitelisted ? 'bg-paper text-ink' : 'bg-accent-pink text-white'}`}
+        >
+          {isWhitelisted ? (
+             <span className="flex items-center gap-1">
+               <BrutalIcon name="check" size={12} />
+               {gBalance?.formatted?.slice(0, 5)} G$
+             </span>
+          ) : (
+            <a href={verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+              <BrutalIcon name="alert" size={12} />
+              VERIFY G$
+            </a>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -155,6 +175,8 @@ export const Header: React.FC<HeaderProps> = ({
   const { address } = useAccount()
   const { owner } = useOwner()
   const { isDark, toggle } = useTheme()
+  const { gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
+  const { isConnected } = useAccount()
 
   const isOwner =
     address && owner && address.toLowerCase() === owner.toLowerCase()
@@ -241,6 +263,28 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <BrutalIcon name={isDark ? 'sun' : 'moon'} size={18} />
         </button>
+
+        {/* Desktop G$ Info */}
+        {!IS_MINIPAY && gModeEnabled && isConnected && (
+          <div className="hidden lg:flex items-center gap-2">
+            <div 
+              className={`flex items-center gap-2 border-[3px] border-ink px-4 py-2 font-display text-[11px] tracking-widest uppercase shadow-[4px_4px_0_var(--ink)] ${isWhitelisted ? 'bg-paper-2 text-ink' : 'bg-accent-pink text-white'}`}
+            >
+              {isWhitelisted ? (
+                <>
+                  <img src="https://docs.gooddollar.org/~gitbook/image?url=https%3A%2F%2F1693836101-files.gitbook.io%2F~%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252F-LfsEjhezedCgGFXCkms%252Ficon%252F7UuO7n9qO2vO6Z3z7N2N%252FGoodDollar_Icon_Green.png%3Falt%3Dmedia%26token%3D7f3b8b1b-7f1b-4f1b-8f1b-7f1b8f1b7f1b&width=32&dpr=2" alt="G$" className="w-4 h-4" />
+                  {gBalance?.formatted?.slice(0, 6)} G$
+                  <div className="ml-1 h-1.5 w-1.5 rounded-full bg-accent-lime" title="Verified Human" />
+                </>
+              ) : (
+                <a href={verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                  <BrutalIcon name="alert" size={14} />
+                  VERIFY IDENTITY
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Wallet connect */}
