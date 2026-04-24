@@ -350,6 +350,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ onOpenLeaderboard, onBack }) =>
     setGModeEnabled,
     isWhitelisted,
     isStreaming,
+    gBalance,
+    entitlement,
+    claimUBI,
     startGStream,
     stopGStream,
     payForRetry,
@@ -863,6 +866,8 @@ const ClassicStartCard: React.FC<{
   isWhitelisted: boolean
   verificationUrl: string
   address: string | undefined
+  entitlement: bigint
+  claimUBI: () => void
 }> = ({
   isConnected,
   handleStartGame,
@@ -879,6 +884,8 @@ const ClassicStartCard: React.FC<{
   isWhitelisted,
   verificationUrl,
   address,
+  entitlement,
+  claimUBI,
 }) => (
   <div
     className="relative z-10 flex w-full flex-col gap-5 rounded-[6px] border-4 border-ink bg-paper px-7 py-8"
@@ -1019,8 +1026,23 @@ const ClassicStartCard: React.FC<{
         )}
         
         {gModeEnabled && isWhitelisted && (
-          <div className="font-body text-[10px] text-accent-lime font-bold uppercase tracking-widest">
-            ✅ Verified Human - Streaming Active
+          <div className="mt-4 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="font-body text-[10px] text-accent-lime font-bold uppercase tracking-widest">
+                ✅ Verified Human
+              </div>
+              {entitlement > 0n && (
+                <button 
+                  onClick={claimUBI}
+                  className="border-2 border-ink bg-accent-yellow px-3 py-1 font-display text-[8px] uppercase tracking-wider shadow-[2px_2px_0_var(--ink)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                >
+                  Claim {Number(entitlement) / 100} G$
+                </button>
+              )}
+            </div>
+            <div className="font-body text-[8px] text-ink/50 uppercase tracking-widest bg-ink/5 p-2 border border-ink/10">
+              Streaming: 0.05 G$/min Active
+            </div>
           </div>
         )}
       </div>
@@ -1109,6 +1131,8 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
         isWhitelisted={isWhitelisted}
         verificationUrl={verificationUrl}
         address={address}
+        entitlement={entitlement}
+        claimUBI={claimUBI}
       />
     )
   }

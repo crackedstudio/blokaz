@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState } from 'react'
 import { useAccount, useReadContract, useWriteContract, useBalance, usePublicClient, useWalletClient } from 'wagmi'
 import { GOODDOLLAR_ADDRESSES, G_GAME_ECONOMICS, G_IDENTITY_ABI, CFA_FORWARDER_ABI } from '../constants/contracts'
 import { useGameStore } from '../stores/gameStore'
-import { IdentitySDK } from '@goodsdks/citizen-sdk'
+import { IdentitySDK, ClaimSDK } from '@goodsdks/citizen-sdk'
 
 export const useGoodDollar = () => {
   const { address, isConnected } = useAccount()
@@ -36,7 +36,7 @@ export const useGoodDollar = () => {
     }
   }, [whitelistStatus, setIsWhitelisted])
 
-  // 2. Generate Official Verification Link (SDK Level)
+  // 2. Official Verification Link (SDK Level)
   const [verificationUrl, setVerificationUrl] = useState<string>('https://goodid.gooddollar.org')
 
   useEffect(() => {
@@ -53,7 +53,6 @@ export const useGoodDollar = () => {
           setVerificationUrl(link)
         } catch (error) {
           console.error('Failed to generate GoodDollar FV link:', error)
-          // Fallback to manual URL with signature if needed, but SDK is the "correct flow"
         }
       }
     }
@@ -66,7 +65,42 @@ export const useGoodDollar = () => {
     token: GOODDOLLAR_ADDRESSES.G_TOKEN,
   })
 
-  // 4. Superfluid Stream Management
+  // 4. UBI Claiming & Developer Incentives
+  const [entitlement, setEntitlement] = useState<bigint>(0n)
+  
+  const fetchEntitlement = useCallback(async () => {
+    if (address && publicClient && walletClient && isWhitelisted) {
+      try {
+        const idSDK = new IdentitySDK({ account: address, publicClient: publicClient as any, walletClient: walletClient as any, env: 'production' })
+        const claimSDK = new ClaimSDK({ account: address, publicClient: publicClient as any, walletClient: walletClient as any, identitySDK: idSDK, env: 'production' })
+        const result = await claimSDK.checkEntitlement()
+        setEntitlement(result.amount)
+      } catch (error) {
+        console.error('Failed to check GoodDollar entitlement:', error)
+      }
+    }
+  }, [address, publicClient, walletClient, isWhitelisted])
+
+  useEffect(() => {
+    fetchEntitlement()
+  }, [fetchEntitlement])
+
+  const claimUBI = useCallback(async () => {
+    if (!address || !publicClient || !walletClient) return false
+    try {
+      const idSDK = new IdentitySDK({ account: address, publicClient: publicClient as any, walletClient: walletClient as any, env: 'production' })
+      const claimSDK = new ClaimSDK({ account: address, publicClient: publicClient as any, walletClient: walletClient as any, identitySDK: idSDK, env: 'production' })
+      await claimSDK.claim()
+      setEntitlement(0n)
+      refetchBalance()
+      return true
+    } catch (error) {
+      console.error('Failed to claim G$ UBI:', error)
+      return false
+    }
+  }, [address, publicClient, walletClient, refetchBalance])
+
+  // 5. Superfluid Stream Management
   const { writeContractAsync: createFlow } = useWriteContract()
   const { writeContractAsync: deleteFlow } = useWriteContract()
 
@@ -114,7 +148,7 @@ export const useGoodDollar = () => {
     }
   }, [address, deleteFlow, setIsStreaming])
 
-  // 5. Retry Payment
+  // 6. Retry Payment
   const { writeContractAsync: transferG } = useWriteContract()
 
   const payForRetry = useCallback(async () => {
@@ -150,11 +184,11 @@ export const useGoodDollar = () => {
     isWhitelisted,
     isStreaming,
     gBalance,
-    startGStream,
-    stopGStream,
-    payForRetry,
+    entitlement,
+    claimUBI,
     refetchIdentity,
     refetchBalance,
+    fetchEntitlement,
     verificationUrl
   }
 }
