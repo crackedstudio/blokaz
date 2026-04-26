@@ -15,14 +15,15 @@ export const COLOR_PALETTE = {
 
 export const TOURNAMENT_PALETTE = {
   0: 'transparent',
-  1: '#FF3BBD',
-  2: '#B7FF3B',
-  3: '#29E6E6',
-  4: '#FFD51F',
-  5: '#8A3DFF',
-  6: '#29E6E6',
-  7: '#FF7A1A',
-  8: '#FFD51F',
+  1: '#FF3BBD',  // hot pink  — singles
+  2: '#FF7A1A',  // orange    — L-shapes
+  3: '#FFD51F',  // yellow    — squares
+  4: '#B7FF3B',  // lime      — bigL
+  5: '#2CE66A',  // green     — (unused, safety net)
+  6: '#29E6E6',  // cyan      — lines
+  7: '#2F6BFF',  // blue      — (unused, safety net)
+  8: '#8A3DFF',  // purple    — T/other
+  9: '#FF3D3D',  // red       — zigzag
 }
 
 const getThemeColor = (name: string, fallback: string) => 
@@ -61,7 +62,7 @@ export class GridRenderer {
 
     // Gridlines
     this.ctx.strokeStyle = isTournament
-      ? 'rgba(245,239,227,0.08)'
+      ? 'rgba(245,239,227,0.15)'
       : `${getThemeColor('--ink', '#000')}14`
     this.ctx.lineWidth = 1
     for (let i = 1; i < 9; i++) {

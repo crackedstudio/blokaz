@@ -19,7 +19,7 @@ interface HeaderProps {
 
 const MiniPayWalletBadge: React.FC = () => {
   const { address, isConnected } = useAccount()
-  const { gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
+  const { isGSupported, gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
 
   return (
     <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ const MiniPayWalletBadge: React.FC = () => {
         {isConnected && address ? truncateAddress(address) : 'MINIPAY'}
       </div>
 
-      {gModeEnabled && isConnected && (
+      {isGSupported && gModeEnabled && isConnected && (
         <div 
           className={`flex items-center gap-2 border-[3px] border-ink px-3 py-[10px] font-display text-[10px] tracking-widest uppercase shadow-[3px_3px_0_var(--ink)] ${isWhitelisted ? 'bg-paper text-ink' : 'bg-accent-pink text-white'}`}
         >
@@ -132,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { address } = useAccount()
   const { owner } = useOwner()
   const { isDark, toggle } = useTheme()
-  const { gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
+  const { isGSupported, gModeEnabled, isWhitelisted, gBalance, verificationUrl } = useGoodDollar()
   const { isConnected } = useAccount()
 
   const isOwner =
@@ -222,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Desktop G$ Info */}
-        {!IS_MINIPAY && gModeEnabled && isConnected && (
+        {!IS_MINIPAY && isGSupported && gModeEnabled && isConnected && (
           <div className="hidden lg:flex items-center gap-2">
             <div 
               className={`flex items-center gap-2 border-[3px] border-ink px-4 py-2 font-display text-[11px] tracking-widest uppercase shadow-[4px_4px_0_var(--ink)] ${isWhitelisted ? 'bg-paper-2 text-ink' : 'bg-accent-pink text-white'}`}

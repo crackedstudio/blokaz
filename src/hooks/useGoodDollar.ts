@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState, useRef } from 'react'
-import { useAccount, useReadContract, useWriteContract, useBalance, usePublicClient, useWalletClient } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useBalance, usePublicClient, useWalletClient, useChainId } from 'wagmi'
 import { GOODDOLLAR_ADDRESSES, G_GAME_ECONOMICS, G_IDENTITY_ABI, CFA_FORWARDER_ABI } from '../constants/contracts'
 import { useGameStore } from '../stores/gameStore'
 import { IdentitySDK, ClaimSDK } from '@goodsdks/citizen-sdk'
@@ -8,6 +8,8 @@ export const useGoodDollar = () => {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { data: walletClient } = useWalletClient()
+  const chainId = useChainId()
+  const isGSupported = chainId === 42220
 
   // Stable refs so callbacks don't need wagmi clients in their dep arrays
   // (wagmi returns new object references on every render)
@@ -35,7 +37,7 @@ export const useGoodDollar = () => {
     abi: G_IDENTITY_ABI,
     functionName: 'isWhitelisted',
     args: address ? [address] : undefined,
-    query: { enabled: !!address && isConnected },
+    query: { enabled: !!address && isConnected && isGSupported },
   })
  
   useEffect(() => {
@@ -58,6 +60,8 @@ export const useGoodDollar = () => {
       return
     }
 
+    if (!isGSupported) return
+
     // Local address ref to prevent multiple calls in the same component instance
     if (urlAddressRef.current === address) return
  
@@ -77,12 +81,13 @@ export const useGoodDollar = () => {
         // Only set fallback if we don't have a link at all
         if (!verificationUrl) setVerificationUrl('https://goodid.gooddollar.org', address)
       })
-  }, [address, publicClient, walletClient, verificationUrl, verificationAddress, setVerificationUrl])
+  }, [address, publicClient, walletClient, verificationUrl, verificationAddress, setVerificationUrl, isGSupported])
 
   // 3. G$ Balance
   const { data: gBalance, refetch: refetchBalance } = useBalance({
     address,
     token: GOODDOLLAR_ADDRESSES.G_TOKEN,
+    query: { enabled: !!address && isGSupported }
   })
 
   // 4. Entitlement — fetch once per (address, isWhitelisted) pair via a key ref
@@ -91,7 +96,7 @@ export const useGoodDollar = () => {
 
   useEffect(() => {
     const key = `${address}-${isWhitelisted}`
-    if (!address || !isWhitelisted || entitlementKeyRef.current === key) return
+    if (!address || !isWhitelisted || !isGSupported || entitlementKeyRef.current === key) return
     const pc = publicClientRef.current
     const wc = walletClientRef.current
     if (!pc || !wc) return
@@ -107,7 +112,7 @@ export const useGoodDollar = () => {
     const addr = address
     const pc = publicClientRef.current
     const wc = walletClientRef.current
-    if (!addr || !pc || !wc) return false
+    if (!addr || !pc || !wc || !isGSupported) return false
     try {
       const idSDK = new IdentitySDK({ account: addr, publicClient: pc as any, walletClient: wc as any, env: 'production' })
       const claimSDK = new ClaimSDK({ account: addr, publicClient: pc as any, walletClient: wc as any, identitySDK: idSDK, env: 'production' })
@@ -120,7 +125,7 @@ export const useGoodDollar = () => {
       console.error('Failed to claim G$ UBI:', error)
       return false
     }
-  }, [address, refetchBalance])
+  }, [address, refetchBalance, isGSupported])
 
   // 5. Superfluid Stream — keep writeContractAsync in a ref so startGStream/stopGStream
   //    are stable callbacks (no new reference on each render = no spurious effect triggers)
@@ -132,7 +137,7 @@ export const useGoodDollar = () => {
   useEffect(() => { deleteFlowRef.current = deleteFlow }, [deleteFlow])
 
   const startGStream = useCallback(async () => {
-    if (!address || !isWhitelisted) return
+    if (!address || !isWhitelisted || !isGSupported) return
     try {
       await createFlowRef.current({
         address: GOODDOLLAR_ADDRESSES.CFA_FORWARDER,
@@ -145,10 +150,10 @@ export const useGoodDollar = () => {
       console.error('Failed to start G$ stream:', error)
       throw error
     }
-  }, [address, isWhitelisted, setIsStreaming])
+  }, [address, isWhitelisted, setIsStreaming, isGSupported])
 
   const stopGStream = useCallback(async () => {
-    if (!address) return
+    if (!address || !isGSupported) return
     try {
       await deleteFlowRef.current({
         address: GOODDOLLAR_ADDRESSES.CFA_FORWARDER,
@@ -160,7 +165,7 @@ export const useGoodDollar = () => {
     } catch (error) {
       console.error('Failed to stop G$ stream:', error)
     }
-  }, [address, setIsStreaming])
+  }, [address, setIsStreaming, isGSupported])
 
   // 6. Retry payment — guard against double-calls
   const { writeContractAsync: transferG } = useWriteContract()
@@ -169,7 +174,7 @@ export const useGoodDollar = () => {
   const isPayingRef = useRef(false)
 
   const payForRetry = useCallback(async () => {
-    if (!address || !isWhitelisted) return false
+    if (!address || !isWhitelisted || !isGSupported) return false
     if (isPayingRef.current) return false
     isPayingRef.current = true
     try {
@@ -193,9 +198,10 @@ export const useGoodDollar = () => {
     } finally {
       isPayingRef.current = false
     }
-  }, [address, isWhitelisted, setClearanceTurns])
+  }, [address, isWhitelisted, setClearanceTurns, isGSupported])
 
   return {
+    isGSupported,
     gModeEnabled,
     setGModeEnabled,
     isWhitelisted,

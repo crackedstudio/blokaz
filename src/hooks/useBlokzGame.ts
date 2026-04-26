@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   useReadContract, 
   useWriteContract, 
@@ -6,7 +6,7 @@ import {
   useAccount 
 } from 'wagmi'
 import { keccak256, encodePacked, toHex } from 'viem'
-import { BLOKZ_GAME_ABI } from '../constants/abi'
+import { BLOKZ_GAME_ABI, BLOKZ_TOURNAMENT_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
 import { isMiniPay } from '../utils/miniPay'
 
@@ -18,8 +18,9 @@ const getTxOverrides = () =>
     ? { type: 'legacy' as const }
     : {}
 
-const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
-const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as const
+const GAME_ADDRESS = contractInfo.game as `0x${string}`
+const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
+export const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as const
 export const USDC_DECIMALS = 6
 
 const ERC20_ABI = [
@@ -63,7 +64,7 @@ export function generateGameSeed(playerAddress: `0x${string}`) {
  */
 export function useLeaderboard(epoch?: bigint) {
   const { data: currentEpoch, isLoading: isLoadingEpoch } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: GAME_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'getCurrentEpoch',
   })
@@ -72,7 +73,7 @@ export function useLeaderboard(epoch?: bigint) {
   const targetEpoch = epoch ?? currentEpoch
 
   const { data: leaderboard, isLoading: isLoadingBoard, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: GAME_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'getLeaderboard',
     args: targetEpoch !== undefined ? [targetEpoch] : undefined,
@@ -90,12 +91,26 @@ export function useLeaderboard(epoch?: bigint) {
 }
 
 /**
- * Hook to check if a player has an active game.
+ * Hook to check if a player has an active game (classic contract).
  */
 export function useActiveGame(address?: `0x${string}`) {
   const { data: gameId, isLoading, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: GAME_ADDRESS,
     abi: BLOKZ_GAME_ABI,
+    functionName: 'activeGame',
+    args: address ? [address] : undefined,
+  })
+
+  return { gameId, isLoading, refetch }
+}
+
+/**
+ * Hook to check if a player has an active game in the tournament contract.
+ */
+export function useActiveTournamentGame(address?: `0x${string}`) {
+  const { data: gameId, isLoading, refetch } = useReadContract({
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
     functionName: 'activeGame',
     args: address ? [address] : undefined,
   })
@@ -108,8 +123,8 @@ export function useActiveGame(address?: `0x${string}`) {
  */
 export function useTournament(tournamentId: bigint) {
   const { data: tournament, isLoading, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: BLOKZ_GAME_ABI,
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
     functionName: 'tournaments',
     args: [tournamentId],
   })
@@ -122,8 +137,8 @@ export function useTournament(tournamentId: bigint) {
  */
 export function useTournamentLeaderboard(tournamentId?: bigint) {
   const { data: leaderboard, isLoading, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: BLOKZ_GAME_ABI,
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
     functionName: 'getTournamentLeaderboard',
     args: tournamentId !== undefined ? [tournamentId] : undefined,
     query: {
@@ -138,13 +153,24 @@ export function useTournamentLeaderboard(tournamentId?: bigint) {
  * Hook to get the total number of tournaments created.
  */
 export function useTournamentCount() {
-  const { data: count, isLoading } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: BLOKZ_GAME_ABI,
+  const { data: rawCount, isLoading, refetch } = useReadContract({
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
     functionName: 'nextTournamentId',
+    query: {
+      refetchInterval: 3000, 
+    }
   })
 
-  return { count: count as bigint | undefined, isLoading }
+  useEffect(() => {
+    if (rawCount !== undefined) {
+      console.log('DEBUG: nextTournamentId from contract:', rawCount.toString())
+    }
+  }, [rawCount])
+
+  // nextTournamentId starts at 1 in the contract (ID 0 is skipped)
+  const count = rawCount && rawCount > 0n ? rawCount - 1n : 0n
+  return { count, isLoading, refetch }
 }
 
 /**
@@ -152,8 +178,8 @@ export function useTournamentCount() {
  */
 export function useInTournament(tournamentId: bigint, playerAddress?: `0x${string}`) {
   const { data: isIn, isLoading, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: BLOKZ_GAME_ABI,
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
     functionName: 'inTournament',
     args: playerAddress ? [tournamentId, playerAddress] : undefined,
   })
@@ -169,7 +195,8 @@ export function useUSDCAllowance(ownerAddress?: `0x${string}`) {
     address: USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'allowance',
-    args: ownerAddress ? [ownerAddress, CONTRACT_ADDRESS] : undefined,
+    args: ownerAddress ? [ownerAddress, TOURNAMENT_ADDRESS] : undefined,
+    query: { enabled: !!ownerAddress }
   })
 
   return { allowance: allowance as bigint | undefined, isLoading, refetch }
@@ -181,7 +208,7 @@ export function useUSDCAllowance(ownerAddress?: `0x${string}`) {
  */
 export function useUsername(address?: `0x${string}`) {
   const { data: username, isLoading, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: GAME_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'usernames',
     args: address ? [address] : undefined,
@@ -196,7 +223,7 @@ export function useUsername(address?: `0x${string}`) {
  */
 export function useOwner() {
   const { data: owner, isLoading } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: GAME_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'owner',
   })
@@ -209,8 +236,8 @@ export function useOwner() {
  */
 export function useProtocolRevenue() {
   const { data: revenue, isLoading, refetch } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: BLOKZ_GAME_ABI,
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
     functionName: 'protocolRevenue',
   })
 
@@ -226,7 +253,7 @@ export function useStartGame() {
 
   const startGame = (seedHash: `0x${string}`) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
+      address: GAME_ADDRESS,
       abi: BLOKZ_GAME_ABI,
       functionName: 'startGame',
       args: [seedHash],
@@ -244,12 +271,18 @@ export function useStartTournamentGame() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
-  const startTournamentGame = (tournamentId: bigint, seedHash: `0x${string}`) => {
+  const startTournamentGame = (
+    tournamentId: bigint, 
+    seedHash: `0x${string}`,
+    nonce: bigint,
+    deadline: bigint,
+    signature: `0x${string}`
+  ) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: BLOKZ_GAME_ABI,
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'startTournamentGame',
-      args: [tournamentId, seedHash],
+      args: [tournamentId, seedHash, nonce, deadline, signature],
       ...getTxOverrides(),
     })
   }
@@ -272,7 +305,7 @@ export function useSubmitScore() {
     moveCount: number
   ) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
+      address: GAME_ADDRESS,
       abi: BLOKZ_GAME_ABI,
       functionName: 'submitScore',
       args: [gameId, seed, packedMoves, score, moveCount],
@@ -292,8 +325,8 @@ export function useJoinTournament() {
 
   const joinTournament = (tournamentId: bigint) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: BLOKZ_GAME_ABI,
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'joinTournament',
       args: [tournamentId],
       ...getTxOverrides(),
@@ -313,16 +346,15 @@ export function useSubmitTournamentScore() {
   const submitTournamentScore = (
     tournamentId: bigint,
     gameId: bigint,
-    seed: `0x${string}`,
-    packedMoves: readonly bigint[],
     score: number,
-    moveCount: number
+    deadline: bigint,
+    signature: `0x${string}`
   ) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: BLOKZ_GAME_ABI,
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'submitTournamentScore',
-      args: [tournamentId, gameId, seed, packedMoves, score, moveCount],
+      args: [tournamentId, gameId, score, deadline, signature],
       ...getTxOverrides(),
     })
   }
@@ -339,8 +371,8 @@ export function useFinalizeTournament() {
 
   const finalizeTournament = (tournamentId: bigint) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: BLOKZ_GAME_ABI,
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'finalizeTournament',
       args: [tournamentId],
       ...getTxOverrides(),
@@ -356,12 +388,12 @@ export function useCreateTournament() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
-  const createTournament = (fee: bigint, start: bigint, end: bigint, max: number) => {
+  const createTournament = (fee: bigint, start: bigint, end: bigint, max: number, rewardsBps: number[]) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: BLOKZ_GAME_ABI,
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'createTournament',
-      args: [fee, start, end, max],
+      args: [fee, start, end, max, rewardsBps],
       ...getTxOverrides(),
     })
   }
@@ -375,8 +407,8 @@ export function useWithdrawRevenue() {
 
   const withdraw = () => {
     writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: BLOKZ_GAME_ABI,
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'withdrawProtocolRevenue',
       ...getTxOverrides(),
     })
@@ -394,7 +426,7 @@ export function useSetUsername() {
 
   const setUsername = (name: string) => {
     writeContract({
-      address: CONTRACT_ADDRESS,
+      address: GAME_ADDRESS,
       abi: BLOKZ_GAME_ABI,
       functionName: 'setUsername',
       args: [name],
@@ -403,6 +435,48 @@ export function useSetUsername() {
   }
 
   return { setUsername, hash, isPending, isConfirming, isSuccess, error }
+}
+
+export function usePauseTournament() {
+  const { writeContract, data: hash, error, isPending } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+
+  const setPaused = (paused: boolean) => {
+    writeContract({
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
+      functionName: paused ? 'pause' : 'unpause',
+      ...getTxOverrides(),
+    })
+  }
+
+  return { setPaused, hash, isPending, isConfirming, isSuccess, error }
+}
+
+export function useSetProtocolFee() {
+  const { writeContract, data: hash, error, isPending } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+
+  const setFee = (bps: number) => {
+    writeContract({
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
+      functionName: 'setProtocolFee',
+      args: [bps],
+      ...getTxOverrides(),
+    })
+  }
+
+  return { setFee, hash, isPending, isConfirming, isSuccess, error }
+}
+
+export function useIsPaused() {
+  const { data: paused, isLoading, refetch } = useReadContract({
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
+    functionName: 'paused',
+  })
+  return { paused: paused as boolean | undefined, isLoading, refetch }
 }
 
 /**
@@ -417,7 +491,7 @@ export function useApproveUSDC() {
       address: USDC_ADDRESS,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [CONTRACT_ADDRESS, amount],
+      args: [TOURNAMENT_ADDRESS, amount],
       ...getTxOverrides(),
     })
   }
@@ -425,4 +499,28 @@ export function useApproveUSDC() {
   return { approve, hash, isPending, isConfirming, isSuccess, error }
 }
 
+export function useSetSigner() {
+  const { writeContract, data: hash, error, isPending } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
+  const setSigner = (newSigner: `0x${string}`) => {
+    writeContract({
+      address: TOURNAMENT_ADDRESS,
+      abi: BLOKZ_TOURNAMENT_ABI,
+      functionName: 'grantRole',
+      args: [keccak256(toHex('TRUSTED_SIGNER')), newSigner],
+      ...getTxOverrides(),
+    })
+  }
+
+  return { setSigner, hash, isPending, isConfirming, isSuccess, error }
+}
+
+export function useProtocolFeeBps() {
+  const { data: bps, isLoading, refetch } = useReadContract({
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
+    functionName: 'protocolFeeBps',
+  })
+  return { bps: bps as bigint | undefined, isLoading, refetch }
+}

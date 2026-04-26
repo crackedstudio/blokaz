@@ -17,8 +17,9 @@ import {
 import {
   useStartTournamentGame,
   generateGameSeed,
-  useActiveGame,
+  useActiveTournamentGame,
 } from '../hooks/useBlokzGame'
+import { requestStartSignature } from '../api/signer'
 import { useAccount } from 'wagmi'
 import { keccak256, encodePacked } from 'viem'
 import contractInfo from '../contract.json'
@@ -28,7 +29,7 @@ import {
   writeStoredGameSession,
 } from '../utils/gameSessionStorage'
 
-const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
+const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 
 interface TournamentGameScreenProps {
   onBackToHall: () => void
@@ -38,8 +39,10 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
   onBackToHall,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const boardContainerRef = useRef<HTMLDivElement>(null)
   const animManagerRef = useRef<AnimationManager>(new AnimationManager())
   const lastTimeRef = useRef<number>(0)
+  const cellSizeRef = useRef<number>(0)
 
   const {
     gameSession,
@@ -51,8 +54,6 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
     onChainStatus,
     tournamentId,
     setTournamentId,
-    onChainSeed,
-    onChainGameId,
   } = useGameStore()
 
   const { address, isConnected } = useAccount()
@@ -60,7 +61,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
     gameId: onChainActiveGameId,
     isLoading: isLoadingActiveGame,
     refetch: refetchActiveGame,
-  } = useActiveGame(address)
+  } = useActiveTournamentGame(address)
   const {
     startTournamentGame: contractStartTournamentGame,
     isPending,
@@ -75,6 +76,11 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
   const [isSyncingContract, setIsSyncingContract] = useState(true)
   const [sessionConflict, setSessionConflict] = useState(false)
+  const [canvasDims, setCanvasDims] = useState<{
+    gridSize: number
+    trayY: number
+    trayH: number
+  } | null>(null)
 
   // --- HYDRATION & RECONCILIATION ---
   useEffect(() => {
@@ -83,13 +89,12 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
     const storedSession = readStoredGameSession(
       TOURNAMENT_SESSION_STORAGE_KEY,
       address,
-      CONTRACT_ADDRESS
+      TOURNAMENT_ADDRESS
     )
 
     const contractActiveId = (onChainActiveGameId as bigint) || 0n
 
     if (contractActiveId !== 0n) {
-      // Contract says we have a game. Check if we have matching seed.
       if (
         storedSession &&
         (storedSession.gameId === contractActiveId.toString() ||
@@ -109,10 +114,8 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
         setSessionConflict(true)
       }
     } else {
-      // Contract says no active game. If storage has one, it's stale.
       if (storedSession) {
         console.log('Contract has no active game, clearing stale local session')
-        // We don't necessarily need to clear it, but we shouldn't use it as "registered"
         setOnChainData(0n, null, 'none')
       }
       setSessionConflict(false)
@@ -133,7 +136,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
     const storedSession = readStoredGameSession(
       TOURNAMENT_SESSION_STORAGE_KEY,
       address,
-      CONTRACT_ADDRESS
+      TOURNAMENT_ADDRESS
     )
     if (storedSession?.tournamentId && !tournamentId) {
       setTournamentId(BigInt(storedSession.tournamentId))
@@ -148,14 +151,12 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
   }, [tournamentId, onBackToHall])
 
   // 1. Handle Start (On-chain ONLY)
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     if (!isConnected || !address) return
 
-    // ESSENTIAL: Pull freshest state from store to avoid stale closures during "Play Again"
     const freshState = useGameStore.getState()
     const { onChainSeed: latestSeed, onChainGameId: latestGameId } = freshState
 
-    // Check if we HAVE a hydrated seed with an ACTIVE gameId
     if (latestSeed && latestGameId && latestGameId !== 0n) {
       console.log(
         'Using fresh store state for tournament match recovery:',
@@ -166,13 +167,11 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
           encodePacked(['bytes32', 'address'], [latestSeed, address])
         ).slice(0, 18)
       )
-      startGame(localSeed, true) // TRUE to preserve onChain data
+      startGame(localSeed, true)
       return
     }
 
     const { seed, hash } = generateGameSeed(address)
-
-    // Start local engine
     const localSeed = BigInt(hash.slice(0, 18))
     startGame(localSeed)
 
@@ -185,10 +184,20 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
       hash,
       gameId: null,
       tournamentId: tournamentId?.toString(),
-      contractAddress: CONTRACT_ADDRESS,
+      contractAddress: TOURNAMENT_ADDRESS,
     })
 
-    contractStartTournamentGame(tournamentId!, hash)
+    try {
+      const { signature, nonce, deadline } = await requestStartSignature(
+        tournamentId!,
+        hash,
+        address
+      )
+      contractStartTournamentGame(tournamentId!, hash, nonce, deadline, signature)
+    } catch (err) {
+      console.error('Failed to get start signature:', err)
+      hapticError()
+    }
   }
 
   // 2. Background Sync
@@ -208,7 +217,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
             hash: currentSeed.hash,
             gameId: newGameId.toString(),
             tournamentId: tournamentId?.toString(),
-            contractAddress: CONTRACT_ADDRESS,
+            contractAddress: TOURNAMENT_ADDRESS,
           })
 
           clearInterval(timer)
@@ -226,25 +235,74 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
     tournamentId,
   ])
 
-  // Initialize canvas renderers
+  // 3. Canvas setup with proper ResizeObserver (mirrors classic GameScreen)
   useEffect(() => {
     if (!canvasRef.current || !gameSession) return
 
     const canvas = canvasRef.current
-    const gridSize = Math.min(window.innerWidth - 32, window.innerHeight * 0.55)
-    const cellSize = gridSize / 9
-    const trayGap = Math.round(cellSize * 0.5)
-    const trayHeight = Math.round(gridSize / 3)
-    const trayY = gridSize + trayGap
 
-    canvas.width = gridSize
-    canvas.height = gridSize + trayGap + trayHeight
-    canvas.style.width = `${gridSize}px`
+    const vpFallback = Math.min(
+      window.innerWidth - 32,
+      Math.round(window.innerHeight * 0.72)
+    )
+
+    const computeDims = (containerWidth: number, containerHeight = 0) => {
+      let gridSize = containerWidth > 0 ? containerWidth : vpFallback
+      if (containerHeight > 0) {
+        const maxByHeight = Math.floor((containerHeight * 18) / 25)
+        if (maxByHeight > 0 && maxByHeight < gridSize) gridSize = maxByHeight
+      }
+      const cellSize = gridSize / 9
+      const trayGap = Math.round(cellSize * 0.5)
+      const trayHeight = Math.round(gridSize / 3)
+      const trayY = gridSize + trayGap
+      return { gridSize, cellSize, trayGap, trayHeight, trayY }
+    }
+
+    const initialW = boardContainerRef.current?.clientWidth || 0
+    const initialH = boardContainerRef.current?.clientHeight || 0
+    const init = computeDims(initialW, initialH)
+
+    canvas.width = init.gridSize
+    canvas.height = init.gridSize + init.trayGap + init.trayHeight
+    canvas.style.width = `${init.gridSize}px`
     canvas.style.height = `${canvas.height}px`
+    canvas.style.background = 'transparent'
 
-    const gridRenderer = new GridRenderer(canvas, gridSize)
-    const pieceRenderer = new PieceRenderer(canvas, trayY, cellSize)
+    setCanvasDims({
+      gridSize: init.gridSize,
+      trayY: init.trayY,
+      trayH: init.trayHeight,
+    })
+    cellSizeRef.current = init.cellSize
+
+    const gridRenderer = new GridRenderer(canvas, init.gridSize)
+    const pieceRenderer = new PieceRenderer(canvas, init.trayY, init.cellSize)
     const animManager = animManagerRef.current
+
+    let ro: ResizeObserver | null = null
+    if (boardContainerRef.current) {
+      ro = new ResizeObserver(([entry]) => {
+        const w = entry.contentRect.width
+        const h = entry.contentRect.height
+        if (w <= 0) return
+        const d = computeDims(w, h)
+        const totalH = d.gridSize + d.trayGap + d.trayHeight
+        canvas.width = d.gridSize
+        canvas.height = totalH
+        canvas.style.width = `${d.gridSize}px`
+        canvas.style.height = `${totalH}px`
+        gridRenderer.resize(d.gridSize)
+        pieceRenderer.resize(d.trayY, d.cellSize, d.gridSize)
+        cellSizeRef.current = d.cellSize
+        setCanvasDims({
+          gridSize: d.gridSize,
+          trayY: d.trayY,
+          trayH: d.trayHeight,
+        })
+      })
+      ro.observe(boardContainerRef.current)
+    }
 
     const touchController = new TouchController(
       canvas,
@@ -277,8 +335,8 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
 
         if (result.scoreEvent && result.scoreEvent.totalPoints > 0) {
           animManager.trigger('SCORE', {
-            x: gridSize * 0.5,
-            y: gridSize * 0.45,
+            x: gridRenderer.currentGridSize * 0.5,
+            y: gridRenderer.currentGridSize * 0.45,
             score: result.scoreEvent.totalPoints,
           })
         }
@@ -328,15 +386,13 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
         }
       }
 
-      const isTournamentMatch = true // Always true in this screen
-
-      gridRenderer.draw(currentSession.grid, ghostCells, isTournamentMatch)
+      gridRenderer.draw(currentSession.grid, ghostCells, true)
       pieceRenderer.drawTray(
         currentSession.currentPieces,
         dragState.isDragging && dragState.dragIndex !== null
           ? dragState.dragIndex
           : undefined,
-        isTournamentMatch
+        true
       )
 
       if (dragState.isDragging && dragState.dragIndex !== null) {
@@ -346,13 +402,13 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
             shape,
             dragState.dragPos.x,
             dragState.dragPos.y,
-            cellSize,
-            isTournamentMatch
+            cellSizeRef.current,
+            true
           )
         }
       }
 
-      animManager.draw(ctx, cellSize, isTournamentMatch)
+      animManager.draw(ctx, cellSizeRef.current, true)
       rafHandle = requestAnimationFrame(render)
     }
 
@@ -361,6 +417,7 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
     return () => {
       cancelAnimationFrame(rafHandle)
       touchController.destroy()
+      ro?.disconnect()
     }
   }, [!!gameSession])
 
@@ -372,202 +429,235 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
         tournamentId={tournamentId}
       />
 
-      <div className="z-10 flex items-center justify-between border-b-4 border-ink bg-paper px-6 py-4">
-        <div className="flex items-center gap-4">
+      {/* Header bar */}
+      <div className="z-10 flex shrink-0 items-center justify-between border-b-4 border-ink bg-paper px-4 py-3">
+        <div className="flex items-center gap-3">
           <div
-            className="flex h-10 w-10 items-center justify-center border-4 border-ink bg-accent-yellow font-display text-xl"
-            style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+            className="flex h-9 w-9 items-center justify-center border-4 border-ink font-display text-lg"
+            style={{ background: 'var(--accent-pink)', boxShadow: '3px 3px 0 var(--ink)', color: 'var(--ink-fixed)' }}
           >
             T
           </div>
           <div>
-            <div className="font-display text-[10px] uppercase tracking-[0.2em] text-danger">
+            <div className="font-display text-[9px] uppercase tracking-[0.2em] text-danger">
               TOURNAMENT MATCH
             </div>
-            <div
-              className="font-display text-lg"
-              style={{ letterSpacing: '-0.03em' }}
-            >
-              CONTENDER LOBBY #{tournamentId?.toString()}
+            <div className="font-display text-base" style={{ letterSpacing: '-0.03em' }}>
+              BRACKET #{tournamentId?.toString()}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* On-chain sync chip */}
+          {gameSession && (
+            <>
+              {onChainStatus === 'pending' || isPending || isConfirming ? (
+                <div
+                  className="flex items-center gap-1.5 border-2 border-ink px-2 py-1 font-display text-[9px] uppercase tracking-[0.12em]"
+                  style={{ background: 'var(--accent-yellow)', color: 'var(--ink-fixed)', boxShadow: '2px 2px 0 var(--ink)' }}
+                >
+                  <div className="h-1.5 w-1.5 animate-pulse bg-ink" />
+                  REGISTERING
+                </div>
+              ) : onChainStatus === 'syncing' ? (
+                <div
+                  className="flex items-center gap-1.5 border-2 border-ink px-2 py-1 font-display text-[9px] uppercase tracking-[0.12em]"
+                  style={{ background: 'var(--accent-cyan)', color: 'var(--ink-fixed)', boxShadow: '2px 2px 0 var(--ink)' }}
+                >
+                  <div className="brutal-loader" />
+                  SYNCING
+                </div>
+              ) : onChainStatus === 'registered' ? (
+                <div
+                  className="flex items-center gap-1.5 border-2 border-ink px-2 py-1 font-display text-[9px] uppercase tracking-[0.12em]"
+                  style={{ background: 'var(--accent-lime)', color: 'var(--ink-fixed)', boxShadow: '2px 2px 0 var(--ink)' }}
+                >
+                  <div className="h-1.5 w-1.5 bg-ink" />
+                  VERIFIED
+                </div>
+              ) : null}
+            </>
+          )}
+
           <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="brutal-btn border-4 border-ink bg-accent-cyan px-4 py-2 font-display text-[10px] uppercase tracking-[0.14em]"
-            style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+            className="brutal-btn border-3 border-ink px-3 py-2 font-display text-[9px] uppercase tracking-[0.14em]"
+            style={{ background: 'var(--accent-cyan)', boxShadow: '3px 3px 0 var(--ink)', color: 'var(--ink-fixed)' }}
           >
-            RANKINGS
+            RANKS
           </button>
+
           {!gameSession && (
             <button
               onClick={onBackToHall}
-              className="brutal-btn border-4 border-ink bg-danger px-4 py-2 font-display text-[10px] uppercase tracking-[0.14em] text-paper"
-              style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+              className="brutal-btn border-3 border-ink px-3 py-2 font-display text-[9px] uppercase tracking-[0.14em] text-paper"
+              style={{ background: 'var(--danger)', boxShadow: '3px 3px 0 var(--ink)' }}
             >
-              EXIT MATCH
+              EXIT
             </button>
           )}
         </div>
       </div>
 
-      <div className="z-10 flex flex-1 items-start justify-center pt-8">
-        <div
-          className="relative border-4 border-ink bg-ink"
-          style={{ boxShadow: '10px 10px 0 var(--ink)' }}
-        >
-          <canvas
-            ref={canvasRef}
-            style={{ touchAction: 'none', display: 'block' }}
-          />
-
-          {gameSession && (
-            <div className="absolute right-4 top-4 z-30">
-              {onChainStatus === 'pending' || isPending || isConfirming ? (
-                <div
-                  className="flex items-center gap-2 border-2 border-ink bg-accent-yellow px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
-                  style={{ boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
-                >
-                  <div className="h-2 w-2 animate-pulse bg-ink" />
-                  REGISTERING
-                </div>
-              ) : onChainStatus === 'syncing' ? (
-                <div
-                  className="flex items-center gap-2 border-2 border-ink bg-accent-cyan px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
-                  style={{ boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
-                >
-                  <div className="brutal-loader" />
-                  FINALIZING
-                </div>
-              ) : onChainStatus === 'registered' ? (
-                <div
-                  className="flex items-center gap-2 border-2 border-ink bg-accent-lime px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em]"
-                  style={{ boxShadow: '2px 2px 0 var(--ink)', color: 'var(--ink-fixed)' }}
-                >
-                  <div className="h-2 w-2 bg-ink" />
-                  MATCH VERIFIED
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {!gameSession && (
+      {/* Game area — fills remaining vertical space */}
+      {!gameSession ? (
+        /* Lobby / "ready to play" screen */
+        <div className="z-10 flex flex-1 items-center justify-center p-4">
+          <div
+            className="w-full max-w-xs border-4 border-ink bg-paper p-8 text-center"
+            style={{ boxShadow: '8px 8px 0 var(--accent-pink)' }}
+          >
             <div
-              className="absolute inset-0 z-40 flex items-center justify-center"
+              className="mb-4 inline-block border-4 border-ink bg-accent-yellow px-4 py-1 font-display text-[11px] tracking-[0.14em]"
               style={{
-                background: 'rgba(12,12,16,0.55)',
-                backdropFilter: 'blur(6px)',
+                transform: 'rotate(-3deg)',
+                boxShadow: '4px 4px 0 var(--ink)',
+                color: 'var(--ink-fixed)',
               }}
             >
-              <div
-                className="mx-4 w-full max-w-xs border-4 border-ink bg-paper p-8 text-center"
-                style={{ boxShadow: '8px 8px 0 var(--accent-pink)' }}
+              TOURNAMENT MODE
+            </div>
+            <h2
+              className="mb-2 font-display text-[42px] leading-[0.9]"
+              style={{ letterSpacing: '-0.04em' }}
+            >
+              READY FOR{' '}
+              <span
+                style={{
+                  color: 'var(--danger)',
+                  WebkitTextStroke: '1px var(--ink)',
+                  display: 'inline-block',
+                  transform: 'rotate(-2deg)',
+                }}
               >
+                GLORY?
+              </span>
+            </h2>
+            <p className="mb-8 font-display text-[10px] uppercase leading-relaxed tracking-[0.16em] text-ink/60">
+              You are about to enter a competitive match. Your final score
+              will be recorded on the leaderboard.
+            </p>
+
+            <button
+              onClick={handleStartGame}
+              disabled={
+                isPending ||
+                isConfirming ||
+                isSyncingContract ||
+                sessionConflict
+              }
+              className="brutal-btn w-full border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.14em] disabled:opacity-50"
+              style={{ boxShadow: '6px 6px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+            >
+              {isSyncingContract ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="brutal-loader" />
+                  SYNCING...
+                </div>
+              ) : sessionConflict ? (
+                'SESSION CONFLICT'
+              ) : isPending || isConfirming ? (
+                'PREPARING...'
+              ) : (
+                'COMMENCE MATCH'
+              )}
+            </button>
+
+            {sessionConflict && (
+              <div className="mt-4 border-4 border-danger bg-paper-2 p-4 text-left">
+                <p className="mb-2 font-display text-[9px] uppercase tracking-[0.14em] text-piece-red">
+                  MATCHING ERROR
+                </p>
+                <p className="mb-4 text-[10px] leading-relaxed text-ink/70">
+                  An active session exists on the blockchain with a
+                  different record. You must reset to start a fresh match.
+                </p>
+                <button
+                  onClick={() => {
+                    useGameStore.getState().forceReset(true)
+                    setSessionConflict(false)
+                  }}
+                  className="brutal-btn w-full border-4 border-ink bg-danger py-2 font-display text-[10px] uppercase tracking-[0.14em] text-paper"
+                  style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+                >
+                  RESET SESSION
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={onBackToHall}
+              className="mt-4 w-full border-2 border-ink py-2 font-display text-[9px] uppercase tracking-[0.14em] text-ink/60"
+            >
+              BACK TO HALL
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Canvas board */
+        <div
+          ref={boardContainerRef}
+          className="z-10 flex min-h-0 flex-1 select-none items-center justify-center p-3"
+        >
+          <div className="relative inline-flex flex-col">
+            {/* Decorative frames behind the canvas */}
+            {canvasDims && (
+              <>
                 <div
-                  className="mb-4 inline-block border-4 border-ink bg-accent-yellow px-4 py-1 font-display text-[11px] tracking-[0.14em]"
+                  className="pointer-events-none absolute left-0 top-0 border-[4px] border-ink"
                   style={{
-                    transform: 'rotate(-3deg)',
-                    boxShadow: '4px 4px 0 var(--ink)',
-                    color: 'var(--ink-fixed)',
+                    background: 'var(--ink)',
+                    width: canvasDims.gridSize,
+                    height: canvasDims.gridSize,
+                    boxShadow: '8px 8px 0 var(--accent-pink)',
+                  }}
+                />
+                <div
+                  className="pointer-events-none absolute left-0 z-[1] grid grid-cols-3 border-[3px] border-ink"
+                  style={{
+                    background: 'var(--ink)',
+                    top: canvasDims.trayY,
+                    width: canvasDims.gridSize,
+                    height: canvasDims.trayH,
+                    boxShadow: '6px 6px 0 var(--accent-pink)',
                   }}
                 >
-                  TOURNAMENT MODE
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-center border-r-[3px] last:border-r-0"
+                      style={{ borderColor: 'rgba(245,239,227,0.2)' }}
+                    />
+                  ))}
                 </div>
-                <h2
-                  className="mb-2 font-display text-[42px] leading-[0.9]"
-                  style={{ letterSpacing: '-0.04em' }}
-                >
-                  READY FOR{' '}
-                  <span
-                    style={{
-                      color: 'var(--danger)',
-                      WebkitTextStroke: '1px var(--ink)',
-                      display: 'inline-block',
-                      transform: 'rotate(-2deg)',
-                    }}
-                  >
-                    GLORY?
-                  </span>
-                </h2>
-                <p className="mb-8 font-display text-[10px] uppercase leading-relaxed tracking-[0.16em] text-ink/60">
-                  You are about to enter a competitive match. Your final score
-                  will be recorded on the leaderboard.
-                </p>
+              </>
+            )}
 
-                <button
-                  onClick={handleStartGame}
-                  disabled={
-                    isPending ||
-                    isConfirming ||
-                    isSyncingContract ||
-                    sessionConflict
-                  }
-                  className="brutal-btn w-full border-4 border-ink bg-accent-lime py-4 font-display text-sm uppercase tracking-[0.14em] disabled:opacity-50"
-                  style={{ boxShadow: '6px 6px 0 var(--ink)', color: 'var(--ink-fixed)' }}
-                >
-                  {isSyncingContract ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="brutal-loader" />
-                      SYNCING...
-                    </div>
-                  ) : sessionConflict ? (
-                    'SESSION CONFLICT'
-                  ) : isPending || isConfirming ? (
-                    'PREPARING...'
-                  ) : (
-                    'COMMENCE MATCH'
-                  )}
-                </button>
+            <div className="relative z-[2]" style={{ display: 'inline-block' }}>
+              <canvas
+                ref={canvasRef}
+                style={{ touchAction: 'none', display: 'block' }}
+              />
 
-                {sessionConflict && (
-                  <div className="mt-4 border-4 border-danger bg-paper-2 p-4 text-left">
-                    <p className="mb-2 font-display text-[9px] uppercase tracking-[0.14em] text-piece-red">
-                      MATCHING ERROR
-                    </p>
-                    <p className="mb-4 text-[10px] leading-relaxed text-ink/70">
-                      An active session exists on the blockchain with a
-                      different record. You must reset to start a fresh match.
-                    </p>
-                    <button
-                      onClick={() => {
-                        useGameStore.getState().forceReset(true)
-                        setSessionConflict(false)
-                      }}
-                      className="brutal-btn w-full border-4 border-ink bg-danger py-2 font-display text-[10px] uppercase tracking-[0.14em] text-paper"
-                      style={{ boxShadow: '4px 4px 0 var(--ink)' }}
-                    >
-                      RESET SESSION
-                    </button>
-                  </div>
-                )}
-              </div>
+              {isGameOver && (
+                <GameOverModal
+                  score={score}
+                  onPlayAgain={handleStartGame}
+                  onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+                  mode="tournament"
+                />
+              )}
             </div>
-          )}
-
-          {isGameOver && (
-            <GameOverModal
-              score={score}
-              onPlayAgain={handleStartGame}
-              onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
-              mode="tournament"
-            />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       <TournamentLeaderboard
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         tournamentId={tournamentId}
       />
-
-      <div className="pointer-events-none p-6 text-center opacity-40">
-        <div className="font-display text-[10px] uppercase tracking-[0.5em] text-ink">
-          TOURNAMENT EDITION
-        </div>
-      </div>
     </div>
   )
 }

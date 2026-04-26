@@ -48,13 +48,10 @@ export const config = getDefaultConfig({
   chains: [celo],
   connectors: [injectedConnector],
   transports: {
-    [celo.id]: 
-      typeof window !== 'undefined' && (window.ethereum as any)?.isMiniPay
-        ? custom(lazyWindowEthereum)
-        : fallback([
-            rpcUrl ? http(rpcUrl) : http('https://forno.celo.org'),
-            http(),
-          ]),
+    [celo.id]: fallback([
+      custom(lazyWindowEthereum),
+      rpcUrl ? http(rpcUrl) : http('https://forno.celo.org'),
+    ]),
   },
   ssr: false,
 })

@@ -34,7 +34,7 @@ import {
 } from '../utils/gameSessionStorage'
 import { IS_MINIPAY } from '../utils/miniPay'
 
-const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
+const GAME_ADDRESS = contractInfo.game as `0x${string}`
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 interface GameScreenProps {
@@ -485,7 +485,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     const storedSession = readStoredGameSession(
       CLASSIC_SESSION_STORAGE_KEY,
       address,
-      CONTRACT_ADDRESS
+      GAME_ADDRESS
     )
     const contractActiveId = (onChainActiveGameId as bigint) || 0n
     if (contractActiveId !== 0n) {
@@ -544,7 +544,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         seed,
         hash,
         gameId: null,
-        contractAddress: CONTRACT_ADDRESS,
+        contractAddress: GAME_ADDRESS,
       })
       contractStartGame(hash)
     } else {

@@ -70,8 +70,15 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   const [hover, setHover] = useState(false)
   const offset = hover ? 4 : 7
 
+  // After approve confirms, immediately allow the join button to show.
+  // We don't auto-fire joinTournament — wallets require a direct user gesture
+  // for eth_sendTransaction; programmatic calls are silently dropped.
+  const [justApproved, setJustApproved] = useState(false)
   useEffect(() => {
-    if (isApproveSuccess) refetchAllowance()
+    if (isApproveSuccess) {
+      setJustApproved(true)
+      refetchAllowance()
+    }
   }, [isApproveSuccess, refetchAllowance])
 
   const joinTriggeredRef = useRef(false)
@@ -120,10 +127,17 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
     finalized,
     prizePool,
   ] = tournament as any
+
+  if (creator === '0x0000000000000000000000000000000000000000') {
+    return null
+  }
   const isStarted = now >= startTime
   const isEnded = now >= endTime
   const isFull = playerCount >= maxPlayers
-  const needsApproval = allowance !== undefined && allowance < entryFee
+  // needsApproval: undefined allowance (still loading) also counts as needing approval.
+  // justApproved overrides: once the approve tx confirms, show JOIN immediately
+  // without waiting for the allowance refetch to settle.
+  const needsApproval = !justApproved && (allowance === undefined || allowance < entryFee)
   const formatTime = (ts: bigint) =>
     new Date(Number(ts) * 1000).toLocaleDateString()
   const formatDateTime = (ts: bigint) =>
@@ -136,8 +150,14 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   const rowBg = ROW_COLORS[index % 4]
   const tagStyle = TAG_STYLES[index % 4]
 
-  const handleJoin = () =>
-    needsApproval ? approve(entryFee) : joinTournament(id)
+  const handleJoin = () => {
+    if (needsApproval) {
+      approve(entryFee)
+    } else {
+      setJustApproved(false)
+      joinTournament(id)
+    }
+  }
   const insetFullWidthCtaStyle = {
     width: 'calc(100% - 8px)',
     margin: '0 4px 4px',
@@ -485,8 +505,8 @@ const TournamentSection: React.FC<TournamentSectionProps> = ({
           Array.from({ length: Number(count) }).map((_, i) => (
             <TournamentCard
               key={i}
-              id={BigInt(i)}
-              index={i}
+              id={BigInt(i + 1)}
+              index={i + 1}
               onStartMatch={handleStartMatch}
               onViewRankings={handleOpenLeaderboard}
             />

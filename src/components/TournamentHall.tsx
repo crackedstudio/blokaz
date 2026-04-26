@@ -3,11 +3,11 @@ import TournamentSection from './TournamentSection'
 import { useTournamentCount } from '../hooks/useBlokzGame'
 import { useReadContracts } from 'wagmi'
 import { formatUnits } from 'viem'
-import { BLOKZ_GAME_ABI } from '../constants/abi'
+import { BLOKZ_TOURNAMENT_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
 import { BrutalIcon } from './BrutalIcon'
 
-const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
+const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 
 interface TournamentHallProps {
   onBack: () => void
@@ -23,10 +23,10 @@ const TournamentHall: React.FC<TournamentHallProps> = ({
     () =>
       count && count > 0n
         ? Array.from({ length: Number(count) }, (_, index) => ({
-            address: CONTRACT_ADDRESS,
-            abi: BLOKZ_GAME_ABI,
+            address: TOURNAMENT_ADDRESS,
+            abi: BLOKZ_TOURNAMENT_ABI,
             functionName: 'tournaments' as const,
-            args: [BigInt(index)] as const,
+            args: [BigInt(index + 1)] as const,
           }))
         : [],
     [count]

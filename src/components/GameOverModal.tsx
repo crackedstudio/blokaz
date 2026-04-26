@@ -5,12 +5,14 @@ import { packMoves } from '../engine/replay'
 import {
   useSubmitScore,
   useActiveGame,
+  useActiveTournamentGame,
   useLeaderboard,
   useSubmitTournamentScore,
 } from '../hooks/useBlokzGame'
 import { useAccount, useReadContract } from 'wagmi'
-import { BLOKZ_GAME_ABI } from '../constants/abi'
+import { BLOKZ_GAME_ABI, BLOKZ_TOURNAMENT_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
+import { requestSubmitSignature } from '../api/signer'
 import { keccak256, encodePacked } from 'viem'
 import {
   CLASSIC_SESSION_STORAGE_KEY,
@@ -20,7 +22,8 @@ import {
 } from '../utils/gameSessionStorage'
 import { BrutalIcon } from './BrutalIcon'
 
-const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
+const GAME_ADDRESS = contractInfo.game as `0x${string}`
+const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 
 interface GameOverModalProps {
   score: number
@@ -39,8 +42,13 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
   onOpenLeaderboard,
 }) => {
   const { address } = useAccount()
-  const { gameId: activeGameId, isLoading: isLoadingGameId } =
-    useActiveGame(address)
+  // Each contract tracks its own activeGame mapping — use the right one per mode
+  const { gameId: classicActiveGameId, isLoading: isLoadingClassicGameId } =
+    useActiveGame(mode === 'classic' ? address : undefined)
+  const { gameId: tournamentActiveGameId, isLoading: isLoadingTournamentGameId } =
+    useActiveTournamentGame(mode === 'tournament' ? address : undefined)
+  const activeGameId = mode === 'tournament' ? tournamentActiveGameId : classicActiveGameId
+  const isLoadingGameId = mode === 'tournament' ? isLoadingTournamentGameId : isLoadingClassicGameId
   const { leaderboard } = useLeaderboard()
   const {
     gameSession,
@@ -90,27 +98,43 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
 
   const effectiveGameId = onChainGameId || activeGameId
 
-  const { data: gameData, isLoading: isLoadingContract } = useReadContract({
-    address: CONTRACT_ADDRESS,
+  // Classic games live in GAME_ADDRESS; tournament games in TOURNAMENT_ADDRESS.
+  // Both hooks are always called (Rules of Hooks), but only the relevant one is enabled.
+  const { data: classicGameData, isLoading: isLoadingClassicContract } = useReadContract({
+    address: GAME_ADDRESS,
     abi: BLOKZ_GAME_ABI,
     functionName: 'games',
     args: effectiveGameId ? [effectiveGameId] : undefined,
-    query: { enabled: !!effectiveGameId },
+    query: { enabled: mode === 'classic' && !!effectiveGameId },
   })
+  const { data: tournamentGameData, isLoading: isLoadingTournamentContract } = useReadContract({
+    address: TOURNAMENT_ADDRESS,
+    abi: BLOKZ_TOURNAMENT_ABI,
+    functionName: 'games',
+    args: effectiveGameId ? [effectiveGameId] : undefined,
+    query: { enabled: mode === 'tournament' && !!effectiveGameId },
+  })
+  const gameData = mode === 'tournament' ? tournamentGameData : classicGameData
+  const isLoadingContract = mode === 'tournament' ? isLoadingTournamentContract : isLoadingClassicContract
 
   const recoveredSeed = useMemo(() => {
     if (onChainSeed) return onChainSeed
     if (!address) return null
+    const contractAddr = mode === 'tournament' ? TOURNAMENT_ADDRESS : GAME_ADDRESS
     return (
-      readStoredGameSession(storageKey, address, CONTRACT_ADDRESS)?.seed ?? null
+      readStoredGameSession(storageKey, address, contractAddr)?.seed ?? null
     )
-  }, [address, onChainSeed, storageKey])
+  }, [address, onChainSeed, storageKey, mode])
 
   const onChainHash = useMemo(() => {
     if (!gameData) return null
     const txData = gameData as { seedHash?: `0x${string}` } & readonly unknown[]
-    return (txData.seedHash ?? txData[1] ?? null) as `0x${string}` | null
-  }, [gameData])
+    // Named field works for both contracts; index fallback differs:
+    // classic struct: [player, seedHash, ...] → index 1
+    // tournament struct: [player, tournamentId, seedHash, ...] → index 2
+    const indexFallback = mode === 'tournament' ? txData[2] : txData[1]
+    return (txData.seedHash ?? indexFallback ?? null) as `0x${string}` | null
+  }, [gameData, mode])
 
   const isSeedMatch = useMemo(() => {
     if (!recoveredSeed || !address) return false
@@ -139,20 +163,31 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
     onPlayAgain()
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!gameSession || !recoveredSeed || !effectiveGameId || !isSeedMatch)
       return
     if (isPending || isConfirming || isSuccess) return
     const packed = packMoves(gameSession.moveHistory)
     if (isTournamentMode) {
-      submitTournamentScore(
-        tournamentId,
-        effectiveGameId,
-        recoveredSeed,
-        packed,
-        gameSession.score,
-        gameSession.moveHistory.length
-      )
+      try {
+        const { signature, deadline } = await requestSubmitSignature(
+          tournamentId!,
+          effectiveGameId!,
+          gameSession.score,
+          gameSession.moveHistory,
+          recoveredSeed,
+          address!
+        )
+        submitTournamentScore(
+          tournamentId!,
+          effectiveGameId!,
+          gameSession.score,
+          deadline,
+          signature
+        )
+      } catch (err) {
+        console.error('Failed to get submission signature:', err)
+      }
     } else {
       submitScore(
         effectiveGameId,
@@ -171,6 +206,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
   const hasError = error || toursError
   const isRegisteredOrRecovered =
     onChainStatus === 'registered' ||
+    onChainStatus === 'syncing' ||
     (!!effectiveGameId && onChainStatus === 'none' && !isLoading)
   const isPotentialConflict =
     effectiveGameId && !isSeedMatch && !isLoading && gameData

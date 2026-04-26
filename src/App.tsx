@@ -30,7 +30,7 @@ const App: React.FC = () => {
       if (nextView === null) return // lobby/classic managed via direct state
       setActiveView(prev => {
         if (nextView !== prev) {
-          setTimeout(() => forceReset(), 0)
+          setTimeout(() => forceReset(nextView === 'tournament-play'), 0)
         }
         return nextView
       })

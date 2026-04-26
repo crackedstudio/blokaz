@@ -4,10 +4,11 @@ import { useAccount } from 'wagmi'
 import { useReadContracts } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useLeaderboard, useTournamentCount, USDC_DECIMALS } from '../hooks/useBlokzGame'
-import { BLOKZ_GAME_ABI } from '../constants/abi'
+import { BLOKZ_GAME_ABI, BLOKZ_TOURNAMENT_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
 
-const CONTRACT_ADDRESS = contractInfo.address as `0x${string}`
+const GAME_ADDRESS = contractInfo.game as `0x${string}`
+const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 
 interface LobbyScreenProps {
   onPlayClassic: () => void
@@ -37,10 +38,10 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({ onPlayClassic, onPlayTourname
     () =>
       tournamentCount && tournamentCount > 0n
         ? Array.from({ length: Number(tournamentCount) }, (_, i) => ({
-            address: CONTRACT_ADDRESS,
-            abi: BLOKZ_GAME_ABI,
+            address: TOURNAMENT_ADDRESS,
+            abi: BLOKZ_TOURNAMENT_ABI,
             functionName: 'tournaments' as const,
-            args: [BigInt(i)] as const,
+            args: [BigInt(i + 1)] as const,
           }))
         : [],
     [tournamentCount]
@@ -55,10 +56,13 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({ onPlayClassic, onPlayTourname
     const rows = tournamentRows ?? []
     let pool = 0n
     let active = 0
+    const now = BigInt(Math.floor(Date.now() / 1000))
     for (const row of rows) {
       if (row.status !== 'success' || !row.result) continue
-      const r = row.result as readonly unknown[]
-      if ((r[5] as number) === 1) {
+      const r = row.result as readonly any[]
+      const endTime = r[3] as bigint
+      const finalized = r[6] as boolean
+      if (endTime > now && !finalized) {
         active++
         pool += (r[7] as bigint) ?? 0n
       }
