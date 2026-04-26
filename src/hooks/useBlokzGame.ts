@@ -20,7 +20,7 @@ const getTxOverrides = () =>
 
 const GAME_ADDRESS = contractInfo.game as `0x${string}`
 const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
-export const USDC_ADDRESS = '0x01C5C0122039549AD1493B8220cABEdD739BC44E' as const
+export const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as const
 export const USDC_DECIMALS = 6
 
 const ERC20_ABI = [
