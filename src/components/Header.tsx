@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, useConnect } from 'wagmi'
 import { useOwner } from '../hooks/useBlokzGame'
@@ -54,32 +54,88 @@ const MiniPayWalletBadge: React.FC = () => {
   )
 }
 
-// Social login button — triggers the Web3Auth modal (Google, Twitter, email, etc.)
-// Shown only for non-MiniPay users when no wallet is connected.
-const SocialConnectButton: React.FC = () => {
+/**
+ * Single LOGIN button that opens a dropdown with two connection options:
+ *  • Social  (Web3Auth — Google / Twitter / email) — marked as RECOMMENDED
+ *  • Wallet  (RainbowKit — MetaMask, WalletConnect, etc.)
+ *
+ * Replaces the previous two-button layout for a cleaner UX.
+ */
+const LoginDropdown: React.FC<{ onConnectWallet: () => void }> = ({ onConnectWallet }) => {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
   const { connect, isPending, variables } = useConnect()
-  const isBusy = isPending && (variables?.connector as any)?.id === 'web3auth'
+  const isSocialBusy = isPending && (variables?.connector as any)?.id === 'web3auth'
+
+  // Close on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   return (
-    <button
-      onClick={() => connect({ connector: web3AuthConnector })}
-      disabled={isPending}
-      className="brutal-btn border-[3px] border-ink bg-accent-yellow px-3 py-[10px] font-display text-[11px] tracking-[0.1em] uppercase disabled:opacity-60"
-      style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
-      title="Sign in with Google, Twitter, or email"
-    >
-      {isBusy ? (
-        <span className="flex items-center gap-1.5">
-          <div className="brutal-loader" style={{ borderColor: 'var(--ink-fixed)', borderTopColor: 'transparent' }} />
-          SIGNING IN
-        </span>
-      ) : (
-        <span className="flex items-center gap-1.5">
-          <BrutalIcon name="zap" size={11} strokeWidth={2.5} />
-          SOCIAL
-        </span>
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="brutal-btn flex items-center gap-2 border-[3px] border-ink bg-accent-yellow px-4 py-[10px] font-display text-[12px] tracking-[0.08em] uppercase"
+        style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+      >
+        LOGIN
+        <span className="text-[10px] leading-none">{open ? '▴' : '▾'}</span>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+6px)] z-[200] w-56 border-[3px] border-ink bg-paper"
+          style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+        >
+          {/* ── Social (recommended) ── */}
+          <button
+            onClick={() => {
+              setOpen(false)
+              connect({ connector: web3AuthConnector })
+            }}
+            disabled={isSocialBusy}
+            className="flex w-full items-center justify-between border-b-[3px] border-ink px-4 py-3 font-display text-[11px] tracking-[0.1em] uppercase text-ink transition-colors hover:bg-accent-yellow/20 disabled:opacity-60"
+          >
+            <span className="flex items-center gap-2">
+              <BrutalIcon name="zap" size={12} strokeWidth={2.5} />
+              {isSocialBusy ? (
+                <span className="flex items-center gap-1.5">
+                  <div className="brutal-loader" style={{ borderColor: 'var(--ink)', borderTopColor: 'transparent' }} />
+                  SIGNING IN
+                </span>
+              ) : (
+                'SOCIAL'
+              )}
+            </span>
+            {/* Best badge */}
+            <span
+              className="border-[2px] border-ink bg-accent-pink px-1.5 py-0.5 font-display text-[8px] tracking-widest uppercase leading-none text-white"
+            >
+              BEST
+            </span>
+          </button>
+
+          {/* ── Wallet (MetaMask / WalletConnect) ── */}
+          <button
+            onClick={() => {
+              setOpen(false)
+              onConnectWallet()
+            }}
+            className="flex w-full items-center gap-2 px-4 py-3 font-display text-[11px] tracking-[0.1em] uppercase text-ink transition-colors hover:bg-paper-2"
+          >
+            <BrutalIcon name="share" size={12} strokeWidth={2.5} />
+            WALLET
+          </button>
+        </div>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -291,35 +347,25 @@ export const Header: React.FC<HeaderProps> = ({
             const connected = ready && account && chain
 
             const handleClick = () => {
-              if (!connected) {
-                openConnectModal()
-                return
-              }
-              if (chain.unsupported) {
-                openChainModal()
-                return
-              }
+              if (chain?.unsupported) return openChainModal()
               openAccountModal()
             }
 
             return (
               <div className="flex items-center gap-2" style={{ opacity: ready ? 1 : 0 }}>
-                {/* Social login — Google / Twitter / email via Web3Auth.
-                    Hidden once any wallet is connected. */}
-                {!connected && <SocialConnectButton />}
-
-                {/* MetaMask / browser wallet */}
-                <button
-                  onClick={handleClick}
-                  className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
-                  style={{ boxShadow: '4px 4px 0 var(--ink)' }}
-                >
-                  {connected
-                    ? truncateAddress(account.address)
-                    : chain?.unsupported
-                      ? 'NETWORK'
-                      : 'CONNECT'}
-                </button>
+                {connected ? (
+                  /* Connected — show truncated address / wrong-network pill */
+                  <button
+                    onClick={handleClick}
+                    className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
+                    style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+                  >
+                    {chain?.unsupported ? 'NETWORK ⚠' : truncateAddress(account.address)}
+                  </button>
+                ) : (
+                  /* Not connected — single dropdown with Social + Wallet options */
+                  <LoginDropdown onConnectWallet={openConnectModal} />
+                )}
               </div>
             )
           }}
