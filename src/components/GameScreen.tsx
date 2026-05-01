@@ -489,14 +489,24 @@ const GameScreen: React.FC<GameScreenProps> = ({
     )
     const contractActiveId = (onChainActiveGameId as bigint) || 0n
     if (contractActiveId !== 0n) {
-      if (
-        storedSession &&
-        (storedSession.gameId === contractActiveId.toString() ||
-          !storedSession.gameId)
+      if (!storedSession) {
+        // On-chain game exists but NO local session — new device, fresh social
+        // login (Web3Auth), or cleared browser data. Nothing locally to conflict
+        // with, so just clear the stale on-chain ref and let the user start fresh.
+        // If the contract rejects a new start because of the existing game ID,
+        // that error will surface naturally via the tx rejection.
+        setOnChainData(0n, null, 'none')
+        setSessionConflict(false)
+      } else if (
+        storedSession.gameId === contractActiveId.toString() ||
+        !storedSession.gameId
       ) {
+        // Local session matches the on-chain game — resume it.
         setOnChainData(contractActiveId, storedSession.seed, 'none')
         setSessionConflict(false)
       } else {
+        // True conflict: a local session exists but its game ID doesn't match
+        // the active on-chain game. User must reset.
         setSessionConflict(true)
       }
     } else {
@@ -566,7 +576,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             seed: currentSeed.seed,
             hash: currentSeed.hash,
             gameId: newGameId.toString(),
-            contractAddress: CONTRACT_ADDRESS,
+            contractAddress: GAME_ADDRESS,
           })
           clearInterval(timer)
         }

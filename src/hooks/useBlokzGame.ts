@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { 
-  useReadContract, 
-  useWriteContract, 
-  useWaitForTransactionReceipt, 
-  useAccount 
+import {
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useAccount,
+  usePublicClient,
 } from 'wagmi'
 import { keccak256, encodePacked, toHex } from 'viem'
 import { BLOKZ_GAME_ABI, BLOKZ_TOURNAMENT_ABI } from '../constants/abi'
@@ -17,6 +18,38 @@ const getTxOverrides = () =>
   isMiniPay()
     ? { type: 'legacy' as const }
     : {}
+
+/**
+ * Returns an async function that fetches the pending nonce for the connected
+ * account and returns it as `{ nonce: number }`.
+ *
+ * Why: Celo's RPC (forno.celo.org) does not reliably support the `pending`
+ * blockTag for eth_getTransactionCount, so wagmi/viem caches the confirmed
+ * nonce. When two transactions are submitted in quick succession (startGame →
+ * submitScore) the second one reuses the same nonce and gets rejected with
+ * "nonce too low". Fetching the pending nonce explicitly before every write
+ * bypasses the cache and lets Celo sequence the transactions correctly.
+ *
+ * MiniPay's injected provider handles nonce sequencing itself, so we skip it
+ * there to avoid interfering with the legacy-tx path.
+ */
+function useFreshNonce() {
+  const { address } = useAccount()
+  const publicClient = usePublicClient()
+
+  return async (): Promise<Partial<{ nonce: number }>> => {
+    if (isMiniPay() || !address || !publicClient) return {}
+    try {
+      const nonce = await publicClient.getTransactionCount({
+        address,
+        blockTag: 'pending',
+      })
+      return { nonce }
+    } catch {
+      return {}
+    }
+  }
+}
 
 const GAME_ADDRESS = contractInfo.game as `0x${string}`
 const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
@@ -250,14 +283,16 @@ export function useProtocolRevenue() {
 export function useStartGame() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const startGame = (seedHash: `0x${string}`) => {
+  const startGame = async (seedHash: `0x${string}`) => {
     writeContract({
       address: GAME_ADDRESS,
       abi: BLOKZ_GAME_ABI,
       functionName: 'startGame',
       args: [seedHash],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -270,9 +305,10 @@ export function useStartGame() {
 export function useStartTournamentGame() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const startTournamentGame = (
-    tournamentId: bigint, 
+  const startTournamentGame = async (
+    tournamentId: bigint,
     seedHash: `0x${string}`,
     nonce: bigint,
     deadline: bigint,
@@ -284,6 +320,7 @@ export function useStartTournamentGame() {
       functionName: 'startTournamentGame',
       args: [tournamentId, seedHash, nonce, deadline, signature],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -296,8 +333,9 @@ export function useStartTournamentGame() {
 export function useSubmitScore() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const submitScore = (
+  const submitScore = async (
     gameId: bigint,
     seed: `0x${string}`,
     packedMoves: readonly bigint[],
@@ -310,6 +348,7 @@ export function useSubmitScore() {
       functionName: 'submitScore',
       args: [gameId, seed, packedMoves, score, moveCount],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -322,14 +361,16 @@ export function useSubmitScore() {
 export function useJoinTournament() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const joinTournament = (tournamentId: bigint) => {
+  const joinTournament = async (tournamentId: bigint) => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'joinTournament',
       args: [tournamentId],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -342,8 +383,9 @@ export function useJoinTournament() {
 export function useSubmitTournamentScore() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const submitTournamentScore = (
+  const submitTournamentScore = async (
     tournamentId: bigint,
     gameId: bigint,
     score: number,
@@ -356,6 +398,7 @@ export function useSubmitTournamentScore() {
       functionName: 'submitTournamentScore',
       args: [tournamentId, gameId, score, deadline, signature],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -368,14 +411,16 @@ export function useSubmitTournamentScore() {
 export function useFinalizeTournament() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const finalizeTournament = (tournamentId: bigint) => {
+  const finalizeTournament = async (tournamentId: bigint) => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'finalizeTournament',
       args: [tournamentId],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -387,14 +432,16 @@ export function useFinalizeTournament() {
 export function useCreateTournament() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const createTournament = (fee: bigint, start: bigint, end: bigint, max: number, rewardsBps: number[]) => {
+  const createTournament = async (fee: bigint, start: bigint, end: bigint, max: number, rewardsBps: number[]) => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'createTournament',
       args: [fee, start, end, max, rewardsBps],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -404,13 +451,15 @@ export function useCreateTournament() {
 export function useWithdrawRevenue() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const withdraw = () => {
+  const withdraw = async () => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'withdrawProtocolRevenue',
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -423,14 +472,16 @@ export function useWithdrawRevenue() {
 export function useSetUsername() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const setUsername = (name: string) => {
+  const setUsername = async (name: string) => {
     writeContract({
       address: GAME_ADDRESS,
       abi: BLOKZ_GAME_ABI,
       functionName: 'setUsername',
       args: [name],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -440,13 +491,15 @@ export function useSetUsername() {
 export function usePauseTournament() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const setPaused = (paused: boolean) => {
+  const setPaused = async (paused: boolean) => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: paused ? 'pause' : 'unpause',
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -456,14 +509,16 @@ export function usePauseTournament() {
 export function useSetProtocolFee() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const setFee = (bps: number) => {
+  const setFee = async (bps: number) => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'setProtocolFee',
       args: [bps],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -485,14 +540,16 @@ export function useIsPaused() {
 export function useApproveUSDC() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const approve = (amount: bigint) => {
+  const approve = async (amount: bigint) => {
     writeContract({
       address: USDC_ADDRESS,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [TOURNAMENT_ADDRESS, amount],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 
@@ -502,14 +559,16 @@ export function useApproveUSDC() {
 export function useSetSigner() {
   const { writeContract, data: hash, error, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
+  const getFreshNonce = useFreshNonce()
 
-  const setSigner = (newSigner: `0x${string}`) => {
+  const setSigner = async (newSigner: `0x${string}`) => {
     writeContract({
       address: TOURNAMENT_ADDRESS,
       abi: BLOKZ_TOURNAMENT_ABI,
       functionName: 'grantRole',
       args: [keccak256(toHex('TRUSTED_SIGNER')), newSigner],
       ...getTxOverrides(),
+      ...await getFreshNonce(),
     })
   }
 

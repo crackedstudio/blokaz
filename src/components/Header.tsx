@@ -1,11 +1,12 @@
 import React from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { useAccount } from 'wagmi'
+import { useAccount, useConnect } from 'wagmi'
 import { useOwner } from '../hooks/useBlokzGame'
 import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
 import { IS_MINIPAY } from '../utils/miniPay'
 import { useGoodDollar } from '../hooks/useGoodDollar'
+import { web3AuthConnector } from '../config/web3auth'
 
 type HeaderView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
@@ -50,6 +51,35 @@ const MiniPayWalletBadge: React.FC = () => {
         </div>
       )}
     </div>
+  )
+}
+
+// Social login button — triggers the Web3Auth modal (Google, Twitter, email, etc.)
+// Shown only for non-MiniPay users when no wallet is connected.
+const SocialConnectButton: React.FC = () => {
+  const { connect, isPending, variables } = useConnect()
+  const isBusy = isPending && (variables?.connector as any)?.id === 'web3auth'
+
+  return (
+    <button
+      onClick={() => connect({ connector: web3AuthConnector })}
+      disabled={isPending}
+      className="brutal-btn border-[3px] border-ink bg-accent-yellow px-3 py-[10px] font-display text-[11px] tracking-[0.1em] uppercase disabled:opacity-60"
+      style={{ boxShadow: '4px 4px 0 var(--ink)', color: 'var(--ink-fixed)' }}
+      title="Sign in with Google, Twitter, or email"
+    >
+      {isBusy ? (
+        <span className="flex items-center gap-1.5">
+          <div className="brutal-loader" style={{ borderColor: 'var(--ink-fixed)', borderTopColor: 'transparent' }} />
+          SIGNING IN
+        </span>
+      ) : (
+        <span className="flex items-center gap-1.5">
+          <BrutalIcon name="zap" size={11} strokeWidth={2.5} />
+          SOCIAL
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -273,20 +303,24 @@ export const Header: React.FC<HeaderProps> = ({
             }
 
             return (
-              <button
-                onClick={handleClick}
-                className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
-                style={{
-                  boxShadow: '4px 4px 0 var(--ink)',
-                  opacity: ready ? 1 : 0,
-                }}
-              >
-                {connected
-                  ? truncateAddress(account.address)
-                  : chain?.unsupported
-                    ? 'NETWORK'
-                    : 'CONNECT'}
-              </button>
+              <div className="flex items-center gap-2" style={{ opacity: ready ? 1 : 0 }}>
+                {/* Social login — Google / Twitter / email via Web3Auth.
+                    Hidden once any wallet is connected. */}
+                {!connected && <SocialConnectButton />}
+
+                {/* MetaMask / browser wallet */}
+                <button
+                  onClick={handleClick}
+                  className="brutal-btn min-w-[88px] border-[3px] border-ink bg-paper px-4 py-[10px] font-display text-[12px] tracking-[0.08em] text-ink uppercase"
+                  style={{ boxShadow: '4px 4px 0 var(--ink)' }}
+                >
+                  {connected
+                    ? truncateAddress(account.address)
+                    : chain?.unsupported
+                      ? 'NETWORK'
+                      : 'CONNECT'}
+                </button>
+              </div>
             )
           }}
         </ConnectButton.Custom>
