@@ -10,6 +10,7 @@ import { SHAPES, TOTAL_WEIGHT } from '../engine/shapes'
 import type { ShapeDefinition } from '../engine/shapes'
 import ScoreBar from './ScoreBar'
 import GameOverModal from './GameOverModal'
+import NoGasModal from './NoGasModal'
 import { ComboOverlay } from './ComboOverlay'
 import { BrutalIcon } from './BrutalIcon'
 import {
@@ -24,7 +25,7 @@ import {
   useLeaderboard,
   useUsername,
 } from '../hooks/useBlokzGame'
-import { useAccount } from 'wagmi'
+import { useAccount, useBalance } from 'wagmi'
 import { keccak256, encodePacked } from 'viem'
 import contractInfo from '../contract.json'
 import {
@@ -393,6 +394,27 @@ const GameScreen: React.FC<GameScreenProps> = ({
   } = useGameStore()
 
   const { address, isConnected } = useAccount()
+
+  // ── No-gas detection ──────────────────────────────────────────────────────
+  // Threshold: 0.005 CELO — enough for ~3-5 typical contract writes.
+  // Skipped for MiniPay (gas is handled by the dApp) and unconnected wallets.
+  const GAS_THRESHOLD = 5_000_000_000_000_000n // 0.005 CELO in wei
+  const { data: celoBalance } = useBalance({
+    address,
+    query: { enabled: isConnected && !IS_MINIPAY, refetchInterval: 15_000 },
+  })
+  const hasNoGas =
+    isConnected && !IS_MINIPAY && celoBalance !== undefined && celoBalance.value < GAS_THRESHOLD
+
+  const [noGasDismissed, setNoGasDismissed] = useState(false)
+  // Re-surface the modal whenever the user re-enters the screen with no gas
+  useEffect(() => {
+    if (!hasNoGas) setNoGasDismissed(false)
+  }, [hasNoGas])
+
+  const showNoGasModal = hasNoGas && !noGasDismissed
+  // ─────────────────────────────────────────────────────────────────────────
+
   const {
     gModeEnabled,
     setGModeEnabled,
@@ -827,27 +849,33 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
   if (isMobile) {
     return (
-      <MobileLayout
-        score={score}
-        comboStreak={comboStreak}
-        bestScore={bestScore}
-        gameSession={gameSession}
-        onOpenLeaderboard={onOpenLeaderboard}
-        onBack={onBack}
-        canvasArea={canvasArea}
-      />
+      <>
+        <MobileLayout
+          score={score}
+          comboStreak={comboStreak}
+          bestScore={bestScore}
+          gameSession={gameSession}
+          onOpenLeaderboard={onOpenLeaderboard}
+          onBack={onBack}
+          canvasArea={canvasArea}
+        />
+        {showNoGasModal && <NoGasModal address={address} onDismiss={() => setNoGasDismissed(true)} />}
+      </>
     )
   }
 
   return (
-    <DesktopLayout
-      score={score}
-      comboStreak={comboStreak}
-      gameSession={gameSession}
-      bestScore={bestScore}
-      onOpenLeaderboard={onOpenLeaderboard}
-      canvasArea={canvasArea}
-    />
+    <>
+      <DesktopLayout
+        score={score}
+        comboStreak={comboStreak}
+        gameSession={gameSession}
+        bestScore={bestScore}
+        onOpenLeaderboard={onOpenLeaderboard}
+        canvasArea={canvasArea}
+      />
+      {showNoGasModal && <NoGasModal address={address} onDismiss={() => setNoGasDismissed(true)} />}
+    </>
   )
 }
 
