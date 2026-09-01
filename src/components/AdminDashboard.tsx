@@ -14,6 +14,7 @@ import {
 import { parseUnits, formatUnits } from 'viem'
 import { useChainId, useWaitForTransactionReceipt, useAccount, usePublicClient } from 'wagmi'
 import { celo } from 'wagmi/chains'
+import LevelMilestonesPanel from './LevelMilestonesPanel'
 import {
   useAdminRewards,
   adminAddReward,
@@ -614,6 +615,8 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {isAdmin && address && <LevelMilestonesPanel adminAddress={address} />}
     </div>
   )
 }

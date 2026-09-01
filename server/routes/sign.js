@@ -1,10 +1,9 @@
+import '../env.js'
 import { Router } from 'express'
 import { createPublicClient, http, fallback, keccak256, encodePacked } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { celo } from 'viem/chains'
-import dotenv from 'dotenv'
 import { replayAndValidateScore } from '../engine/scoreReplay.js'
-dotenv.config()
 
 // Backup public endpoints so a flaky primary RPC can't fail the on-chain game
 // verification and block legitimate score submissions with 503s.

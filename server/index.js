@@ -1,10 +1,9 @@
+import './env.js'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
 import morgan from 'morgan'
-import dotenv from 'dotenv'
-dotenv.config()
 
 import { globalLimiter } from './middleware/rateLimits.js'
 import signRouter, { account, publicClient, TOURNAMENT_ADDRESS } from './routes/sign.js'
@@ -12,6 +11,7 @@ import sessionRouter from './routes/session.js'
 import tournamentSessionRouter from './routes/tournament-session.js'
 import inventoryRouter from './routes/inventory.js'
 import rewardsRouter from './routes/rewards.js'
+import levelsRouter from './routes/levels.js'
 
 const app = express()
 
@@ -42,7 +42,9 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  // x-admin-address carries the caller's wallet on /levels/admin/* and
+  // /rewards/admin/*; without it here the browser's preflight blocks those.
+  allowedHeaders: ['Content-Type', 'x-admin-address'],
 }))
 
 // ── Compression ──────────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ app.use('/session', sessionRouter)
 app.use('/tournament-session', tournamentSessionRouter)
 app.use('/inventory', inventoryRouter)
 app.use('/rewards', rewardsRouter)
+app.use('/levels', levelsRouter)
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }))

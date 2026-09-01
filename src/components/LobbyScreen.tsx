@@ -23,6 +23,9 @@ import { NewsNudge } from './GameNotification'
 import CampaignReminderModal from './CampaignReminderModal'
 import WinnerClaimModal from './WinnerClaimModal'
 import PlayerRewardsPanel from './PlayerRewardsPanel'
+import LevelPanel from './LevelPanel'
+import LevelUpModal from './LevelUpModal'
+import { usePlayerLevel } from '../hooks/usePlayerLevel'
 
 const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 
@@ -528,6 +531,11 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
 
   const { leaderboard, currentEpoch } = useLeaderboard()
   const { count: tournamentCount } = useTournamentCount()
+
+  // The desktop rail and the mobile stack are both mounted — visibility is a
+  // CSS concern — so the ladder is subscribed once here and passed down, and
+  // the level-up modal is rendered once at screen level.
+  const { state: levelState, isLoading: levelLoading } = usePlayerLevel(address)
 
   const tournamentContracts = useMemo(
     () =>
@@ -1205,6 +1213,11 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 <PlayerRewardsPanel address={address} />
               </FadeUp>
             )}
+            {address && (
+              <FadeUp delay={80}>
+                <LevelPanel state={levelState} isLoading={levelLoading} />
+              </FadeUp>
+            )}
             <FadeUp delay={100}>
               <RailShell title="WEEKLY LADDER" accent>
                 <div className="space-y-2">
@@ -1335,11 +1348,20 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
         <div className="mx-auto flex max-w-lg flex-col gap-3 pb-4 lg:hidden">
           {address && <PlayerRewardsPanel address={address} />}
           {heroStack}
+          {address && <LevelPanel state={levelState} isLoading={levelLoading} />}
         </div>
       </div>
 
       {showUsernameModal && (
         <UsernameSetupModal onDismiss={() => setShowUsernameModal(false)} />
+      )}
+
+      {address && levelState && levelState.advanced.length > 0 && (
+        <LevelUpModal
+          address={address}
+          advances={levelState.advanced}
+          accent={levelState.accent}
+        />
       )}
 
       <NewsNudge

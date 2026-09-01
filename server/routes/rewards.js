@@ -1,5 +1,7 @@
 import { Router } from 'express'
-import { supabase } from '../db/supabase.js'
+// The rewards table lives in its own Supabase project, not the one holding
+// sessions and inventory — every query here goes through that client.
+import { rewardsDb } from '../db/rewardsDb.js'
 
 const router = Router()
 
@@ -13,8 +15,8 @@ const ADMIN_ADDRESSES = new Set(
 )
 
 function requireDb(res) {
-  if (!supabase) {
-    res.status(503).json({ error: 'Session persistence not configured' })
+  if (!rewardsDb) {
+    res.status(503).json({ error: 'Rewards project not configured' })
     return false
   }
   return true
@@ -34,31 +36,6 @@ function requireAdmin(req, res) {
 }
 
 /**
- * GET /rewards/:address
- * Returns all rewards (claimed + unclaimed) for a player.
- * Cash link URLs are never included — only returned at claim time.
- */
-router.get('/:address', async (req, res) => {
-  if (!requireDb(res)) return
-  const { address } = req.params
-
-  if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
-
-  const { data, error } = await supabase
-    .from('rewards')
-    .select('id, label, amount, token, claimed_at, created_at')
-    .eq('address', address.toLowerCase())
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('rewards/get error:', error)
-    return res.status(500).json({ error: 'Failed to fetch rewards' })
-  }
-
-  res.json({ rewards: data ?? [] })
-})
-
-/**
  * POST /rewards/claim
  * Marks a reward as claimed and returns the cash link URL.
  * The URL is only revealed here — never in the list endpoint.
@@ -70,7 +47,7 @@ router.post('/claim', async (req, res) => {
   if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
   if (!rewardId) return res.status(400).json({ error: 'rewardId required' })
 
-  const { data: reward, error: fetchError } = await supabase
+  const { data: reward, error: fetchError } = await rewardsDb
     .from('rewards')
     .select('id, address, cash_link_url, claimed_at')
     .eq('id', rewardId)
@@ -84,7 +61,7 @@ router.post('/claim', async (req, res) => {
     return res.json({ ok: true, cashLinkUrl: reward.cash_link_url, alreadyClaimed: true })
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await rewardsDb
     .from('rewards')
     .update({ claimed_at: new Date().toISOString() })
     .eq('id', rewardId)
@@ -113,7 +90,7 @@ router.post('/admin/add', async (req, res) => {
   if (!amount) return res.status(400).json({ error: 'amount required' })
   if (!label) return res.status(400).json({ error: 'label required' })
 
-  const { data, error } = await supabase
+  const { data, error } = await rewardsDb
     .from('rewards')
     .insert({
       address:       address.toLowerCase(),
@@ -141,7 +118,7 @@ router.get('/admin/all', async (req, res) => {
   if (!requireDb(res)) return
   if (!requireAdmin(req, res)) return
 
-  const { data, error } = await supabase
+  const { data, error } = await rewardsDb
     .from('rewards')
     .select('id, address, label, amount, token, claimed_at, created_at')
     .order('created_at', { ascending: false })
@@ -164,7 +141,7 @@ router.delete('/admin/:id', async (req, res) => {
 
   const { id } = req.params
 
-  const { data: reward } = await supabase
+  const { data: reward } = await rewardsDb
     .from('rewards')
     .select('claimed_at')
     .eq('id', id)
@@ -174,7 +151,7 @@ router.delete('/admin/:id', async (req, res) => {
     return res.status(409).json({ error: 'Cannot delete a claimed reward' })
   }
 
-  const { error } = await supabase.from('rewards').delete().eq('id', id)
+  const { error } = await rewardsDb.from('rewards').delete().eq('id', id)
 
   if (error) {
     console.error('rewards/admin/delete error:', error)
@@ -182,6 +159,31 @@ router.delete('/admin/:id', async (req, res) => {
   }
 
   res.json({ ok: true })
+})
+
+/**
+ * GET /rewards/:address
+ * Returns all rewards (claimed + unclaimed) for a player.
+ * Cash link URLs are never included — only returned at claim time.
+ */
+router.get('/:address', async (req, res) => {
+  if (!requireDb(res)) return
+  const { address } = req.params
+
+  if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
+
+  const { data, error } = await rewardsDb
+    .from('rewards')
+    .select('id, label, amount, token, claimed_at, created_at')
+    .eq('address', address.toLowerCase())
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('rewards/get error:', error)
+    return res.status(500).json({ error: 'Failed to fetch rewards' })
+  }
+
+  res.json({ rewards: data ?? [] })
 })
 
 export default router
