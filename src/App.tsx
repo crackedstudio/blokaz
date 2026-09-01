@@ -6,6 +6,7 @@ import SplashScreen from './components/SplashScreen'
 import { ShopModal } from './components/ShopModal'
 import { isShopLotteryEnabled } from './utils/featureFlags'
 import { usePowerUpStore } from './stores/powerUpStore'
+import { useMetaStore } from './stores/metaStore'
 import { useInventorySync } from './hooks/useInventorySync'
 
 // Lazy-loaded: these are large chunks not needed on initial paint
@@ -95,8 +96,13 @@ const App: React.FC = () => {
 
   // Ensure powerUpStore always has currentAddress set as soon as wallet connects,
   // so lobby purchases (addInventory) save to localStorage correctly.
+  // metaStore is address-keyed too — loading it here also rolls today's missions
+  // if the local day changed since the last visit.
   useEffect(() => {
-    if (address) usePowerUpStore.getState().loadForAddress(address)
+    if (address) {
+      usePowerUpStore.getState().loadForAddress(address)
+      useMetaStore.getState().loadForAddress(address)
+    }
   }, [address])
 
   // Sync inventory to/from server whenever wallet is connected

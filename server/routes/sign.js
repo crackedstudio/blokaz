@@ -94,10 +94,10 @@ async function verifyOnChainGame(tid, gid, seed, player) {
   return { localSeed: BigInt(expectedHash.slice(0, 18)) }
 }
 
-function validateScore(tid, gid, score, moves, localSeed) {
-  console.log(`Validating score for Tournament ${tid}, Game ${gid}: ${score} (${moves?.length ?? 0} moves)`)
-  const result = replayAndValidateScore(moves, Number(score), localSeed)
-  if (!result.ok) console.warn(`[sign] Score replay failed for tid=${tid} gid=${gid} claimed=${score}: ${result.reason}`)
+function validateScore(tid, gid, score, moves, localSeed, rulesVersion) {
+  console.log(`Validating score for Tournament ${tid}, Game ${gid}: ${score} (${moves?.length ?? 0} moves, rules v${rulesVersion})`)
+  const result = replayAndValidateScore(moves, Number(score), localSeed, rulesVersion)
+  if (!result.ok) console.warn(`[sign] Score replay failed for tid=${tid} gid=${gid} claimed=${score} rules=v${rulesVersion}: ${result.reason}`)
   return result.ok
 }
 
@@ -149,6 +149,13 @@ router.post('/sign-submit', async (req, res) => {
       return res.status(400).json({ error: 'Invalid player or seed' })
     }
 
+    // Ruleset the run was played under. Pre-v2 clients don't send the field;
+    // their games were played under v1 and must be validated as v1.
+    const rulesVersion = req.body.rulesVersion === undefined ? 1 : Number(req.body.rulesVersion)
+    if (rulesVersion !== 1 && rulesVersion !== 2) {
+      return res.status(400).json({ error: 'Invalid rulesVersion' })
+    }
+
     // Verify against the on-chain game before signing anything. RPC failures
     // return 503 so the client's retry loop can try again — never sign blind.
     let onChain
@@ -162,7 +169,7 @@ router.post('/sign-submit', async (req, res) => {
       return res.status(403).json({ error: onChain.error })
     }
 
-    if (!validateScore(tid, gid, score, moves, onChain.localSeed)) {
+    if (!validateScore(tid, gid, score, moves, onChain.localSeed, rulesVersion)) {
       return res.status(403).json({ error: 'Invalid score submission' })
     }
 

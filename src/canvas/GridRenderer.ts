@@ -1,5 +1,6 @@
 import { Grid } from '../engine/grid'
 import type { TierInfo } from '../engine/scoring'
+import { TIER_STRIPED, TIER_COSMIC } from '../engine/rules'
 
 export const COLOR_PALETTE = {
   0: 'transparent',
@@ -115,6 +116,10 @@ export class GridRenderer {
         }
       }
     }
+
+    // STRIPED tier mechanic — preview lines that are nearly complete so the
+    // player can see combo potential at a glance instead of counting cells.
+    this.drawNearCompletePreview(grid, tierId)
 
     // Gridlines
     this.ctx.strokeStyle = rule
@@ -711,6 +716,69 @@ export class GridRenderer {
       this.ctx.globalCompositeOperation = 'source-over'
       this.ctx.globalAlpha = 1
       this.ctx.restore()
+    }
+  }
+
+  /**
+   * STRIPED tier (1.5k+) and above: softly light the remaining gaps in any row
+   * or column that is one or two cells from clearing, and — once COSMIC unlocks
+   * diagonal clears — the two diagonals as well.
+   *
+   * Purely visual. It reads board state and paints; it never influences
+   * scoring, so it stays outside the replay-verified path entirely.
+   */
+  private drawNearCompletePreview(grid: Uint8Array, tierId: number): void {
+    if (tierId < TIER_STRIPED) return
+
+    const accent = this.tier?.accent ?? '#ff7a1a'
+    // Slow pulse so the hint reads as ambient rather than as an alert.
+    const pulse = 0.5 + 0.5 * Math.sin(this.t / 320)
+    const pad = 1.8
+    const size = this.cellSize - pad * 2
+    if (size <= 0) return
+
+    // gaps === 1 is one placement away and gets the stronger glow.
+    const alphaFor = (gaps: number) => (gaps === 1 ? 0.3 + 0.22 * pulse : 0.12 + 0.1 * pulse)
+
+    const paint = (cells: Array<[number, number]>, gaps: number) => {
+      this.ctx.save()
+      this.ctx.globalAlpha = alphaFor(gaps)
+      this.ctx.fillStyle = accent
+      for (const [r, c] of cells) {
+        this.ctx.fillRect(c * this.cellSize + pad, r * this.cellSize + pad, size, size)
+      }
+      this.ctx.restore()
+    }
+
+    // Rows
+    for (let r = 0; r < 9; r++) {
+      const gapCells: Array<[number, number]> = []
+      for (let c = 0; c < 9; c++) {
+        if (Grid.getCell(grid, r, c) === 0) gapCells.push([r, c])
+      }
+      if (gapCells.length > 0 && gapCells.length <= 2) paint(gapCells, gapCells.length)
+    }
+
+    // Columns
+    for (let c = 0; c < 9; c++) {
+      const gapCells: Array<[number, number]> = []
+      for (let r = 0; r < 9; r++) {
+        if (Grid.getCell(grid, r, c) === 0) gapCells.push([r, c])
+      }
+      if (gapCells.length > 0 && gapCells.length <= 2) paint(gapCells, gapCells.length)
+    }
+
+    // Diagonals — only meaningful once COSMIC makes them clearable.
+    if (tierId >= TIER_COSMIC) {
+      for (const isMain of [true, false]) {
+        const gapCells: Array<[number, number]> = []
+        for (let i = 0; i < 9; i++) {
+          const r = i
+          const c = isMain ? i : 8 - i
+          if (Grid.getCell(grid, r, c) === 0) gapCells.push([r, c])
+        }
+        if (gapCells.length > 0 && gapCells.length <= 2) paint(gapCells, gapCells.length)
+      }
     }
   }
 

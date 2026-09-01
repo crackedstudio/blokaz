@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import { usePowerUpStore } from '../stores/powerUpStore'
+import { useMetaStore } from '../stores/metaStore'
+import { summarizeRun } from '../engine/meta'
 import { useStablecoinRevive } from '../hooks/useStablecoinRevive'
 import {
   STABLECOIN_TOKENS,
@@ -57,6 +59,26 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
   onOpenLeaderboard,
 }) => {
   const { address } = useAccount()
+
+  // ── Meta-progression: fold the finished run into level / missions / achievements.
+  //
+  // Recorded on unmount rather than on mount, because a revive re-opens this
+  // modal later with a longer run. The captured session is the same JS object
+  // throughout, so `isGameOver` tells the two cases apart: a revive clears it
+  // (skip — the run continues and will be recorded when it really ends), while
+  // Play Again / Back leave it set on the old session even after the store has
+  // moved on to a new one. Net effect: exactly one record per run, with final
+  // post-revive numbers. Purely local — no chain or signer involvement.
+  const metaSessionRef = useRef(useGameStore.getState().gameSession)
+  useEffect(() => {
+    const session = metaSessionRef.current
+    if (!session) return
+    return () => {
+      if (!session.isGameOver) return
+      useMetaStore.getState().recordRun(summarizeRun(session.moveHistory, session.score))
+    }
+  }, [])
+
   // Each contract tracks its own activeGame mapping — use the right one per mode
   const {
     gameId: classicActiveGameId,
@@ -341,7 +363,8 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
               gameSession.score,
               gameSession.moveHistory,
               recoveredSeed,
-              address!
+              address!,
+              gameSession.rulesVersion
             )
         submitTournamentScore(
           tournamentId!,
@@ -602,7 +625,8 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
       gameSession.score,
       gameSession.moveHistory,
       recoveredSeed,
-      address
+      address,
+      gameSession.rulesVersion
     )
       .then((sig) => {
         if (cancelled) return

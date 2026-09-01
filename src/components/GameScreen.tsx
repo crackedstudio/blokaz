@@ -745,7 +745,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
       const stored = readStoredGameSession(CLASSIC_SESSION_STORAGE_KEY, address, GAME_ADDRESS)
       if (stored?.snapshot?.moveHistory?.length) {
         const boost = !!(stored.snapshot as any).scoreBoostActive
-        const restoredSession = replayMoveHistory(localSeed, stored.snapshot.moveHistory, boost)
+        const restoredSession = replayMoveHistory(
+          localSeed,
+          stored.snapshot.moveHistory,
+          boost,
+          stored.rulesVersion
+        )
         // Restore the original moveHistory so marker records (revive, bomb, lottery)
         // are preserved. replayMoveHistory processes them without pushing them to
         // the session's own moveHistory, which would corrupt future snapshots.
@@ -1170,12 +1175,21 @@ const GameScreen: React.FC<GameScreenProps> = ({
         const idx = activeIdx ?? selectedIdx!
         const shape = currentSession.currentPieces[idx]
         if (shape) {
-          ghostCells = (shape.cells as [number, number][])
-            .map(([dr, dc]) => ({
-              row: ghost.row + dr,
-              col: ghost.col + dc,
-              valid: ghost.valid,
-            }))
+          // At LIQUID/GLITCH tiers the piece can change shape or slide a row as
+          // it lands, so preview the real landing cells rather than the raw
+          // outline. Returns null for an illegal drop — fall back to the
+          // outline so the player still sees the invalid-placement feedback.
+          const landing = ghost.valid
+            ? currentSession.previewPlacement(idx, ghost.row, ghost.col)
+            : null
+
+          ghostCells = (
+            landing ??
+            (shape.cells as [number, number][]).map(
+              ([dr, dc]) => [ghost.row + dr, ghost.col + dc] as [number, number]
+            )
+          )
+            .map(([row, col]) => ({ row, col, valid: ghost.valid }))
             .filter(
               (cell) =>
                 cell.row >= 0 && cell.row < 9 && cell.col >= 0 && cell.col < 9
@@ -1309,7 +1323,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       ? !!serverSession!.scoreBoostActive
       : !!(stored?.snapshot as any)?.scoreBoostActive
 
-    const restoredSession = replayMoveHistory(localSeed, moves, boost)
+    const restoredSession = replayMoveHistory(localSeed, moves, boost, stored?.rulesVersion)
     // Replace the replayed moveHistory with the original snapshot moveHistory.
     // replayMoveHistory processes marker records (revive, bomb, lottery) without
     // pushing them to the session's moveHistory, so the replayed history is

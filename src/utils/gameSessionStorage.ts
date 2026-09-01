@@ -1,4 +1,6 @@
 import type { MoveRecord } from '../engine/game'
+import { CURRENT_RULES_VERSION } from '../engine/rules'
+import type { RulesVersion } from '../engine/rules'
 
 export const CLASSIC_SESSION_STORAGE_KEY = 'blokaz_classic_session'
 export const TOURNAMENT_SESSION_STORAGE_KEY = 'blokaz_tournament_session'
@@ -10,6 +12,10 @@ export interface StoredGameSession {
   gameId: string | null
   contractAddress: `0x${string}`
   tournamentId?: string | null
+  // Scoring ruleset this run was started under. Absent means the run was
+  // written by a pre-v2 client, so it must be restored and submitted as v1 —
+  // replaying it under current rules would change its deals and its score.
+  rulesVersion?: RulesVersion
   // In-progress run backup, written on score change / revive / app-hide and
   // replayed by replayMoveHistory() to restore the session after a crash.
   snapshot?: { moveHistory: MoveRecord[]; scoreBoostActive?: boolean }
@@ -40,7 +46,9 @@ export function readStoredGameSession(
       return null
     }
 
-    return data
+    // A stored run with no ruleset was written by a pre-v2 client and must be
+    // restored and submitted as v1.
+    return { ...data, rulesVersion: data.rulesVersion ?? 1 } as StoredGameSession
   } catch (error) {
     console.error('Failed to parse stored game session', error)
     return null
@@ -48,7 +56,27 @@ export function readStoredGameSession(
 }
 
 export function writeStoredGameSession(storageKey: string, session: StoredGameSession) {
-  localStorage.setItem(storageKey, JSON.stringify(session))
+  let rulesVersion = session.rulesVersion
+
+  if (rulesVersion === undefined) {
+    // Callers build these records fresh, so an unset ruleset means "whatever
+    // this run already had". Carrying the previous value forward keeps a run
+    // that was started under v1 on v1 for its whole life, even across a deploy
+    // that changed the rules mid-run. Only a genuinely new run (nothing stored,
+    // or a different seed) is stamped with the current ruleset.
+    try {
+      const raw = localStorage.getItem(storageKey)
+      const prev = raw ? (JSON.parse(raw) as StoredGameSession) : null
+      rulesVersion =
+        prev && prev.seed === session.seed
+          ? prev.rulesVersion ?? 1
+          : CURRENT_RULES_VERSION
+    } catch {
+      rulesVersion = CURRENT_RULES_VERSION
+    }
+  }
+
+  localStorage.setItem(storageKey, JSON.stringify({ ...session, rulesVersion }))
 }
 
 export function clearStoredGameSession(storageKey: string) {

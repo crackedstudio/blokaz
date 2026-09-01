@@ -15,6 +15,7 @@ import contractInfo from '../contract.json'
 import { isWebBrowser, isWebTrialGated } from '../utils/miniPay'
 import { isWebWhitelisted } from '../utils/featureFlags'
 import { MiniPayGateModal } from './MiniPayGateModal'
+import MetaPanel from './MetaPanel'
 import UsernameSetupModal, {
   hasDismissedUsernamePrompt,
 } from './UsernameSetupModal'
@@ -907,6 +908,11 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
             </div>
           </button>
         </div>
+      </FadeUp>
+
+      {/* Level, XP and today's missions — the reason to come back today */}
+      <FadeUp delay={460}>
+        <MetaPanel />
       </FadeUp>
 
       {/* Shop — whitelisted addresses only */}
