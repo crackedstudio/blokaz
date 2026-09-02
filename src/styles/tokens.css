@@ -48,6 +48,9 @@
      single token cannot serve both surfaces in a light theme. */
   --label: #ffd51f;
   --label-soft: #7a6400;
+  /* Locked-badge surface. Not --paper-2: a locked badge has to read as
+     recessed, and --paper-2 is *lighter* than paper in the light theme. */
+  --badge-lock: #e4ddce;
   --hero: #ff7a1a;
   --dot: rgba(12, 12, 16, 0.08);
   --danger: #ff3d3d;
@@ -121,6 +124,7 @@
   --accent-soft: #2f6bff;
   --label: #ffd51f;
   --label-soft: #ffd51f;
+  --badge-lock: #1c2c4d;
   --hero: #16307a;
   --dot: rgba(230, 238, 255, 0.06);
   --danger: #ff3d3d;
@@ -182,6 +186,8 @@
      --piece-yellow stayed #ffd51f, so two yellows appeared side by side. */
   --label: #ffd51f;
   --label-soft: #ffd51f;
+  /* The design's forest lock swatch, pulled onto this theme's H140 ramp. */
+  --badge-lock: #1e4029;
   --hero: #10602b;
   --dot: rgba(229, 245, 234, 0.06);
   --danger: #ff3d3d;

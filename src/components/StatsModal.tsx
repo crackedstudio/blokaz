@@ -15,6 +15,7 @@ import { ACHIEVEMENTS, isMissionComplete, MAX_LEVEL } from '../engine/meta'
 import { BrutalIcon } from './BrutalIcon'
 import MissionRow from './MissionRow'
 import { BlockRain } from './blocks/BlockFX'
+import { AchievementBadge } from './badges'
 
 // ── Section heading ──────────────────────────────────────────────────────────
 
@@ -87,11 +88,12 @@ const StatTile: React.FC<{
 // ── One achievement ──────────────────────────────────────────────────────────
 
 const AchievementRow: React.FC<{
+  id: string
   name: string
   description: string
   xp: number
   unlocked: boolean
-}> = ({ name, description, xp, unlocked }) => (
+}> = ({ id, name, description, xp, unlocked }) => (
   <div
     className="flex items-center gap-3 border-[2px] border-ink px-3 py-2.5"
     style={{
@@ -100,15 +102,7 @@ const AchievementRow: React.FC<{
       opacity: unlocked ? 1 : 0.62,
     }}
   >
-    <span
-      className="flex h-[26px] w-[26px] shrink-0 items-center justify-center border-[2px] border-ink"
-      style={{
-        background: unlocked ? 'var(--accent-lime)' : 'var(--paper-2)',
-        color: unlocked ? 'var(--ink-fixed)' : 'var(--ink-soft)',
-      }}
-    >
-      <BrutalIcon name={unlocked ? 'crown' : 'star'} size={13} strokeWidth={2.5} />
-    </span>
+    <AchievementBadge id={id} name={name} size={34} locked={!unlocked} />
     <div className="min-w-0 flex-1 leading-tight">
       <div className="truncate font-display text-[10px] tracking-[0.1em]">{name}</div>
       <div
@@ -325,6 +319,7 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
                 .map((achievement) => (
                   <AchievementRow
                     key={achievement.id}
+                    id={achievement.id}
                     name={achievement.name}
                     description={achievement.description}
                     xp={achievement.xp}

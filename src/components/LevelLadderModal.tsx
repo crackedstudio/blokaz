@@ -1,6 +1,7 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { BrutalIcon } from './BrutalIcon'
+import { LadderBadge, type LadderBadgeState } from './badges'
 import {
   LEVELS,
   MAX_LEVEL,
@@ -12,6 +13,18 @@ import type { LevelState } from '../hooks/usePlayerLevel'
 
 /** Where a level sits relative to the player right now. */
 type RowStatus = 'cleared' | 'current' | 'reclaim' | 'locked'
+
+/**
+ * The ladder tracks four positions but the badge art has three states:
+ * `cleared` and `reclaim` both mean the reward has already been paid, which is
+ * exactly what the claimed ribbon says.
+ */
+const BADGE_STATE: Record<RowStatus, LadderBadgeState> = {
+  cleared: 'claimed',
+  current: 'earned',
+  reclaim: 'claimed',
+  locked: 'locked',
+}
 
 const STATUS_LABEL: Record<RowStatus, string> = {
   cleared: 'CLEARED',
@@ -58,29 +71,23 @@ const LadderRow: React.FC<{ level: number; state: LevelState }> = ({
         opacity: isLocked ? 0.55 : 1,
       }}
     >
-      {/* ── Rung header ── */}
+      {/* ── Rung header ──
+          Neutral now that the badge carries the level's colour. Painting the
+          header in spec.accent as well put the badge on a field of its own
+          fill, which left the artwork nothing to say — the only thing marking
+          the badge out was its border. */}
       <div
         className="flex items-center justify-between gap-2 border-b-[2px] border-ink px-3 py-2"
         style={{
-          background: isLocked ? 'var(--paper-2)' : spec.accent,
-          color: isLocked ? 'var(--ink-soft)' : 'var(--ink-fixed)',
+          background: 'var(--paper)',
+          color: isLocked ? 'var(--ink-soft)' : 'var(--ink)',
         }}
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="font-display text-[11px] tracking-[0.1em]">
-            {level}
-          </span>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <LadderBadge level={level} size={34} state={BADGE_STATE[status]} showLevel={false} />
           <span className="truncate font-display text-[11px] tracking-[0.06em]">
-            {spec.name}
+            {level} · {spec.name}
           </span>
-          {spec.cashMilestone && (
-            <span
-              className="shrink-0 border-[2px] border-ink px-1 font-display text-[7px] tracking-[0.1em]"
-              style={{ background: 'var(--paper)', color: 'var(--ink)' }}
-            >
-              CASH
-            </span>
-          )}
         </span>
         <span className="flex shrink-0 items-center gap-1 font-display text-[8px] tracking-[0.1em]">
           {status === 'cleared' && (

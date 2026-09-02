@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { audioEngine } from '../audio/AudioEngine'
 import { BrutalIcon } from './BrutalIcon'
+import { LadderBadge } from './badges'
 import { levelSpec } from '../constants/levels'
 import type { LevelAdvance } from '../hooks/usePlayerLevel'
 
@@ -124,7 +125,11 @@ const LevelUpModal: React.FC<Props> = ({ address, advances, accent }) => {
               {shown.length > 1 ? `${shown.length} LEVELS CLEARED` : 'LEVEL UP'}
             </span>
           </div>
-          <div className="mt-2 font-display text-[26px] leading-none tracking-[-0.02em]">
+          {/* The badge at its largest — this is the moment it was drawn for. */}
+          <div className="mt-4 flex justify-center">
+            <LadderBadge level={top.level} size={96} state="earned" showLevel={false} />
+          </div>
+          <div className="mt-5 font-display text-[26px] leading-none tracking-[-0.02em]">
             LEVEL {top.level}
           </div>
           <div

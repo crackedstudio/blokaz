@@ -30,6 +30,7 @@ import { BrutalIcon } from '../BrutalIcon'
 import MissionRow, { Pips } from '../MissionRow'
 import LevelLadderModal from '../LevelLadderModal'
 import { BlockCluster } from '../blocks/BlockFX'
+import { LadderBadge } from '../badges'
 
 type Track = 'weekly' | 'career'
 
@@ -44,22 +45,27 @@ const OBJECTIVE_ICONS: Record<ObjectiveKey, 'play' | 'trophy' | 'shop' | 'star'>
 
 /** A track's headline: level chip, name, the one number that matters, progress. */
 const TrackHead: React.FC<{
+  /** Either a level numeral (career) or a badge (weekly). */
   level: React.ReactNode
   chipBg: string
   chipFg: string
+  /** Weekly passes its badge here; the plain chip is skipped when set. */
+  badge?: React.ReactNode
   name: string
   note: string
   ratio: number
   fill: string
-}> = ({ level, chipBg, chipFg, name, note, ratio, fill }) => (
+}> = ({ level, chipBg, chipFg, badge, name, note, ratio, fill }) => (
   <div>
     <div className="flex items-center gap-3">
-      <span
-        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center border-[3px] border-ink font-display text-[22px] tabular-nums"
-        style={{ background: chipBg, color: chipFg, letterSpacing: '-0.04em' }}
-      >
-        {level}
-      </span>
+      {badge ?? (
+        <span
+          className="flex h-[46px] w-[46px] shrink-0 items-center justify-center border-[3px] border-ink font-display text-[22px] tabular-nums"
+          style={{ background: chipBg, color: chipFg, letterSpacing: '-0.04em' }}
+        >
+          {level}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div
           className="truncate font-display uppercase"
@@ -284,6 +290,7 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                     level={levelState.level}
                     chipBg={accent}
                     chipFg="var(--ink-fixed)"
+                    badge={<LadderBadge level={levelState.level} size={46} state="earned" />}
                     name={levelState.name}
                     note={`Level ${levelState.level} of ${MAX_WEEKLY_LEVEL} · ${Math.floor(
                       weeklyCompletion * 100
