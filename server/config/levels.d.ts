@@ -69,3 +69,16 @@ export interface ClimbResult {
 
 /** How far this week's progress carries a player from `level`. */
 export declare function climb(level: number, progress: Partial<LevelTargets>): ClimbResult
+
+/** Optional global re-baseline (ISO 8601). Unset by default. */
+export declare const LADDER_EPOCH: string | null
+
+/**
+ * The latest of the week start, the player's join date, and any global
+ * re-baseline, as an ISO timestamp.
+ */
+export declare function progressWindowStart(
+  weekStart: string,
+  joinedAt?: string | null,
+  epoch?: string | null
+): string

@@ -19,6 +19,7 @@ import {
   meetsTargets as serverMeetsTargets,
   applyRollover,
   climb,
+  progressWindowStart,
   weekStartOf,
   weeksBetween,
 } from '../../../server/config/levels.js'
@@ -85,9 +86,15 @@ describe('difficulty curve', () => {
   it('opens on the agreed floor of 10 games and 10 tournament games', () => {
     expect(LEVELS[1].targets.games).toBe(10)
     expect(LEVELS[1].targets.tournaments).toBe(10)
-    // Nothing that costs money at the shop is required to get onto the ladder.
-    expect(LEVELS[1].targets.purchases).toBe(0)
-    expect(LEVELS[2].targets.purchases).toBe(0)
+  })
+
+  it('requires a shop purchase at every level', () => {
+    // A deliberate product decision: because all four objectives must be met,
+    // this makes buying at least one item a condition of advancing anywhere,
+    // level 1 included. A player who never spends is capped at level 1.
+    for (let n = 1; n <= MAX_LEVEL; n++) {
+      expect(LEVELS[n].targets.purchases, `level ${n} has no purchase target`).toBeGreaterThan(0)
+    }
   })
 
   it('keeps the combined weekly game load inside a plausible ceiling', () => {
@@ -114,16 +121,12 @@ describe('meetsTargets', () => {
   })
 
   it('treats a zero target as already met', () => {
-    // Level 1 asks for no shop purchases, so a player who has bought nothing
-    // must still be able to clear it.
-    expect(LEVELS[1].targets.purchases).toBe(0)
-    const t = LEVELS[1].targets
-    expect(
-      meetsTargets(
-        progress({ games: t.games, tournaments: t.tournaments, points: t.points }),
-        t
-      )
-    ).toBe(true)
+    // No level currently sets a target to zero, but the comparison must still
+    // hold if one is ever tuned back down — otherwise a level would become
+    // permanently unclearable rather than trivially satisfied.
+    const noPurchasesNeeded = { games: 2, tournaments: 0, purchases: 0, points: 100 }
+    expect(meetsTargets(progress({ games: 2, points: 100 }), noPurchasesNeeded)).toBe(true)
+    expect(objectiveRatio(0, 0)).toBe(1)
   })
 
   it('agrees with the server for every level', () => {
@@ -352,5 +355,49 @@ describe('climb', () => {
     expect(result.held).toBe(true)
     // Every level from 1 to 12 paid out exactly once.
     expect(result.cleared).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  })
+})
+
+describe('progress window', () => {
+  const JOINED = '2026-09-02T14:30:00Z'
+
+  it('measures from the join date during the week a player starts', () => {
+    // The counters read tables that have been recording for months, so without
+    // this a player opening the updated app on Wednesday would be credited for
+    // everything they did since Monday and find objectives already ticked.
+    expect(progressWindowStart('2026-08-31', JOINED)).toBe('2026-09-02T14:30:00.000Z')
+  })
+
+  it('measures from the week start once that first week is over', () => {
+    expect(progressWindowStart('2026-09-07', JOINED)).toBe('2026-09-07T00:00:00Z')
+    expect(progressWindowStart('2026-09-14', JOINED)).toBe('2026-09-14T00:00:00Z')
+  })
+
+  it('falls back to the week start for a player with no join date', () => {
+    expect(progressWindowStart('2026-09-07')).toBe('2026-09-07T00:00:00Z')
+    expect(progressWindowStart('2026-09-07', null)).toBe('2026-09-07T00:00:00Z')
+  })
+
+  it('ignores an unparseable date instead of zeroing every counter', () => {
+    // Date.parse returning NaN must not propagate into the query window, or
+    // the RPC matches nothing and the player looks like they did nothing.
+    expect(progressWindowStart('2026-09-07', 'garbage')).toBe('2026-09-07T00:00:00Z')
+    expect(progressWindowStart('2026-09-07', null, 'garbage')).toBe('2026-09-07T00:00:00Z')
+  })
+
+  it('never rewinds the window before the current week', () => {
+    // Whatever the join date, a player can never be credited for a previous
+    // week's activity — the window only ever moves forward.
+    for (const week of ['2026-09-07', '2026-09-14', '2026-10-05']) {
+      const start = Date.parse(progressWindowStart(week, JOINED))
+      expect(start).toBeGreaterThanOrEqual(Date.parse(`${week}T00:00:00Z`))
+    }
+  })
+
+  it('lets a global re-baseline override a older join date', () => {
+    // The escape hatch for redefining objectives: LADDER_EPOCH resets everyone.
+    expect(progressWindowStart('2026-08-31', JOINED, '2026-09-04T00:00:00Z')).toBe(
+      '2026-09-04T00:00:00.000Z'
+    )
   })
 })
