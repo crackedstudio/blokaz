@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { BrutalIcon } from './BrutalIcon'
 import {
   LEVELS,
@@ -153,9 +154,13 @@ interface Props {
  * player's own position marked. Everything here comes from the client mirror in
  * constants/levels.ts, so opening it costs no round trip.
  */
-const LevelLadderModal: React.FC<Props> = ({ state, onClose }) => (
-  <div
-    className="fixed inset-0 z-[94] flex items-center justify-center p-3"
+const LevelLadderModal: React.FC<Props> = ({ state, onClose }) =>
+  // Portalled to the body: the lobby animates its tiles in, and any lingering
+  // transform on an ancestor would become the containing block for this fixed
+  // overlay, trapping it inside a grid cell instead of covering the screen.
+  createPortal(
+    <div
+      className="fixed inset-0 z-[94] flex items-center justify-center p-3"
     style={{ background: 'rgba(0,0,0,0.55)' }}
     role="dialog"
     aria-modal="true"
@@ -214,8 +219,9 @@ const LevelLadderModal: React.FC<Props> = ({ state, onClose }) => (
           <LadderRow key={level} level={level} state={state} />
         ))}
       </div>
-    </div>
-  </div>
-)
+      </div>
+    </div>,
+    document.body
+  )
 
 export default LevelLadderModal

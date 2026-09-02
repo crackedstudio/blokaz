@@ -10,6 +10,7 @@ import { useThemeStore, type UserTheme, type ThemeName } from '../stores/themeSt
 import LegalModal, { type LegalModalType } from './LegalModal'
 import FAQSheet from './FAQSheet'
 import HowToPlayModal from './HowToPlayModal'
+import StatsModal from './StatsModal'
 import { usePlayerRewards, getRewardUrl } from '../hooks/useRewards'
 
 type HeaderView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
@@ -166,6 +167,7 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [legalModal, setLegalModal] = React.useState<LegalModalType>(null)
   const [showFAQ, setShowFAQ] = React.useState(false)
   const [showHowToPlay, setShowHowToPlay] = React.useState(false)
+  const [showStats, setShowStats] = React.useState(false)
   const { userTheme, setUserTheme } = useThemeStore((s) => ({
     userTheme: s.userTheme,
     setUserTheme: s.setUserTheme,
@@ -325,6 +327,30 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   ))}
                 </div>
               </div>
+
+              {/* Level, missions and lifetime records — the desktop nav's MY
+                  STATS button has no room in the mobile tab bar, so it lives
+                  here, attached to the profile it describes. */}
+              <button
+                onClick={() => setShowStats(true)}
+                className="mt-3 flex w-full items-center justify-between border-[3px] border-ink px-5 py-4 text-left"
+                style={{
+                  background: 'var(--accent-cyan)',
+                  color: 'var(--ink-fixed)',
+                  boxShadow: '4px 4px 0 var(--shadow)',
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <BrutalIcon name="trending" size={18} strokeWidth={2.5} />
+                  <div>
+                    <div className="font-display text-[12px] uppercase tracking-[0.12em]">My Stats</div>
+                    <div className="mt-0.5 font-body text-[10px]" style={{ opacity: 0.7 }}>
+                      Level, missions &amp; records
+                    </div>
+                  </div>
+                </div>
+                <span className="ml-4 text-xl opacity-60">→</span>
+              </button>
             </section>
 
             {/* ── Appearance ── */}
@@ -583,6 +609,7 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
       {showFAQ && <FAQSheet onClose={() => setShowFAQ(false)} />}
       {showHowToPlay && <HowToPlayModal onDone={() => setShowHowToPlay(false)} />}
+      {showStats && <StatsModal onClose={() => setShowStats(false)} />}
     </div>
   )
 }
@@ -726,6 +753,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { owner } = useOwner()
   const { effectiveTheme } = useTheme()
   const { isConnected } = useAccount()
+  const [showStats, setShowStats] = useState(false)
 
   const isOwner =
     address && owner && address.toLowerCase() === owner.toLowerCase()
@@ -757,7 +785,8 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       label: 'MY STATS',
-      active: false,
+      active: showStats,
+      onClick: () => setShowStats(true),
     },
     ...(isOwner
       ? [
@@ -906,6 +935,7 @@ export const Header: React.FC<HeaderProps> = ({
       onHideLeaderboard={onHideLeaderboard}
       isOwner={!!isOwner}
     />
+    {showStats && <StatsModal onClose={() => setShowStats(false)} />}
     </>
   )
 }

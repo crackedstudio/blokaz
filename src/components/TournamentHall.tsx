@@ -9,6 +9,7 @@ import { formatUnits } from 'viem'
 import { BLOKZ_TOURNAMENT_ABI } from '../constants/abi'
 import contractInfo from '../contract.json'
 import { BrutalIcon } from './BrutalIcon'
+import { BlockRain } from './blocks/BlockFX'
 
 const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 
@@ -81,16 +82,17 @@ const TournamentHall: React.FC<TournamentHallProps> = ({
       <div className="relative z-10 mx-auto w-full max-w-3xl px-4 pb-16">
         {/* Hero */}
         <div
-          className="mb-6 border-4 border-ink p-6"
+          className="relative mb-6 overflow-hidden border-4 border-ink p-6"
           style={{ background: 'var(--ink)', boxShadow: '6px 6px 0 var(--shadow)' }}
         >
+          <BlockRain count={5} distance={330} from={58} to={96} seed={5} opacity={0.85} />
           <div
-            className="mb-2 font-display text-[10px] tracking-[0.18em]"
+            className="relative z-10 mb-2 font-display text-[10px] tracking-[0.18em]"
             style={{ color: 'var(--ink-fixed)', opacity: 0.7 }}
           >
             PRIZE POOL TOTAL
           </div>
-          <div className="flex items-baseline gap-3">
+          <div className="relative z-10 flex items-baseline gap-3">
             <div
               className="font-display text-paper"
               style={{ fontSize: 56, letterSpacing: '-0.04em', lineHeight: 1 }}
@@ -98,7 +100,7 @@ const TournamentHall: React.FC<TournamentHallProps> = ({
               {formattedPrizePool} USDT
             </div>
           </div>
-          <div className="mt-5 flex items-center gap-3">
+          <div className="relative z-10 mt-5 flex items-center gap-3">
             <div
               className="font-display text-paper"
               style={{ fontSize: 32, letterSpacing: '-0.03em', lineHeight: 1 }}
@@ -107,7 +109,7 @@ const TournamentHall: React.FC<TournamentHallProps> = ({
             </div>
             <span className="font-display text-paper" style={{ fontSize: 28 }}>→</span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="relative z-10 mt-3 flex flex-wrap gap-3">
             <span
               className="border-2 border-paper px-3 py-1 font-display text-[10px] tracking-[0.12em]"
               style={{ background: 'var(--accent-lime)', color: 'var(--ink-fixed)' }}
@@ -122,7 +124,7 @@ const TournamentHall: React.FC<TournamentHallProps> = ({
               HOW TO PARTICIPATE
             </button>
           </div>
-          <div className="mt-2 flex flex-wrap gap-3">
+          <div className="relative z-10 mt-2 flex flex-wrap gap-3">
             <span className="border-2 border-paper px-3 py-1 font-display text-[10px] tracking-[0.12em] text-paper">
               COLOR-LOCKED ARENAS
             </span>

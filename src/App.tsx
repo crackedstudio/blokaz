@@ -16,6 +16,7 @@ const Leaderboard = lazy(() => import('./components/Leaderboard'))
 const TournamentHall = lazy(() => import('./components/TournamentHall'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const LobbyScreen = lazy(() => import('./components/LobbyScreen'))
+import { BlockField, BlockGrid } from './components/blocks/BlockFX'
 import { useGameStore } from './stores/gameStore'
 import { useThemeStore, type ThemeMode } from './stores/themeStore'
 import { IS_MINIPAY } from './utils/miniPay'
@@ -115,6 +116,13 @@ const App: React.FC = () => {
   const handleSplashDone = useCallback(() => setShowSplash(false), [])
 
   const isInLobby = activeView === 'lobby' && !gameSession
+  /**
+   * The block motif is wallpaper for the browsing screens only. During a run
+   * the board is what should be moving, and a page-sized decoration competes
+   * with it for both attention and paint budget.
+   */
+  const showBlockBackdrop =
+    !isPlayingGame && activeView !== 'classic' && activeView !== 'tournament-play'
   const updateReady = useAutoUpdate(isInLobby && isAutoUpdateEnabled(address))
 
   useEffect(() => {
@@ -226,7 +234,16 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <div className={`flex flex-col ${
+      {/* Board wallpaper. Fixed and pointer-transparent; the shell below sits
+          on z-1 so nothing here can cover or intercept content. */}
+      {showBlockBackdrop && (
+        <>
+          <BlockGrid />
+          <BlockField count={16} seed={31} opacity={0.13} />
+        </>
+      )}
+
+      <div className={`relative z-[1] flex flex-col ${
         activeView === 'lobby' ? 'min-h-screen pt-[64px] pb-20'
         : activeView === 'classic'
           ? isPlayingGame
@@ -241,6 +258,7 @@ const App: React.FC = () => {
               onPlayClassic={() => handleNavigate('classic')}
               onPlayTournaments={() => handleNavigate('tournaments')}
               onOpenShop={isWhitelisted ? () => setShowLobbyShop(true) : undefined}
+              onOpenLeaderboard={() => setShowLeaderboard(true)}
             />
           ) : activeView === 'classic' ? (
             <GameScreen
