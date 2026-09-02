@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { audioEngine } from '../audio/AudioEngine'
 import { BrutalIcon } from './BrutalIcon'
 import { levelSpec } from '../constants/levels'
@@ -82,9 +83,14 @@ const LevelUpModal: React.FC<Props> = ({ address, advances, accent }) => {
   const top = shown[shown.length - 1]
   const topSpec = levelSpec(top.level)
 
-  return (
+  // Portalled, and above the sheet tier. The app shell is `relative z-[1]`,
+  // which makes it a stacking context — a fixed overlay rendered inside it can
+  // never paint above a sheet portalled to <body>, whatever z-index it is
+  // given. Clearing a level is the most important thing that can be on screen,
+  // so it goes to the body at the top of the scale.
+  return createPortal(
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[440] flex items-center justify-center p-4"
       style={{
         background: 'rgba(0,0,0,0.55)',
         opacity: visible ? 1 : 0,
@@ -213,7 +219,8 @@ const LevelUpModal: React.FC<Props> = ({ address, advances, accent }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

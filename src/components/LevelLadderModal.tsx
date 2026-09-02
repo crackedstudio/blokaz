@@ -160,7 +160,11 @@ const LevelLadderModal: React.FC<Props> = ({ state, onClose }) =>
   // overlay, trapping it inside a grid cell instead of covering the screen.
   createPortal(
     <div
-      className="fixed inset-0 z-[94] flex items-center justify-center p-3"
+      // Above the 420 sheet tier, not below it: this modal is opened from
+      // inside ProgressSheet, so anything at or under that sheet's z-index
+      // renders behind it and is unreachable. A modal spawned by another
+      // modal has to outrank its parent.
+      className="fixed inset-0 z-[430] flex items-center justify-center p-3"
     style={{ background: 'rgba(0,0,0,0.55)' }}
     role="dialog"
     aria-modal="true"
