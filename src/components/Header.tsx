@@ -10,6 +10,8 @@ import { useThemeStore, type UserTheme, type ThemeName } from '../stores/themeSt
 import LegalModal, { type LegalModalType } from './LegalModal'
 import FAQSheet from './FAQSheet'
 import HowToPlayModal from './HowToPlayModal'
+import StatsModal from './StatsModal'
+import { audioEngine } from '../audio/AudioEngine'
 import { usePlayerRewards, getRewardUrl } from '../hooks/useRewards'
 
 type HeaderView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
@@ -162,10 +164,202 @@ const THEME_OPTIONS: { value: UserTheme; label: string; icon: string }[] = [
   { value: 'dark-forest',  label: 'FOREST', icon: '❋' },
 ]
 
+/**
+ * Audio controls.
+ *
+ * Music and effects are separate rows because they are separate wants: plenty
+ * of players mute a soundtrack but still need to hear that a line cleared.
+ * The engine is not reactive, so local state mirrors it and writes through —
+ * the engine itself owns persistence.
+ */
+const AudioSettings: React.FC = () => {
+  const [musicOn, setMusicOn] = React.useState(audioEngine.musicEnabled)
+  const [sfxOn, setSfxOn] = React.useState(audioEngine.enabled)
+  const [musicVol, setMusicVol] = React.useState(audioEngine.musicVolume)
+  const [sfxVol, setSfxVol] = React.useState(audioEngine.volume)
+
+  const row = (
+    label: string,
+    sub: string,
+    on: boolean,
+    toggle: () => void,
+    vol: number,
+    setVol: (v: number) => void,
+    accent: string
+  ) => (
+    <div
+      className="border-[3px] border-ink px-4 py-3"
+      style={{ background: 'var(--paper-2)', boxShadow: '4px 4px 0 var(--shadow)' }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-display text-[12px] uppercase tracking-[0.12em]">{label}</div>
+          <div className="mt-0.5 font-body text-[10px]" style={{ color: 'var(--ink-soft)' }}>
+            {sub}
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label={`${label} ${on ? 'on' : 'off'}`}
+          onClick={toggle}
+          className="relative h-8 w-[58px] shrink-0 border-[3px] border-ink"
+          style={{ background: on ? accent : 'var(--paper)' }}
+        >
+          <span
+            className="absolute top-[1px] h-[22px] w-[22px] border-[2px] border-ink transition-[left] duration-150"
+            style={{ left: on ? 29 : 1, background: 'var(--ink-fixed)' }}
+          />
+        </button>
+      </div>
+
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={vol}
+        disabled={!on}
+        aria-label={`${label} volume`}
+        onChange={(e) => setVol(parseFloat(e.target.value))}
+        className="mt-3 w-full"
+        style={{ accentColor: accent, opacity: on ? 1 : 0.35 }}
+      />
+    </div>
+  )
+
+  return (
+    <section>
+      <div
+        className="mb-2 border-l-4 border-ink pl-3 font-display text-[11px] uppercase tracking-[0.2em]"
+        style={{ color: 'var(--ink-soft)' }}
+      >
+        AUDIO
+      </div>
+      <div className="flex flex-col gap-3">
+        {row(
+          'Music',
+          'Background soundtrack',
+          musicOn,
+          () => {
+            const next = !musicOn
+            setMusicOn(next)
+            audioEngine.setMusicEnabled(next)
+            // The toggle is itself a gesture, so this is a valid moment to
+            // start a context that was still waiting for one.
+            if (next) audioEngine.unlock()
+            audioEngine.uiToggle(next)
+          },
+          musicVol,
+          (v) => {
+            setMusicVol(v)
+            audioEngine.setMusicVolume(v)
+          },
+          'var(--accent-cyan)'
+        )}
+        {row(
+          'Sound effects',
+          'Placements, clears, power-ups',
+          sfxOn,
+          () => {
+            const next = !sfxOn
+            setSfxOn(next)
+            audioEngine.setEnabled(next)
+            // Play the confirmation only when turning ON — off should be silent.
+            if (next) audioEngine.uiToggle(true)
+          },
+          sfxVol,
+          (v) => {
+            setSfxVol(v)
+            audioEngine.setVolume(v)
+            audioEngine.uiTap()
+          },
+          'var(--accent-lime)'
+        )}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Desktop audio control.
+ *
+ * The settings sheet is `lg:hidden`, so without this a desktop player has no
+ * way to mute anything — which is not acceptable for a page that starts a
+ * soundtrack on its own. Same AudioSettings panel, in a popover beside the
+ * theme toggle.
+ */
+const AudioMenu: React.FC = () => {
+  const [open, setOpen] = React.useState(false)
+  const [anyOn, setAnyOn] = React.useState(
+    audioEngine.musicEnabled || audioEngine.enabled
+  )
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  // The icon reflects whether anything is audible, so the header shows mute
+  // state at a glance rather than only inside the popover.
+  React.useEffect(() => {
+    if (open) setAnyOn(audioEngine.musicEnabled || audioEngine.enabled)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Audio settings"
+        aria-expanded={open}
+        onClick={() => {
+          audioEngine.unlock()
+          setOpen((v) => !v)
+        }}
+        className="flex h-10 w-10 items-center justify-center border-[3px] border-ink"
+        style={{
+          background: anyOn ? 'var(--accent-yellow)' : 'var(--paper)',
+          color: 'var(--ink-fixed)',
+          boxShadow: '3px 3px 0 var(--shadow)',
+        }}
+      >
+        <span className="font-display text-[14px] leading-none">
+          {anyOn ? '\u266A' : '\u2715'}
+        </span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+8px)] z-[60] w-[290px] border-[3px] border-ink p-4"
+          style={{ background: 'var(--paper)', boxShadow: '6px 6px 0 var(--shadow)' }}
+          onChange={() => setAnyOn(audioEngine.musicEnabled || audioEngine.enabled)}
+          onClick={() => setAnyOn(audioEngine.musicEnabled || audioEngine.enabled)}
+        >
+          <AudioSettings />
+        </div>
+      )}
+    </div>
+  )
+}
+
 const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [legalModal, setLegalModal] = React.useState<LegalModalType>(null)
   const [showFAQ, setShowFAQ] = React.useState(false)
   const [showHowToPlay, setShowHowToPlay] = React.useState(false)
+  const [showStats, setShowStats] = React.useState(false)
   const { userTheme, setUserTheme } = useThemeStore((s) => ({
     userTheme: s.userTheme,
     setUserTheme: s.setUserTheme,
@@ -325,6 +519,30 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   ))}
                 </div>
               </div>
+
+              {/* Level, missions and lifetime records — the desktop nav's MY
+                  STATS button has no room in the mobile tab bar, so it lives
+                  here, attached to the profile it describes. */}
+              <button
+                onClick={() => setShowStats(true)}
+                className="mt-3 flex w-full items-center justify-between border-[3px] border-ink px-5 py-4 text-left"
+                style={{
+                  background: 'var(--accent-cyan)',
+                  color: 'var(--ink-fixed)',
+                  boxShadow: '4px 4px 0 var(--shadow)',
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <BrutalIcon name="trending" size={18} strokeWidth={2.5} />
+                  <div>
+                    <div className="font-display text-[12px] uppercase tracking-[0.12em]">My Stats</div>
+                    <div className="mt-0.5 font-body text-[10px]" style={{ opacity: 0.7 }}>
+                      Level, missions &amp; records
+                    </div>
+                  </div>
+                </div>
+                <span className="ml-4 text-xl opacity-60">→</span>
+              </button>
             </section>
 
             {/* ── Appearance ── */}
@@ -380,6 +598,8 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 )}
               </div>
             </section>
+
+            <AudioSettings />
 
             {/* ── Divider ── */}
             <div className="border-t-[3px] border-ink border-dashed" />
@@ -583,6 +803,7 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
       {showFAQ && <FAQSheet onClose={() => setShowFAQ(false)} />}
       {showHowToPlay && <HowToPlayModal onDone={() => setShowHowToPlay(false)} />}
+      {showStats && <StatsModal onClose={() => setShowStats(false)} />}
     </div>
   )
 }
@@ -726,6 +947,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { owner } = useOwner()
   const { effectiveTheme } = useTheme()
   const { isConnected } = useAccount()
+  const [showStats, setShowStats] = useState(false)
 
   const isOwner =
     address && owner && address.toLowerCase() === owner.toLowerCase()
@@ -757,7 +979,8 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       label: 'MY STATS',
-      active: false,
+      active: showStats,
+      onClick: () => setShowStats(true),
     },
     ...(isOwner
       ? [
@@ -829,6 +1052,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="flex min-w-0 items-center justify-end gap-2 lg:basis-[320px] lg:gap-3">
             {/* ThemeToggle moved to Settings sheet on mobile; keep for desktop only */}
+            <div className="hidden lg:block">
+              <AudioMenu />
+            </div>
             <div className="hidden lg:block">
               <ThemeToggle />
             </div>
@@ -906,6 +1132,7 @@ export const Header: React.FC<HeaderProps> = ({
       onHideLeaderboard={onHideLeaderboard}
       isOwner={!!isOwner}
     />
+    {showStats && <StatsModal onClose={() => setShowStats(false)} />}
     </>
   )
 }

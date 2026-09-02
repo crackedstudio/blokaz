@@ -1,3 +1,6 @@
+import { CURRENT_RULES_VERSION } from '../engine/rules'
+import type { RulesVersion } from '../engine/rules'
+
 const SIGNER_API_BASE =
   (import.meta.env.VITE_SIGNER_URL as string | undefined) ?? 'http://localhost:3001'
 
@@ -75,7 +78,12 @@ export async function requestSubmitSignature(
   score: number,
   moves: any[],
   seed: `0x${string}`,
-  player: `0x${string}`
+  player: `0x${string}`,
+  /**
+   * Ruleset this run was played under. The server replays against it, so a run
+   * started before a rules change still validates. Omitting it means v1.
+   */
+  rulesVersion: RulesVersion = CURRENT_RULES_VERSION
 ) {
   const res = await fetchWithRetry(`${SIGNER_API_BASE}/sign-submit`, {
     method: 'POST',
@@ -87,6 +95,7 @@ export async function requestSubmitSignature(
       moves,
       seed,
       player,
+      rulesVersion,
     }),
   })
 

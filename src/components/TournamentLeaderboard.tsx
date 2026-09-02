@@ -86,7 +86,7 @@ const TournamentLeaderboard: React.FC<TournamentLeaderboardProps> = ({ tournamen
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
           <div className="flex items-center justify-between px-2 pb-1">
-            <div className="brutal-label opacity-100">GLOBAL CONTENDERS</div>
+            <div className="brutal-label-soft opacity-100">GLOBAL CONTENDERS</div>
             <div className="font-display text-[10px] tracking-[0.12em] opacity-60">
               {leaderboard?.length || 0} JOINED
             </div>

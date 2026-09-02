@@ -58,6 +58,14 @@ import { ShopModal } from './ShopModal'
 import { usePowerUpStore } from '../stores/powerUpStore'
 import { useNotifications, ToastContainer } from './GameNotification'
 import { audioEngine } from '../audio/AudioEngine'
+import type { MusicIntensity } from '../audio/MusicEngine'
+
+/**
+ * Eight score tiers map onto the music engine's four intensities, so the
+ * soundtrack gains a layer roughly every other tier rather than lurching.
+ */
+const musicIntensityForTier = (tierId: number): MusicIntensity =>
+  Math.min(3, Math.floor(tierId / 2)) as MusicIntensity
 import { useMoveSync, fetchServerSession, markSessionComplete } from '../hooks/useMoveSync'
 
 const GAME_ADDRESS = contractInfo.game as `0x${string}`
@@ -536,6 +544,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
       if (!cs) return
       // Canvas burst animation
       animManagerRef.current.trigger('POWER_UP', { subType: type })
+      // Each power-up has its own voice; the engine dispatches on the name.
+      try { audioEngine.powerUp(type) } catch {}
       // DOM screen flash
       const color = FLASH_COLORS[type]
       if (color) {
@@ -604,6 +614,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
     if (isGameOver) {
       currentTierRef.current = getScoreTier(0)
       document.documentElement.setAttribute('data-tier', '0')
+      // The sting needs the room, and a game-over screen with a driving loop
+      // under it reads as though the run is still going.
+      try {
+        audioEngine.stopMusic()
+        audioEngine.gameOver()
+      } catch {}
     }
   }, [isGameOver])
 
@@ -725,6 +741,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     document.documentElement.setAttribute('data-tier', '0')
     // Reset lottery so each new game gets fresh threshold triggers
     resetLotterySession()
+    try { audioEngine.startMusic(musicIntensityForTier(freshTier.id)) } catch {}
     prevScoreRef.current = 0
     powerUpHintRef.current.notifyPiecePlaced(performance.now())
     setLotteryPrize(null)
@@ -745,7 +762,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
       const stored = readStoredGameSession(CLASSIC_SESSION_STORAGE_KEY, address, GAME_ADDRESS)
       if (stored?.snapshot?.moveHistory?.length) {
         const boost = !!(stored.snapshot as any).scoreBoostActive
-        const restoredSession = replayMoveHistory(localSeed, stored.snapshot.moveHistory, boost)
+        const restoredSession = replayMoveHistory(
+          localSeed,
+          stored.snapshot.moveHistory,
+          boost,
+          stored.rulesVersion
+        )
         // Restore the original moveHistory so marker records (revive, bomb, lottery)
         // are preserved. replayMoveHistory processes them without pushing them to
         // the session's own moveHistory, which would corrupt future snapshots.
@@ -997,9 +1019,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
         const result = useGameStore.getState().placePiece(pieceIndex, row, col)
         if (!result?.success) {
           hapticError()
+          try { audioEngine.uiError() } catch {}
           return
         }
         hapticImpact()
+        try { audioEngine.piecePlaced() } catch {}
         powerUpHintRef.current.notifyPiecePlaced(performance.now())
         // Brief drop-flash on placed cells
         if (preShape) {
@@ -1014,6 +1038,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
           (linesCleared.rows.length > 0 || linesCleared.cols.length > 0)
         ) {
           hapticNotification()
+          try {
+            audioEngine.lineClear(linesCleared.rows.length + linesCleared.cols.length)
+          } catch {}
           powerUpHintRef.current.notifyLineClear(performance.now())
           animManager.trigger('LINE_CLEAR', {
             rows: linesCleared.rows,
@@ -1052,6 +1079,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
             animManager.trigger('COMBO', {
               streak: result.scoreEvent.newComboStreak,
             })
+            // combo() indexes a scale from streak 2 — a "1x combo" is just a clear.
+            if (result.scoreEvent.newComboStreak >= 2) {
+              try { audioEngine.combo(result.scoreEvent.newComboStreak) } catch {}
+            }
             setComboTrigger((t) => t + 1)
           }
         }
@@ -1132,6 +1163,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
             })
             try { audioEngine.tierUp() } catch {}
           }
+          // Eight score tiers, four musical intensities.
+          try { audioEngine.setMusicIntensity(musicIntensityForTier(newTier.id)) } catch {}
         }
 
         // ── Lottery threshold check (whitelisted addresses only) ────────
@@ -1170,12 +1203,21 @@ const GameScreen: React.FC<GameScreenProps> = ({
         const idx = activeIdx ?? selectedIdx!
         const shape = currentSession.currentPieces[idx]
         if (shape) {
-          ghostCells = (shape.cells as [number, number][])
-            .map(([dr, dc]) => ({
-              row: ghost.row + dr,
-              col: ghost.col + dc,
-              valid: ghost.valid,
-            }))
+          // At LIQUID/GLITCH tiers the piece can change shape or slide a row as
+          // it lands, so preview the real landing cells rather than the raw
+          // outline. Returns null for an illegal drop — fall back to the
+          // outline so the player still sees the invalid-placement feedback.
+          const landing = ghost.valid
+            ? currentSession.previewPlacement(idx, ghost.row, ghost.col)
+            : null
+
+          ghostCells = (
+            landing ??
+            (shape.cells as [number, number][]).map(
+              ([dr, dc]) => [ghost.row + dr, ghost.col + dc] as [number, number]
+            )
+          )
+            .map(([row, col]) => ({ row, col, valid: ghost.valid }))
             .filter(
               (cell) =>
                 cell.row >= 0 && cell.row < 9 && cell.col >= 0 && cell.col < 9
@@ -1309,7 +1351,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       ? !!serverSession!.scoreBoostActive
       : !!(stored?.snapshot as any)?.scoreBoostActive
 
-    const restoredSession = replayMoveHistory(localSeed, moves, boost)
+    const restoredSession = replayMoveHistory(localSeed, moves, boost, stored?.rulesVersion)
     // Replace the replayed moveHistory with the original snapshot moveHistory.
     // replayMoveHistory processes marker records (revive, bomb, lottery) without
     // pushing them to the session's moveHistory, so the replayed history is
@@ -1405,8 +1447,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
       setScreenFlash({ color: 'rgba(255,87,34,0.30)', key: ++flashKeyRef.current })
       setTimeout(() => setScreenFlash(null), 280)
       hapticNotification()
+      try { audioEngine.bombBlast() } catch {}
     } else {
       hapticError()
+      try { audioEngine.uiError() } catch {}
     }
   }
 
@@ -2261,7 +2305,7 @@ const LeftRail: React.FC<{
         boxShadow: '5px 5px 0 var(--shadow)',
       }}
     >
-      <div className="brutal-label mb-3">
+      <div className="brutal-label-soft mb-3">
         NEXT CLEAR CHAIN
       </div>
       <div

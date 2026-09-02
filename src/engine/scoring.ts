@@ -1,4 +1,19 @@
 import type { ShapeDefinition } from './shapes'
+import {
+  CURRENT_RULES_VERSION,
+  TIER_THRESHOLDS,
+  basePointsFor,
+  comboMultiplierFor,
+  linePointsFor,
+  multiLineFactorFor,
+  nextComboState,
+  pixelBaseFactorFor,
+  rulesFor,
+  tierIndexForScore,
+} from './rules'
+import type { ComboState, RuleSet } from './rules'
+
+export type { ComboState } from './rules'
 
 // ─────────────────────────────────────────────────────────────
 // SCORE TIER SYSTEM
@@ -114,16 +129,15 @@ export const TIERS: TierInfo[] = [
   },
 ]
 
+/**
+ * Tier for a score. Thresholds live in rules.ts because the scoring rules gate
+ * mechanics on them; this stays the single lookup the UI uses.
+ */
 export function getScoreTier(score: number): TierInfo {
-  if (score < 500)     return TIERS[0]  // PAPER
-  if (score < 1500)    return TIERS[1]  // STICKER
-  if (score < 4000)    return TIERS[2]  // STRIPED  — mastery gate
-  if (score < 9000)    return TIERS[3]  // PIXEL    — elite territory
-  if (score < 20000)   return TIERS[4]  // NEON     — dark rupture
-  if (score < 45000)   return TIERS[5]  // COSMIC
-  if (score < 100000)  return TIERS[6]  // LIQUID
-  return TIERS[7]                        // GLITCH   — legendary
+  return TIERS[tierIndexForScore(score)]
 }
+
+export { TIER_THRESHOLDS }
 
 export interface ScoreEvent {
   basePoints: number
@@ -132,9 +146,13 @@ export interface ScoreEvent {
   totalPoints: number
   linesCleared: number
   newComboStreak: number
-  comboMultiplier: number // 1.0 | 1.25 | 1.5 | 2.0 | 2.5 | 3.0 | 4.0
+  comboMultiplier: number // 1.0 | 1.25 | 1.5 | 2.0 | 2.5 | 3.0 | 4.0 (+0.5 at NEON)
   isMilestone: boolean    // true at streak 3, 5, 10
-  multiLineFactor: number // 1.0 | 1.5 | 2.5
+  multiLineFactor: number // v1: 1.0 | 1.5 | 2.5 — v2: 1.0 | 2.0 | 4.0
+  /** True when this placement cleared nothing but combo grace held the streak. */
+  graceHeld?: boolean
+  /** Whether the one allowed grace has been spent, going into the next move. */
+  graceUsed?: boolean
 }
 
 export const MILESTONE_BONUS: Record<number, number> = { 3: 300, 5: 750, 10: 2000 }
@@ -149,8 +167,15 @@ export function getComboMultiplier(streak: number): number {
   return 1.0
 }
 
-export function getComboTierInfo(streak: number): { pct: number; label: string; multiplier: number } {
-  const multiplier = getComboMultiplier(streak)
+/**
+ * UI-facing combo readout. `score` is optional so existing call sites keep
+ * working; pass it to surface the NEON tier's +0.5 multiplier in the HUD.
+ */
+export function getComboTierInfo(
+  streak: number,
+  score = 0
+): { pct: number; label: string; multiplier: number } {
+  const multiplier = comboMultiplierFor(streak, score, rulesFor(CURRENT_RULES_VERSION))
   if (streak === 0) return { pct: 15, label: '', multiplier: 1.0 }
   if (streak >= 10) return { pct: 100, label: 'LEGENDARY', multiplier }
   if (streak >= 7) return { pct: 82 + (streak - 7) * 6, label: 'UNSTOPPABLE', multiplier }
@@ -160,27 +185,47 @@ export function getComboTierInfo(streak: number): { pct: number; label: string; 
   return { pct: 25, label: 'COMBO', multiplier }
 }
 
+export interface ScoreOptions {
+  /** Running score BEFORE this placement — gates the tier mechanics. */
+  scoreBefore: number
+  scoreBoostActive?: boolean
+  /** Defaults to the current ruleset; pass v1 rules when replaying old games. */
+  rules?: RuleSet
+}
+
+/**
+ * Score a single placement.
+ *
+ * ⚠️ Mirrored in server/engine/scoreReplay.js. See src/engine/rules.ts for the
+ * mirror contract and why the ruleset is versioned.
+ */
 export function calculateScore(
   piece: ShapeDefinition,
   linesCleared: number,
-  currentComboStreak: number,
-  scoreBoostActive = false
+  combo: ComboState,
+  options: ScoreOptions
 ): ScoreEvent {
-  const basePoints = Math.round(piece.cellCount * piece.cellCount * (scoreBoostActive ? 2.0 : 1.0))
+  const rules = options.rules ?? rulesFor(CURRENT_RULES_VERSION)
+  const scoreBefore = options.scoreBefore
+  const boostFactor = options.scoreBoostActive ? 2.0 : 1.0
 
-  const multiLineFactor = linesCleared >= 3 ? 2.5 : linesCleared === 2 ? 1.5 : 1.0
-  const linePoints = Math.round(linesCleared * 100 * multiLineFactor)
+  // PIXEL tier doubles base points on a placement that clears something.
+  const pixelFactor = pixelBaseFactorFor(scoreBefore, linesCleared, rules)
+  const basePoints = Math.round(basePointsFor(piece.cellCount, rules) * boostFactor * pixelFactor)
 
-  let newComboStreak = 0
+  const multiLineFactor = multiLineFactorFor(linesCleared, rules)
+  const linePoints = linePointsFor(linesCleared, rules)
+
+  const next = nextComboState(combo, linesCleared, scoreBefore, rules)
+
   let comboMultiplier = 1.0
   let isMilestone = false
   let milestoneBonus = 0
 
   if (linesCleared > 0) {
-    newComboStreak = currentComboStreak + 1
-    comboMultiplier = getComboMultiplier(newComboStreak)
-    isMilestone = newComboStreak in MILESTONE_BONUS
-    milestoneBonus = MILESTONE_BONUS[newComboStreak] ?? 0
+    comboMultiplier = comboMultiplierFor(next.streak, scoreBefore, rules)
+    isMilestone = next.streak in MILESTONE_BONUS
+    milestoneBonus = MILESTONE_BONUS[next.streak] ?? 0
   }
 
   const rawPoints = basePoints + linePoints
@@ -193,9 +238,11 @@ export function calculateScore(
     comboBonus,
     totalPoints,
     linesCleared,
-    newComboStreak,
+    newComboStreak: next.streak,
     comboMultiplier,
     isMilestone,
     multiLineFactor,
+    graceHeld: linesCleared === 0 && next.streak > 0,
+    graceUsed: next.graceUsed,
   }
 }

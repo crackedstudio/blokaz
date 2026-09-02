@@ -67,12 +67,22 @@
   border-radius: 0;
 }
 
-.brutal-label {
+/* Two label classes, because the accent yellow only works on one of the two
+   surfaces it gets used on. .brutal-label is for text sitting ON --ink (dark
+   panels, the nav pill); .brutal-label-soft is the paper equivalent — same
+   yellow in the dark themes, a deep gold in the light one, where brand yellow
+   on cream is 1.4:1. */
+.brutal-label,
+.brutal-label-soft {
   color: var(--label);
   font-family: 'Archivo Black', sans-serif;
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.brutal-label-soft {
+  color: var(--label-soft);
 }
 
 .brutal-input {
@@ -130,4 +140,64 @@
 
 .tension-fill-strobe {
   animation: tensionStrobe 600ms linear infinite;
+}
+
+/* ─── Block FX ───────────────────────────────────────────────────────────────
+ * Keyframes for the tetromino decoration kit (components/blocks/BlockFX.tsx).
+ * They live here rather than in a per-screen <style> block so any page can use
+ * the motif without shipping its own copy.
+ *
+ * Distance and spin come in as custom properties, so one keyframe serves
+ * surfaces of very different heights. Percentage translates would be relative
+ * to the block's own size, which makes a block hover instead of fall.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+@keyframes blockfxFall {
+  0% {
+    transform: translateY(-70px) rotate(0deg);
+    opacity: 0;
+  }
+  10%,
+  88% {
+    opacity: var(--blockfx-opacity, 1);
+  }
+  100% {
+    transform: translateY(var(--blockfx-distance, 240px)) rotate(var(--blockfx-spin, 90deg));
+    opacity: 0;
+  }
+}
+
+@keyframes blockfxDrift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--blockfx-rotate, 0deg));
+  }
+  50% {
+    transform: translateY(-10px) rotate(calc(var(--blockfx-rotate, 0deg) + 6deg));
+  }
+}
+
+.blockfx-fall {
+  animation-name: blockfxFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+.blockfx-drift {
+  animation-name: blockfxDrift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+/* The motif is ornament; it is the first thing that should stop moving. */
+@media (prefers-reduced-motion: reduce) {
+  .blockfx-fall,
+  .blockfx-drift {
+    animation: none !important;
+  }
+  .blockfx-fall {
+    opacity: 0 !important;
+  }
 }

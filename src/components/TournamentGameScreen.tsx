@@ -418,7 +418,8 @@ const TournamentGameScreen: React.FC<TournamentGameScreenProps> = ({
         const restoredSession = replayMoveHistory(
           localSeed,
           snapshot.moveHistory,
-          !!snapshot.scoreBoostActive
+          !!snapshot.scoreBoostActive,
+          stored?.rulesVersion
         )
         // Restore the original moveHistory so marker records (revive, bomb)
         // are preserved — replayMoveHistory applies them without re-recording,

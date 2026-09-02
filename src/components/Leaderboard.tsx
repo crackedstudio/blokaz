@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { BlockCluster } from './blocks/BlockFX'
 import {
   useLeaderboard,
   useUsername,
@@ -192,11 +193,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
           style={{ background: 'var(--ink)' }}
         >
           <div className="relative z-10">
-            <div
-              className="font-display text-paper"
-              style={{ fontSize: 28, letterSpacing: '-0.03em', lineHeight: 1 }}
-            >
-              CLASSIC RANKINGS
+            <div className="flex items-center gap-3">
+              <div
+                className="font-display text-paper"
+                style={{ fontSize: 28, letterSpacing: '-0.03em', lineHeight: 1 }}
+              >
+                CLASSIC RANKINGS
+              </div>
+              <BlockCluster cell={8} />
             </div>
             {/* Epoch navigation */}
             <div className="mt-3 flex items-center gap-2">
@@ -243,7 +247,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
           <UsernameRegistration />
 
           <div className="mt-4 flex flex-col gap-4">
-            <div className="brutal-label px-2 pb-2 opacity-100">
+            <div className="brutal-label-soft px-2 pb-2 opacity-100">
               CLASSIC PLAYERS
             </div>
 
