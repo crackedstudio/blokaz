@@ -187,6 +187,28 @@ async function grantLevel(addr, level) {
 
 // ── State assembly ───────────────────────────────────────────────────────────
 
+/**
+ * Has this player ever cleared level 12's card?
+ *
+ * `held` from climb() only reports the refresh that clears it — every read
+ * afterwards returns false — so it cannot answer this. level_grants is the
+ * durable record: one row per (address, level), written the first time a level
+ * is cleared and protected by a unique index. This rides that index.
+ */
+async function isSovereign(addr) {
+  const { data, error } = await supabase
+    .from('level_grants')
+    .select('level')
+    .eq('address', addr)
+    .eq('level', MAX_LEVEL)
+    .maybeSingle()
+  if (error) {
+    console.error('level_grants sovereign lookup error:', error)
+    return false
+  }
+  return !!data
+}
+
 function buildState(row, progress, extras = {}) {
   const level = row.level
   const spec = LEVELS[level]
@@ -328,6 +350,8 @@ router.post('/refresh', async (req, res) => {
       demotedBy,
       held: ascent.held,
       maxed: row.level === MAX_LEVEL,
+      // Durable, unlike `held` — this is what the client latches SilverGod on.
+      sovereign: await isSovereign(addr),
     }),
   })
 })
@@ -515,7 +539,12 @@ router.get('/:address', async (req, res) => {
       week_start: weekStartOf(),
       levels_gained_this_week: 0,
     }
-    return res.json({ state: buildState(fresh, empty, { advanced: [], demotedBy: 0, held: false, maxed: false }) })
+    // No player_levels row means they have never cleared anything.
+    return res.json({
+      state: buildState(fresh, empty, {
+        advanced: [], demotedBy: 0, held: false, maxed: false, sovereign: false,
+      }),
+    })
   }
 
   const progress = await readProgress(addr, row.week_start)
@@ -526,6 +555,7 @@ router.get('/:address', async (req, res) => {
       advanced: [],
       demotedBy: 0,
       held: false,
+      sovereign: await isSovereign(addr),
       maxed: row.level === MAX_LEVEL,
     }),
   })
