@@ -58,6 +58,14 @@ import { ShopModal } from './ShopModal'
 import { usePowerUpStore } from '../stores/powerUpStore'
 import { useNotifications, ToastContainer } from './GameNotification'
 import { audioEngine } from '../audio/AudioEngine'
+import type { MusicIntensity } from '../audio/MusicEngine'
+
+/**
+ * Eight score tiers map onto the music engine's four intensities, so the
+ * soundtrack gains a layer roughly every other tier rather than lurching.
+ */
+const musicIntensityForTier = (tierId: number): MusicIntensity =>
+  Math.min(3, Math.floor(tierId / 2)) as MusicIntensity
 import { useMoveSync, fetchServerSession, markSessionComplete } from '../hooks/useMoveSync'
 
 const GAME_ADDRESS = contractInfo.game as `0x${string}`
@@ -536,6 +544,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
       if (!cs) return
       // Canvas burst animation
       animManagerRef.current.trigger('POWER_UP', { subType: type })
+      // Each power-up has its own voice; the engine dispatches on the name.
+      try { audioEngine.powerUp(type) } catch {}
       // DOM screen flash
       const color = FLASH_COLORS[type]
       if (color) {
@@ -604,6 +614,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
     if (isGameOver) {
       currentTierRef.current = getScoreTier(0)
       document.documentElement.setAttribute('data-tier', '0')
+      // The sting needs the room, and a game-over screen with a driving loop
+      // under it reads as though the run is still going.
+      try {
+        audioEngine.stopMusic()
+        audioEngine.gameOver()
+      } catch {}
     }
   }, [isGameOver])
 
@@ -725,6 +741,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     document.documentElement.setAttribute('data-tier', '0')
     // Reset lottery so each new game gets fresh threshold triggers
     resetLotterySession()
+    try { audioEngine.startMusic(musicIntensityForTier(freshTier.id)) } catch {}
     prevScoreRef.current = 0
     powerUpHintRef.current.notifyPiecePlaced(performance.now())
     setLotteryPrize(null)
@@ -1002,9 +1019,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
         const result = useGameStore.getState().placePiece(pieceIndex, row, col)
         if (!result?.success) {
           hapticError()
+          try { audioEngine.uiError() } catch {}
           return
         }
         hapticImpact()
+        try { audioEngine.piecePlaced() } catch {}
         powerUpHintRef.current.notifyPiecePlaced(performance.now())
         // Brief drop-flash on placed cells
         if (preShape) {
@@ -1019,6 +1038,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
           (linesCleared.rows.length > 0 || linesCleared.cols.length > 0)
         ) {
           hapticNotification()
+          try {
+            audioEngine.lineClear(linesCleared.rows.length + linesCleared.cols.length)
+          } catch {}
           powerUpHintRef.current.notifyLineClear(performance.now())
           animManager.trigger('LINE_CLEAR', {
             rows: linesCleared.rows,
@@ -1057,6 +1079,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
             animManager.trigger('COMBO', {
               streak: result.scoreEvent.newComboStreak,
             })
+            // combo() indexes a scale from streak 2 — a "1x combo" is just a clear.
+            if (result.scoreEvent.newComboStreak >= 2) {
+              try { audioEngine.combo(result.scoreEvent.newComboStreak) } catch {}
+            }
             setComboTrigger((t) => t + 1)
           }
         }
@@ -1137,6 +1163,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
             })
             try { audioEngine.tierUp() } catch {}
           }
+          // Eight score tiers, four musical intensities.
+          try { audioEngine.setMusicIntensity(musicIntensityForTier(newTier.id)) } catch {}
         }
 
         // ── Lottery threshold check (whitelisted addresses only) ────────
@@ -1419,8 +1447,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
       setScreenFlash({ color: 'rgba(255,87,34,0.30)', key: ++flashKeyRef.current })
       setTimeout(() => setScreenFlash(null), 280)
       hapticNotification()
+      try { audioEngine.bombBlast() } catch {}
     } else {
       hapticError()
+      try { audioEngine.uiError() } catch {}
     }
   }
 

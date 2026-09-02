@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { audioEngine } from '../audio/AudioEngine'
 import { BrutalIcon } from './BrutalIcon'
 import { levelSpec } from '../constants/levels'
 import type { LevelAdvance } from '../hooks/usePlayerLevel'
@@ -63,6 +64,9 @@ const LevelUpModal: React.FC<Props> = ({ address, advances, accent }) => {
       fresh.map((a) => a.level)
     )
     setOpen(true)
+    // Fires once per level, gated by the same seen-list as the modal, so a
+    // re-render can never replay the fanfare.
+    try { audioEngine.levelUp() } catch {}
     requestAnimationFrame(() => setVisible(true))
   }, [address, advances])
 

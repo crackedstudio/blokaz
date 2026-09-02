@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { Prize } from '../utils/lottery'
 import { PRIZES, getDailySpinsRemaining, MAX_DAILY_SPINS } from '../utils/lottery'
+import { audioEngine } from '../audio/AudioEngine'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const INK   = '#0C0C10'
@@ -81,6 +82,13 @@ const ReelCard: React.FC<{ prize: Prize; size: number; highlighted?: boolean }> 
 // ─── PrizeReel ────────────────────────────────────────────────────────────────
 const COPIES   = 20
 const CARD_GAP = 10
+// Phase timings and reel speeds. Shared by the animation and the reel audio —
+// the clicks are derived from these, so changing a speed keeps them in sync.
+const SPIN_MS        = 2000
+const DECEL_MS       = 900
+const SPIN_SPEED     = 2000   // px/s while spinning
+const DECEL_SPEED    = 650    // px/s while slowing
+const SPIN_CARD_SIZE = 108    // cardSize used for every non-revealed phase
 
 const PrizeReel: React.FC<{
   phase: SpinPhase
@@ -108,7 +116,7 @@ const PrizeReel: React.FC<{
       setOffset(stoppedOffset)
       return
     }
-    const speed = phase === 'spinning' ? 2000 : 650
+    const speed = phase === 'spinning' ? SPIN_SPEED : DECEL_SPEED
     const total = COPIES * PRIZES.length * stride
     let rafId: number
     const t0 = performance.now()
@@ -295,14 +303,49 @@ export const LotteryModal: React.FC<LotteryModalProps> = ({ prize, threshold, on
   // Auto-advance after user triggers spin
   useEffect(() => {
     if (phase === 'spinning') {
-      const t = setTimeout(() => setPhase('decel'), 2000)
+      const t = setTimeout(() => setPhase('decel'), SPIN_MS)
       return () => clearTimeout(t)
     }
     if (phase === 'decel') {
-      const t = setTimeout(() => setPhase('revealed'), 900)
+      const t = setTimeout(() => setPhase('revealed'), DECEL_MS)
       return () => clearTimeout(t)
     }
   }, [phase])
+
+  /**
+   * Reel audio.
+   *
+   * The clicks are placed from the same geometry the animation uses — a card
+   * crosses the pointer every `stride / speed` seconds — so the ticking stays
+   * locked to the cards instead of being a generic rattle. The whole sequence
+   * for a phase is scheduled in one go on the audio clock; React only decides
+   * when a phase begins.
+   */
+  useEffect(() => {
+    const stride = SPIN_CARD_SIZE + CARD_GAP
+    try {
+      if (phase === 'spinning') {
+        audioEngine.spinStart()
+        const gap = stride / SPIN_SPEED
+        audioEngine.spinTicks(SPIN_MS / 1000, gap, gap)
+        return
+      }
+      if (phase === 'decel') {
+        // Ticks widen from the running rate to the rate at the slower speed,
+        // then the reel lands.
+        const fromGap = stride / SPIN_SPEED
+        const toGap = stride / DECEL_SPEED
+        const end = audioEngine.spinTicks(DECEL_MS / 1000, fromGap, toGap)
+        audioEngine.spinStop(end)
+        return
+      }
+      if (phase === 'revealed') {
+        audioEngine.spinReveal(prize.rarity, prize.id === 'nothing')
+      }
+    } catch {
+      /* audio is never allowed to break the reel */
+    }
+  }, [phase, prize])
 
   const handleSpin = useCallback(() => {
     if (phase !== 'idle') return

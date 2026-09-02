@@ -39,6 +39,7 @@ import { usePlayerLevel } from '../hooks/usePlayerLevel'
 import { useMetaStore } from '../stores/metaStore'
 import { isMissionComplete } from '../engine/meta'
 import { getLiveNewsItems } from './lobby/news'
+import { audioEngine } from '../audio/AudioEngine'
 import { Card } from './lobby/Card'
 import { BlockRain, BlockRule } from './blocks/BlockFX'
 import ProgressSheet from './lobby/ProgressSheet'
@@ -81,9 +82,28 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const { state: levelState } = usePlayerLevel(address)
   const { level, progress, address: metaAddress } = useMetaStore()
 
-  const [sheet, setSheet] = useState<
-    'modes' | 'progress' | 'news' | 'stats' | null
-  >(null)
+  type Sheet = 'modes' | 'progress' | 'news' | 'stats'
+  const [sheet, setSheet] = useState<Sheet | null>(null)
+
+  // One place for the open/close pair, so every sheet in the lobby sounds the
+  // same way round whichever card opened it.
+  const openSheet = (next: Sheet) => {
+    try { audioEngine.uiOpen() } catch {}
+    setSheet(next)
+  }
+  const closeSheet = () => {
+    try { audioEngine.uiClose() } catch {}
+    setSheet(null)
+  }
+
+  /**
+   * The lobby's bed: intensity 0, which is bass and hats only. It is a request
+   * rather than a command — browsers block audio until a gesture, so the engine
+   * holds it and starts on the first tap.
+   */
+  useEffect(() => {
+    try { audioEngine.startMusic(0) } catch {}
+  }, [])
 
   const tournamentContracts = useMemo(
     () =>
@@ -276,7 +296,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 hero
                 delay={0}
                 decoration={<BlockRain count={5} distance={250} seed={11} />}
-                onClick={() => setSheet('modes')}
+                onClick={() => openSheet('modes')}
               />
             </div>
 
@@ -287,7 +307,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 value={bestScore > 0 ? bestScore.toLocaleString() : '—'}
                 tone="ink"
                 delay={110}
-                onClick={() => setSheet('stats')}
+                onClick={() => openSheet('stats')}
               />
             </div>
 
@@ -302,7 +322,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 value={hasProgress ? `LVL ${levelState?.level ?? level}` : '—'}
                 tone="purple"
                 delay={150}
-                onClick={() => setSheet('progress')}
+                onClick={() => openSheet('progress')}
               />
             </div>
 
@@ -349,7 +369,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
                   tone="cyan"
                   mini
                   delay={290}
-                  onClick={() => setSheet('news')}
+                  onClick={() => openSheet('news')}
                 />
               )}
             </div>
@@ -364,14 +384,14 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
           pool={formattedPool}
           openCount={activeTournaments}
           trialGated={isWebBrowser() && !isWebWhitelisted(address)}
-          onClose={() => setSheet(null)}
+          onClose={closeSheet}
         />
       )}
       {sheet === 'progress' && (
-        <ProgressSheet levelState={levelState} onClose={() => setSheet(null)} />
+        <ProgressSheet levelState={levelState} onClose={closeSheet} />
       )}
-      {sheet === 'news' && <NewsSheet onClose={() => setSheet(null)} />}
-      {sheet === 'stats' && <StatsModal onClose={() => setSheet(null)} />}
+      {sheet === 'news' && <NewsSheet onClose={closeSheet} />}
+      {sheet === 'stats' && <StatsModal onClose={closeSheet} />}
 
       {showUsernameModal && (
         <UsernameSetupModal onDismiss={() => setShowUsernameModal(false)} />

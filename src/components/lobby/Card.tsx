@@ -12,6 +12,7 @@
 
 import React from 'react'
 import { BrutalIcon } from '../BrutalIcon'
+import { audioEngine } from '../../audio/AudioEngine'
 
 type IconName = React.ComponentProps<typeof BrutalIcon>['name']
 
@@ -138,7 +139,19 @@ export const Card: React.FC<CardProps> = ({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={
+        onClick &&
+        (() => {
+          // Every lobby card is a gesture, so this is also where the audio
+          // context gets unlocked — music can then start without waiting for
+          // the player to trigger a sound effect.
+          try {
+            audioEngine.unlock()
+            audioEngine.uiTap()
+          } catch {}
+          onClick()
+        })
+      }
       aria-label={value ? `${label}: ${value}` : label}
       className={`lobby-card relative flex h-full w-full min-w-0 flex-col overflow-hidden border-[3px] border-ink text-left ${
         mini ? 'gap-2 px-3 py-3' : hero ? 'gap-6 px-5 py-6' : 'gap-3 px-4 py-4'
