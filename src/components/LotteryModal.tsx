@@ -321,7 +321,14 @@ export const LotteryModal: React.FC<LotteryModalProps> = ({ prize, threshold, on
    * for a phase is scheduled in one go on the audio clock; React only decides
    * when a phase begins.
    */
+  const soundedPhase = useRef<SpinPhase | null>(null)
   useEffect(() => {
+    // Scheduling is not undoable once the notes are on the audio clock, and
+    // StrictMode runs every effect twice in development — without this guard a
+    // single spin would click twice over. One phase, one sequence.
+    if (soundedPhase.current === phase) return
+    soundedPhase.current = phase
+
     const stride = SPIN_CARD_SIZE + CARD_GAP
     try {
       if (phase === 'spinning') {
