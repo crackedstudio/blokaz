@@ -1,3 +1,32 @@
+/* ─────────────────────────────────────────────────────────────
+   BLOKAZ PALETTE
+
+   One brand set, three themes.
+
+   The nine piece colours below are the brand. They are IDENTICAL in
+   every theme and every tier, because they are the game's pieces —
+   a red block must be the same red whatever chrome surrounds it.
+   They sit in a deliberately tight band:
+
+       saturation 79–100%   lightness 53–62%
+
+   Every hue at the same lightness is what makes them read as one
+   family rather than nine unrelated colours.
+
+   RULE: a theme's chrome (--accent, --accent-2, --hero) must be drawn
+   from that same band and, ideally, be one of the brand hues. Theme
+   surfaces are a lightness ramp on a single hue, and the ink on them
+   uses that hue too. Anything picked from a general-purpose palette
+   (Tailwind's blue-500, green-500, yellow-400 were all in here) lands
+   a few degrees of hue and 10–30% of saturation off the brand set,
+   which is exactly what makes a screen look subtly wrong next to a
+   piece of the "same" colour.
+
+   Text colour on a bright brand colour is always --ink-fixed, never
+   --ink: the brand colours do not flip with the theme, so the ink on
+   them must not either.
+   ───────────────────────────────────────────────────────────── */
+
 :root,
 [data-theme='light'] {
   --page: #f5efe3;
@@ -13,7 +42,12 @@
   --accent: #ff7a1a;
   --accent-2: #ffd51f;
   --accent-soft: #b7ff3b;
+  /* --label is the accent colour for text sitting ON --ink (the dark nav
+     pill, dark headers). --label-soft is the same idea for text on paper.
+     They have to be separate tokens: brand yellow on cream is 1.4:1, so a
+     single token cannot serve both surfaces in a light theme. */
   --label: #ffd51f;
+  --label-soft: #7a6400;
   --hero: #ff7a1a;
   --dot: rgba(12, 12, 16, 0.08);
   --danger: #ff3d3d;
@@ -78,11 +112,16 @@
   --muted: #6e83ab;
   --rule: rgba(230, 238, 255, 0.14);
   --shadow: #020617;
-  --accent: #3b82f6;
-  --accent-2: #60a5fa;
-  --accent-soft: #3b82f6;
+  /* Brand blue (#2f6bff), not Tailwind's blue-500 — the old value sat 6° of
+     hue and 9% of saturation off --piece-blue, which appears on the same
+     screens. Surfaces are already a clean H220 ramp, so only the accents
+     needed moving. */
+  --accent: #2f6bff;
+  --accent-2: #7099ff;
+  --accent-soft: #2f6bff;
   --label: #ffd51f;
-  --hero: #1e3a8a;
+  --label-soft: #ffd51f;
+  --hero: #16307a;
   --dot: rgba(230, 238, 255, 0.06);
   --danger: #ff3d3d;
 
@@ -121,25 +160,33 @@
 }
 
 [data-theme='dark-forest'] {
-  --page: #0a1f14;
-  --paper: #0f2a1c;
-  --paper-2: #15392a;
-  --board: #0c2418;
-  --empty-cell: #102a1d;
-  --ink: #e8f5da;
-  --ink-soft: #a8c9a0;
-  --muted: #6b8a6b;
-  --rule: rgba(232, 245, 218, 0.14);
-  --shadow: #021510;
-  --accent: #22c55e;
-  --accent-2: #4ade80;
-  --accent-soft: #22c55e;
-  --label: #facc15;
-  --hero: #14532d;
-  --dot: rgba(232, 245, 218, 0.06);
+  /* Rebuilt as a single ramp on brand green (#2ce66a, H140). The old palette
+     drifted: surfaces ran H149–H155 while --ink was H89 and --ink-soft H108,
+     so the text read yellow-green against blue-green panels. Every value here
+     is now H140, and the accent is the brand green itself rather than
+     Tailwind's green-500. */
+  --page: #0b1e11;
+  --paper: #112c1a;
+  --paper-2: #1a3d26;
+  --board: #0e2516;
+  --empty-cell: #112c1a;
+  --ink: #e5f5ea;
+  --ink-soft: #aacfb7;
+  --muted: #6c9d7c;
+  --rule: rgba(229, 245, 234, 0.14);
+  --shadow: #04140a;
+  --accent: #2ce66a;
+  --accent-2: #7ff0a5;
+  --accent-soft: #2ce66a;
+  /* One yellow across every theme. This used to be #facc15 while
+     --piece-yellow stayed #ffd51f, so two yellows appeared side by side. */
+  --label: #ffd51f;
+  --label-soft: #ffd51f;
+  --hero: #10602b;
+  --dot: rgba(229, 245, 234, 0.06);
   --danger: #ff3d3d;
 
-  --accent-yellow: #facc15;
+  --accent-yellow: #ffd51f;
   --accent-orange: #ff7a1a;
   --accent-lime: #b7ff3b;
   --accent-pink: #ff3bbd;
@@ -152,19 +199,19 @@
   --paper-cyan: color-mix(in srgb, var(--paper) 82%, var(--accent-cyan));
   --paper-purple: color-mix(in srgb, var(--paper) 82%, var(--accent-purple));
 
-  --ink-rgb: 232 245 218;
-  --paper-rgb: 15 42 28;
-  --paper-2-rgb: 21 57 42;
-  --ink-soft-rgb: 168 201 160;
-  --muted-rgb: 107 138 107;
+  --ink-rgb: 229 245 234;
+  --paper-rgb: 17 44 26;
+  --paper-2-rgb: 26 61 38;
+  --ink-soft-rgb: 170 207 183;
+  --muted-rgb: 108 157 124;
 
   --surface-shadow: 6px 6px 0 var(--shadow);
   --surface-shadow-sm: 3px 3px 0 var(--shadow);
   --surface-shadow-lg: 8px 8px 0 var(--shadow);
   --surface-shadow-xl: 10px 10px 0 var(--shadow);
-  --overlay: rgba(2, 21, 16, 0.72);
+  --overlay: rgba(4, 20, 10, 0.72);
   --pattern-dot: var(--dot);
-  --pattern-line: rgba(232, 245, 218, 0.08);
+  --pattern-line: rgba(229, 245, 234, 0.08);
   --ink-fixed: #0c0c10;
   --ink-contrast: #0c0c10;
   --piece-tray-bg: var(--accent);
@@ -297,10 +344,34 @@
 }
 
 /* ══ TIER + THEME SYNC (specificity: 2 attribute selectors > 1, always wins) ══
-   Neon and Cosmic boards are intentionally dark, but when a user has chosen
-   dark-navy or dark-forest the hardcoded neutral-dark clashes with the
-   theme palette. These rules tint the board / tray toward the active theme so
-   the game area feels continuous with the surrounding UI chrome.               */
+   The tier blocks above set --board and --empty-cell to LIGHT values for
+   tiers 0–3, because they were written against the cream light theme. On
+   [data-tier='0'] that is one attribute selector, the same weight as
+   [data-theme='dark-navy'] — and it comes later in the file, so it won.
+   The result: in a dark theme the board turned cream at score 0–500, i.e.
+   at the start of every single run, and only went dark past 9,000 points.
+
+   These two rules re-assert a dark board for EVERY tier in a dark theme.
+   The tier still drives --accent, --label, --hero and the combo burst, which
+   is the part of the tier system that is meant to be visible. The per-tier
+   rules that follow are the same specificity but come later, so the tiers
+   that want their own dark board still get one.                              */
+
+[data-theme='dark-navy'][data-tier] {
+  --board: #0b1730;
+  --empty-cell: #0e1b36;
+  --piece-tray-bg: var(--accent);
+}
+
+[data-theme='dark-forest'][data-tier] {
+  --board: #0e2516;
+  --empty-cell: #112c1a;
+  --piece-tray-bg: var(--accent);
+}
+
+/* Neon and Cosmic are meant to be their own darkness — these keep that, tinted
+   toward whichever theme the player picked. Same specificity as the blanket
+   rules above, but later in the file, so they win. */
 
 /* T5 NEON — Dark Navy: pull board toward the navy blue palette */
 [data-theme='dark-navy'][data-tier='4'] {

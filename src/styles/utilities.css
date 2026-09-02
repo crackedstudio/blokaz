@@ -67,12 +67,22 @@
   border-radius: 0;
 }
 
-.brutal-label {
+/* Two label classes, because the accent yellow only works on one of the two
+   surfaces it gets used on. .brutal-label is for text sitting ON --ink (dark
+   panels, the nav pill); .brutal-label-soft is the paper equivalent — same
+   yellow in the dark themes, a deep gold in the light one, where brand yellow
+   on cream is 1.4:1. */
+.brutal-label,
+.brutal-label-soft {
   color: var(--label);
   font-family: 'Archivo Black', sans-serif;
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.brutal-label-soft {
+  color: var(--label-soft);
 }
 
 .brutal-input {

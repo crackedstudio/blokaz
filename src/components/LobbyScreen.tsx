@@ -43,6 +43,7 @@ import { Card } from './lobby/Card'
 import { BlockRain, BlockRule } from './blocks/BlockFX'
 import ProgressSheet from './lobby/ProgressSheet'
 import NewsSheet from './lobby/NewsSheet'
+import ModePicker from './lobby/ModePicker'
 
 // The news copy lives in ./lobby/news so the sheets can read it without
 // importing this screen. Re-exported so existing import paths keep working.
@@ -60,19 +61,6 @@ const TOURNAMENT_ADDRESS = contractInfo.tournament as `0x${string}`
 // Atmosphere only — no information, hidden from assistive tech. The block
 // motif itself lives in components/blocks/BlockFX so every screen shares one
 // implementation.
-
-/** Slow diagonal hazard stripes. */
-const Stripes: React.FC = () => (
-  <div
-    className="pointer-events-none absolute inset-0 z-0"
-    aria-hidden="true"
-    style={{
-      backgroundImage:
-        'repeating-linear-gradient(135deg, rgba(255,255,255,0.13) 0 14px, transparent 14px 28px)',
-      animation: 'stripeSlide 3.5s linear infinite',
-    }}
-  />
-)
 
 interface LobbyScreenProps {
   onPlayClassic: () => void
@@ -93,7 +81,9 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const { state: levelState } = usePlayerLevel(address)
   const { level, progress, address: metaAddress } = useMetaStore()
 
-  const [sheet, setSheet] = useState<'progress' | 'news' | 'stats' | null>(null)
+  const [sheet, setSheet] = useState<
+    'modes' | 'progress' | 'news' | 'stats' | null
+  >(null)
 
   const tournamentContracts = useMemo(
     () =>
@@ -226,32 +216,26 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
           0%, 100% { transform: scale(1); }
           50%      { transform: scale(1.12); }
         }
-        @keyframes stripeSlide {
-          from { background-position: 0 0; }
-          to   { background-position: 56px 0; }
-        }
-
         .lobby-grid {
           display: grid;
           gap: 12px;
           grid-template-columns: 1fr 1fr;
           grid-template-areas:
             "play play"
-            "tour you"
-            "prog ladd"
+            "you  prog"
+            "ladd ladd"
             "rule rule"
             "strip strip";
         }
         @media (min-width: 900px) {
           .lobby-grid {
             gap: 14px;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             grid-template-areas:
-              "play play play play"
-              "tour tour you  you"
-              "prog prog ladd ladd"
-              "rule rule rule rule"
-              "strip strip strip strip";
+              "play play play play play play"
+              "you  you  prog prog ladd ladd"
+              "rule rule rule rule rule rule"
+              "strip strip strip strip strip strip";
           }
         }
         /* The strip is the page's low shelf: shop, streak and news, one line each. */
@@ -283,28 +267,16 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
               <Card
                 icon="play"
                 label={
-                  isWebBrowser() && !isWebWhitelisted(address)
-                    ? 'Classic · 1 free trial'
-                    : 'Classic · weekly leaderboard'
+                  activeTournaments > 0
+                    ? `Classic · ${activeTournaments} tournament${activeTournaments === 1 ? '' : 's'} open`
+                    : 'Classic · tournaments'
                 }
                 value="PLAY"
                 tone="red"
                 hero
                 delay={0}
                 decoration={<BlockRain count={5} distance={250} seed={11} />}
-                onClick={onPlayClassic}
-              />
-            </div>
-
-            <div style={{ gridArea: 'tour' }} className="min-w-0">
-              <Card
-                icon="trophy"
-                label={activeTournaments > 0 ? `${activeTournaments} open now` : 'Tournaments'}
-                value={`$${formattedPool}`}
-                tone="blue"
-                delay={70}
-                decoration={<Stripes />}
-                onClick={onPlayTournaments}
+                onClick={() => setSheet('modes')}
               />
             </div>
 
@@ -385,6 +357,16 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
         </div>
       </div>
 
+      {sheet === 'modes' && (
+        <ModePicker
+          onClassic={onPlayClassic}
+          onTournaments={onPlayTournaments}
+          pool={formattedPool}
+          openCount={activeTournaments}
+          trialGated={isWebBrowser() && !isWebWhitelisted(address)}
+          onClose={() => setSheet(null)}
+        />
+      )}
       {sheet === 'progress' && (
         <ProgressSheet levelState={levelState} onClose={() => setSheet(null)} />
       )}

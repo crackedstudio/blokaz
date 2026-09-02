@@ -247,7 +247,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
           <UsernameRegistration />
 
           <div className="mt-4 flex flex-col gap-4">
-            <div className="brutal-label px-2 pb-2 opacity-100">
+            <div className="brutal-label-soft px-2 pb-2 opacity-100">
               CLASSIC PLAYERS
             </div>
 

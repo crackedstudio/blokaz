@@ -2275,7 +2275,7 @@ const LeftRail: React.FC<{
         boxShadow: '5px 5px 0 var(--shadow)',
       }}
     >
-      <div className="brutal-label mb-3">
+      <div className="brutal-label-soft mb-3">
         NEXT CLEAR CHAIN
       </div>
       <div

@@ -101,7 +101,7 @@ const LadderRow: React.FC<{ level: number; state: LevelState }> = ({
               <div key={key}>
                 <div
                   className="font-display text-[7px] tracking-[0.1em]"
-                  style={{ color: 'var(--label)' }}
+                  style={{ color: 'var(--label-soft)' }}
                 >
                   {SHORT_LABELS[key]}
                 </div>
@@ -183,7 +183,7 @@ const LevelLadderModal: React.FC<Props> = ({ state, onClose }) =>
         <div className="min-w-0">
           <div
             className="font-display text-[10px] tracking-[0.18em]"
-            style={{ color: 'var(--label)' }}
+            style={{ color: 'var(--label-soft)' }}
           >
             THE LADDER
           </div>

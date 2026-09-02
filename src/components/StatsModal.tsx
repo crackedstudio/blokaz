@@ -28,7 +28,7 @@ const SectionBar: React.FC<{ title: string; trailing?: React.ReactNode }> = ({
   >
     <span
       className="font-display text-[10px] tracking-[0.18em]"
-      style={{ color: 'var(--label)' }}
+      style={{ color: 'var(--label-soft)' }}
     >
       {title}
     </span>
@@ -218,7 +218,7 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
               <div className="flex items-center justify-between">
                 <span
                   className="font-display text-[9px] tracking-[0.14em]"
-                  style={{ color: 'var(--label)' }}
+                  style={{ color: 'var(--label-soft)' }}
                 >
                   {atMax ? 'MAX LEVEL' : `NEXT: LEVEL ${level + 1}`}
                 </span>
