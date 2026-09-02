@@ -57,6 +57,8 @@ class BlokAudioEngine {
   private _pendingMusic: MusicIntensity | null = null
   /** Set by the first user gesture. Until then, nothing may build a context. */
   private _unlocked = false
+  /** True while the page is backgrounded and we have parked the context. */
+  private _parked = false
 
   constructor() {
     this._enabled = readBool(KEY_ENABLED, true)
@@ -64,6 +66,42 @@ class BlokAudioEngine {
     this._musicEnabled = readBool(KEY_MUSIC_ON, true)
     // Music sits under the effects by default; it is the bed, not the event.
     this._musicVolume = readNumber(KEY_MUSIC_VOL, 0.32)
+    this.watchVisibility()
+  }
+
+  /**
+   * Silence everything while the page is in the background.
+   *
+   * Without this the soundtrack keeps playing after the player switches tab or
+   * app — which on mobile means Blokaz is still making noise over whatever they
+   * opened next.
+   *
+   * Suspending the whole AudioContext is the right lever rather than muting a
+   * gain: it stops the audio clock too, so the music scheduler idles instead of
+   * queueing notes into a window that has frozen, and nothing has to be
+   * unwound and rebuilt on the way back. Position is preserved exactly, so the
+   * loop continues from where it left off.
+   */
+  private watchVisibility() {
+    if (typeof document === 'undefined') return
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Guarded on the flag, not just the context state: suspend() is async,
+        // so two visibilitychange events in quick succession would both still
+        // see state 'running' and each fire a suspend. Only park a context that
+        // was actually running, so we never resume one the player had not
+        // started yet.
+        if (!this._parked && this.ctx && this.ctx.state === 'running') {
+          this._parked = true
+          void this.ctx.suspend()
+        }
+        return
+      }
+      if (this._parked && this.ctx) {
+        this._parked = false
+        void this.ctx.resume()
+      }
+    })
   }
 
   get enabled() { return this._enabled }
@@ -178,7 +216,18 @@ class BlokAudioEngine {
         this.musicBus.gain.value = this._musicVolume
         this.musicBus.connect(this.master)
       }
-      if (this.ctx.state === 'suspended') void this.ctx.resume()
+      // Do not resume a context parked for backgrounding — a stray sound from a
+      // timer still running in a hidden tab would otherwise wake the whole
+      // engine back up and defeat the suspend.
+      //
+      // The park flag is the only gate, deliberately: `document.hidden` is not
+      // a reliable proxy for "the player is not here". Embedded webviews and
+      // some in-app browsers report hidden while the user is actively tapping,
+      // and gating on that would leave the game permanently silent for them.
+      // Reaching here at all means something the player did asked for a sound.
+      if (this.ctx.state === 'suspended' && !this._parked) {
+        void this.ctx.resume()
+      }
       return this.ctx
     } catch { return null }
   }
