@@ -1,14 +1,18 @@
 /**
- * PROGRESS — everything the lobby's progress card no longer shows.
+ * PROGRESS — the detail behind the lobby's progress card.
  *
  * Blokaz runs two ladders that both used the word LEVEL: WEEKLY is
  * server-derived, 12 rungs, and pays power-ups plus stablecoin at 4, 8 and 12;
- * CAREER is local XP over 60 levels, fed by the daily missions. The front page
- * shows one line for each; the detail lives here, one track at a time so the
- * two can't be confused for one another.
+ * CAREER is local XP over 60 levels, fed by the daily missions. They live on
+ * separate tabs so the two can never be read as one.
+ *
+ * Both tracks use the same row shape — icon, label, fraction, cells — because
+ * a player should not need two reading habits for one screen. Progress shows
+ * as board cells rather than a filled bar: at zero, a bar is a blank strip,
+ * whereas cells still show how much there is to do.
  */
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMetaStore } from '../../stores/metaStore'
 import { isMissionComplete, MAX_LEVEL as MAX_CAREER_LEVEL } from '../../engine/meta'
@@ -19,76 +23,143 @@ import {
   formatTarget,
   levelCompletion,
   levelSpec,
-  objectiveRatio,
   type ObjectiveKey,
 } from '../../constants/levels'
 import type { LevelState } from '../../hooks/usePlayerLevel'
 import { BrutalIcon } from '../BrutalIcon'
-import MissionRow from '../MissionRow'
+import MissionRow, { Pips } from '../MissionRow'
 import LevelLadderModal from '../LevelLadderModal'
 import { BlockCluster } from '../blocks/BlockFX'
 
 type Track = 'weekly' | 'career'
 
-const Meter: React.FC<{ ratio: number; fill: string; height?: number; label: string }> = ({
-  ratio,
-  fill,
-  height = 10,
-  label,
-}) => {
-  const pct = Math.max(0, Math.min(1, ratio)) * 100
-  return (
-    <div
-      className="w-full border-[2px] border-ink"
-      style={{ height, background: 'var(--paper-2)' }}
-      role="progressbar"
-      aria-label={label}
-      aria-valuenow={Math.round(pct)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
-      <div
-        className="h-full transition-[width] duration-500"
-        style={{ width: `${pct}%`, background: fill }}
-      />
-    </div>
-  )
+const OBJECTIVE_ICONS: Record<ObjectiveKey, 'play' | 'trophy' | 'shop' | 'star'> = {
+  games: 'play',
+  tournaments: 'trophy',
+  purchases: 'shop',
+  points: 'star',
 }
 
+// ── Pieces ───────────────────────────────────────────────────────────────────
+
+/** A track's headline: level chip, name, the one number that matters, progress. */
+const TrackHead: React.FC<{
+  level: React.ReactNode
+  chipBg: string
+  chipFg: string
+  name: string
+  note: string
+  ratio: number
+  fill: string
+}> = ({ level, chipBg, chipFg, name, note, ratio, fill }) => (
+  <div>
+    <div className="flex items-center gap-3">
+      <span
+        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center border-[3px] border-ink font-display text-[22px] tabular-nums"
+        style={{ background: chipBg, color: chipFg, letterSpacing: '-0.04em' }}
+      >
+        {level}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div
+          className="truncate font-display uppercase"
+          style={{ fontSize: 19, lineHeight: 1, letterSpacing: '-0.02em' }}
+        >
+          {name}
+        </div>
+        <div
+          className="mt-1.5 font-display text-[9px] uppercase tracking-[0.14em]"
+          style={{ color: 'var(--ink-soft)' }}
+        >
+          {note}
+        </div>
+      </div>
+    </div>
+    {/* A rule that fills, not a boxed bar — one less outline on the screen. */}
+    <div className="mt-3 h-[6px] w-full" style={{ background: 'var(--paper-2)' }}>
+      <div
+        className="h-full transition-[width] duration-500"
+        style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%`, background: fill }}
+        role="progressbar"
+        aria-label={name}
+        aria-valuenow={Math.round(Math.max(0, Math.min(1, ratio)) * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      />
+    </div>
+  </div>
+)
+
+const SectionHead: React.FC<{ title: string; note: string }> = ({ title, note }) => (
+  <div className="flex items-baseline justify-between gap-3">
+    <span
+      className="font-display text-[9px] uppercase tracking-[0.18em]"
+      style={{ color: 'var(--label-soft)' }}
+    >
+      {title}
+    </span>
+    <span
+      className="font-display text-[9px] uppercase tabular-nums tracking-[0.12em]"
+      style={{ color: 'var(--ink-soft)' }}
+    >
+      {note}
+    </span>
+  </div>
+)
+
+/** One weekly target, shaped exactly like a daily mission row. */
 const Objective: React.FC<{
   objective: ObjectiveKey
   current: number
   target: number
   done: boolean
-  accent: string
-}> = ({ objective, current, target, done, accent }) => (
-  <div>
-    <div className="flex items-baseline justify-between gap-2">
+}> = ({ objective, current, target, done }) => (
+  <div className="flex flex-col gap-2 py-2.5">
+    <div className="flex items-center gap-2.5">
       <span
-        className="truncate font-display text-[9px] uppercase tracking-[0.12em]"
-        style={{ color: done ? 'var(--ink)' : 'var(--ink-soft)' }}
+        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center border-[2px] border-ink"
+        style={{
+          background: done ? 'var(--accent-lime)' : 'var(--accent-yellow)',
+          color: 'var(--ink-fixed)',
+        }}
+      >
+        <BrutalIcon
+          name={done ? 'check' : OBJECTIVE_ICONS[objective]}
+          size={12}
+          strokeWidth={3}
+        />
+      </span>
+      <span
+        className="min-w-0 flex-1 truncate font-display text-[10px] tracking-[0.04em]"
+        style={{
+          color: done ? 'var(--ink-soft)' : 'var(--ink)',
+          textDecoration: done ? 'line-through' : 'none',
+        }}
       >
         {OBJECTIVE_LABELS[objective]}
       </span>
       <span
-        className="shrink-0 font-display text-[9px] tabular-nums tracking-[0.06em]"
-        style={{ color: done ? 'var(--ink)' : 'var(--ink-soft)' }}
+        className="shrink-0 font-display text-[10px] tabular-nums tracking-[0.04em]"
+        style={{ color: 'var(--ink-soft)' }}
       >
         {target === 0
           ? '—'
-          : `${formatTarget(objective, Math.min(current, target))}/${formatTarget(objective, target)}`}
+          : done
+            ? 'DONE'
+            : `${formatTarget(objective, Math.min(current, target))}/${formatTarget(objective, target)}`}
       </span>
     </div>
-    <div className="mt-1.5">
-      <Meter
-        ratio={objectiveRatio(current, target)}
-        fill={done ? accent : 'var(--ink-soft)'}
-        height={7}
-        label={OBJECTIVE_LABELS[objective]}
-      />
+    <div className="pl-[32px]">
+      <Pips current={current} target={target} done={done} />
     </div>
   </div>
 )
+
+const Divider: React.FC = () => (
+  <div className="h-px w-full" style={{ background: 'var(--rule)' }} />
+)
+
+// ── Sheet ────────────────────────────────────────────────────────────────────
 
 interface Props {
   levelState: LevelState | null
@@ -100,12 +171,7 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
   const [track, setTrack] = useState<Track>(levelState ? 'weekly' : 'career')
   const [showLadder, setShowLadder] = useState(false)
 
-  const weeklyCompletion = useMemo(
-    () => (levelState ? levelCompletion(levelState.progress, levelState.targets) : 0),
-    [levelState]
-  )
-
-  React.useEffect(() => {
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -113,11 +179,22 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const weeklyCompletion = useMemo(
+    () => (levelState ? levelCompletion(levelState.progress, levelState.targets) : 0),
+    [levelState]
+  )
+
   const spec = levelSpec(levelState?.level ?? 1)
   const accent = levelState?.accent ?? spec.accent
   const careerMaxed = level >= MAX_CAREER_LEVEL
   const careerRatio = careerMaxed ? 1 : needed > 0 ? intoLevel / needed : 0
+
   const missionsDone = progress.missions.filter(isMissionComplete).length
+  // What today is still worth — a section header that only counts completions
+  // gives the player no reason to read on.
+  const xpLeft = progress.missions
+    .filter((m) => !isMissionComplete(m))
+    .reduce((sum, m) => sum + m.xp, 0)
 
   return createPortal(
     <>
@@ -130,12 +207,12 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
         onClick={onClose}
       >
         <div
-          className="flex max-h-[92dvh] w-full max-w-md flex-col border-[2px] border-ink"
+          className="flex max-h-[92dvh] w-full max-w-md flex-col border-[3px] border-ink"
           style={{ background: 'var(--paper)', boxShadow: '6px 6px 0 var(--shadow)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ── */}
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b-[2px] border-ink px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b-[3px] border-ink px-4 py-3">
             <span className="flex items-center gap-2.5">
               <BlockCluster cell={7} />
               <span className="font-display text-[11px] uppercase tracking-[0.18em]">
@@ -153,73 +230,99 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
             </button>
           </div>
 
-          {/* ── One track at a time ── */}
-          <div className="flex shrink-0 border-b-[2px] border-ink">
+          {/* ── Tabs ── */}
+          <div
+            className="flex shrink-0 border-b-[3px] border-ink"
+            role="tablist"
+            aria-label="Progress track"
+          >
             {(
               [
-                ['weekly', 'Weekly · pays'],
-                ['career', 'Career · ranks'],
+                ['weekly', 'Weekly', 'Pays'],
+                ['career', 'Career', 'Ranks'],
               ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setTrack(key)}
-                className="flex-1 px-3 py-2.5 font-display text-[9px] uppercase tracking-[0.14em]"
-                style={{
-                  background: track === key ? 'var(--ink)' : 'transparent',
-                  color: track === key ? 'var(--paper)' : 'var(--ink-soft)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
+            ).map(([key, name, kind]) => {
+              const active = track === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTrack(key)}
+                  className="relative flex-1 px-3 pb-2.5 pt-2.5"
+                  style={{ background: active ? 'var(--paper-2)' : 'transparent' }}
+                >
+                  <span
+                    className="block font-display text-[11px] uppercase tracking-[0.14em]"
+                    style={{ color: active ? 'var(--ink)' : 'var(--muted)' }}
+                  >
+                    {name}
+                  </span>
+                  <span
+                    className="mt-1 block font-display text-[8px] uppercase tracking-[0.18em]"
+                    style={{ color: active ? 'var(--ink-soft)' : 'var(--muted)' }}
+                  >
+                    {kind}
+                  </span>
+                  {/* The selected tab is marked, not just tinted — a tint alone
+                      reads as decoration on a dark surface. */}
+                  <span
+                    className="absolute inset-x-0 bottom-0 h-[4px]"
+                    style={{ background: active ? 'var(--accent-yellow)' : 'transparent' }}
+                  />
+                </button>
+              )
+            })}
           </div>
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
             {track === 'weekly' ? (
               levelState ? (
                 <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="flex h-[38px] w-[38px] shrink-0 items-center justify-center border-[2px] border-ink font-display text-[16px] tabular-nums"
-                      style={{ background: accent, color: 'var(--ink-fixed)' }}
-                    >
-                      {levelState.level}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate font-display text-[14px] tracking-[0.02em]">
-                        {levelState.name}
-                      </div>
-                      <div
-                        className="mt-0.5 font-display text-[9px] uppercase tracking-[0.14em]"
-                        style={{ color: 'var(--ink-soft)' }}
-                      >
-                        Level {levelState.level} of {MAX_WEEKLY_LEVEL} ·{' '}
-                        {Math.floor(weeklyCompletion * 100)}% this week
-                      </div>
+                  <TrackHead
+                    level={levelState.level}
+                    chipBg={accent}
+                    chipFg="var(--ink-fixed)"
+                    name={levelState.name}
+                    note={`Level ${levelState.level} of ${MAX_WEEKLY_LEVEL} · ${Math.floor(
+                      weeklyCompletion * 100
+                    )}% this week`}
+                    ratio={weeklyCompletion}
+                    fill={accent}
+                  />
+
+                  <div>
+                    <SectionHead
+                      title="This week's targets"
+                      note={`${OBJECTIVE_KEYS.filter((k) => levelState.complete[k]).length}/${
+                        OBJECTIVE_KEYS.length
+                      } met`}
+                    />
+                    <div className="mt-1 flex flex-col divide-y" style={{ borderColor: 'var(--rule)' }}>
+                      {OBJECTIVE_KEYS.map((key) => (
+                        <Objective
+                          key={key}
+                          objective={key}
+                          current={levelState.progress[key] ?? 0}
+                          target={levelState.targets[key]}
+                          done={levelState.complete[key]}
+                        />
+                      ))}
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2.5">
-                    {OBJECTIVE_KEYS.map((key) => (
-                      <Objective
-                        key={key}
-                        objective={key}
-                        current={levelState.progress[key] ?? 0}
-                        target={levelState.targets[key]}
-                        done={levelState.complete[key]}
-                        accent={accent}
-                      />
-                    ))}
-                  </div>
+                  <Divider />
 
-                  <p
-                    className="font-body text-[11px] leading-snug"
-                    style={{ color: 'var(--ink-soft)', margin: 0 }}
-                  >
-                    {spec.reward}
-                  </p>
+                  <div>
+                    <SectionHead title="Clearing this level pays" note="" />
+                    <p
+                      className="mt-2 font-body text-[11px] leading-snug"
+                      style={{ color: 'var(--ink-soft)', margin: '8px 0 0' }}
+                    >
+                      {spec.reward}
+                    </p>
+                  </div>
 
                   {levelState.atRisk && levelState.level > 1 && (
                     <div
@@ -244,7 +347,7 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                 </div>
               ) : (
                 <p
-                  className="py-8 text-center font-display text-[10px] uppercase leading-relaxed tracking-[0.14em]"
+                  className="py-10 text-center font-display text-[10px] uppercase leading-relaxed tracking-[0.14em]"
                   style={{ color: 'var(--ink-soft)' }}
                 >
                   Weekly ladder unavailable
@@ -254,57 +357,54 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
               )
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <span
-                    className="flex h-[38px] w-[38px] shrink-0 items-center justify-center border-[2px] border-ink font-display text-[16px] tabular-nums"
-                    style={{ background: 'var(--ink-fixed)', color: 'var(--accent-yellow)' }}
-                  >
-                    {level}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="truncate font-display text-[14px] tracking-[0.02em]">
-                      {title}
-                    </div>
-                    <div
-                      className="mt-0.5 font-display text-[9px] uppercase tracking-[0.14em]"
-                      style={{ color: 'var(--ink-soft)' }}
-                    >
-                      {careerMaxed
-                        ? `Max level · ${progress.totalXp.toLocaleString()} XP`
-                        : `${intoLevel.toLocaleString()} / ${needed.toLocaleString()} XP to level ${level + 1}`}
-                    </div>
-                  </div>
-                </div>
-
-                <Meter
+                <TrackHead
+                  level={level}
+                  chipBg="var(--ink-fixed)"
+                  chipFg="var(--accent-yellow)"
+                  name={title}
+                  note={
+                    careerMaxed
+                      ? `Max level · ${progress.totalXp.toLocaleString()} XP`
+                      : `${intoLevel.toLocaleString()} / ${needed.toLocaleString()} XP to level ${level + 1}`
+                  }
                   ratio={careerRatio}
                   fill="var(--accent-lime)"
-                  label="Career XP progress"
                 />
 
                 <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span
-                      className="font-display text-[9px] uppercase tracking-[0.16em]"
-                      style={{ color: 'var(--ink-soft)' }}
+                  <SectionHead
+                    title="Today's missions"
+                    note={
+                      // An empty list is "not connected yet", not "all done" —
+                      // missions are rolled per address.
+                      progress.missions.length === 0
+                        ? 'Connect to play'
+                        : xpLeft > 0
+                          ? `${missionsDone}/${progress.missions.length} · ${xpLeft} XP left`
+                          : 'All done'
+                    }
+                  />
+                  {progress.missions.length === 0 ? (
+                    <p
+                      className="mt-3 font-body text-[11px] leading-snug"
+                      style={{ color: 'var(--ink-soft)', margin: '12px 0 0' }}
                     >
-                      Today's missions
-                    </span>
-                    <span
-                      className="font-display text-[9px] tabular-nums tracking-[0.1em]"
-                      style={{ color: 'var(--ink-soft)' }}
+                      Three missions are rolled for you each day. Connect a wallet to
+                      start earning XP toward the next level.
+                    </p>
+                  ) : (
+                    <div
+                      className="mt-1 flex flex-col divide-y"
+                      style={{ borderColor: 'var(--rule)' }}
                     >
-                      {missionsDone}/{progress.missions.length}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {progress.missions.map((mission, i) => (
-                      <MissionRow
-                        key={`${mission.kind}-${mission.target}-${i}`}
-                        mission={mission}
-                      />
-                    ))}
-                  </div>
+                      {progress.missions.map((mission, i) => (
+                        <MissionRow
+                          key={`${mission.kind}-${mission.target}-${i}`}
+                          mission={mission}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
