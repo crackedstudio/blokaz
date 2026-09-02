@@ -1,35 +1,38 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  availableThemes,
   type ThemeName,
   type UserTheme,
   useThemeStore,
 } from '../stores/themeStore'
 
-const THEME_META: Record<
-  ThemeName,
-  { icon: string; label: 'CREAM' | 'NAVY' | 'FOREST' }
-> = {
+// A full Record<ThemeName, …>: adding a theme without a label is a build
+// error here rather than a crash on `.icon` at runtime.
+const THEME_META: Record<ThemeName, { icon: string; label: string }> = {
   light: { icon: '☀', label: 'CREAM' },
   'dark-navy': { icon: '◗', label: 'NAVY' },
   'dark-forest': { icon: '❋', label: 'FOREST' },
+  silver: { icon: '◈', label: 'SILVER' },
 }
 
-const OPTIONS: { value: UserTheme; label: string }[] = [
-  { value: 'auto', label: 'AUTO' },
-  { value: 'light', label: 'CREAM' },
-  { value: 'dark-navy', label: 'NAVY' },
-  { value: 'dark-forest', label: 'FOREST' },
-]
+const OPTION_LABEL: Record<UserTheme, string> = {
+  auto: 'AUTO',
+  light: 'CREAM',
+  'dark-navy': 'NAVY',
+  'dark-forest': 'FOREST',
+  silver: 'SILVER',
+}
 
 const ThemeToggle: React.FC = () => {
-  const { userTheme, effectiveTheme, cycleTheme, setUserTheme } = useThemeStore(
-    (state) => ({
+  const { userTheme, effectiveTheme, sovereign, cycleTheme, setUserTheme } =
+    useThemeStore((state) => ({
       userTheme: state.userTheme,
       effectiveTheme: state.effectiveTheme,
+      sovereign: state.sovereign,
       cycleTheme: state.cycleTheme,
       setUserTheme: state.setUserTheme,
-    })
-  )
+    }))
+  const options = availableThemes(sovereign)
   const [open, setOpen] = useState(false)
   const longPressRef = useRef<number | null>(null)
   const didLongPressRef = useRef(false)
@@ -46,14 +49,13 @@ const ThemeToggle: React.FC = () => {
 
   const activeMeta = THEME_META[effectiveTheme]
   const title = useMemo(() => {
-    const next = {
-      auto: 'cream',
-      light: 'navy',
-      'dark-navy': 'forest',
-      'dark-forest': 'auto',
-    }[userTheme]
-    return `Theme: ${userTheme.toUpperCase()} · click to cycle to ${next}`
-  }, [userTheme])
+    // Derived from the same list the cycle walks — the old hand-written map
+    // returned undefined for any theme it had not been updated for.
+    const next = options[(options.indexOf(userTheme) + 1) % options.length]
+    return `Theme: ${userTheme.toUpperCase()} · click to cycle to ${OPTION_LABEL[
+      next
+    ].toLowerCase()}`
+  }, [userTheme, options])
 
   const clearLongPress = () => {
     if (longPressRef.current !== null) {
@@ -113,7 +115,8 @@ const ThemeToggle: React.FC = () => {
           className="absolute right-0 top-[calc(100%+8px)] z-[220] flex w-44 flex-col gap-2 border-[3px] border-ink bg-paper p-2"
           style={{ boxShadow: '6px 6px 0 var(--shadow)' }}
         >
-          {OPTIONS.map((option) => {
+          {options.map((value) => {
+            const option = { value, label: OPTION_LABEL[value] }
             const isActive = userTheme === option.value
             return (
               <button

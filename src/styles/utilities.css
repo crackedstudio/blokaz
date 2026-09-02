@@ -201,3 +201,37 @@
     opacity: 0 !important;
   }
 }
+
+/* ─── SilverGod · calmer motion ───────────────────────────────────────────────
+ * The silver theme is meant to feel unhurried, so it slows what is already
+ * there rather than adding anything new: the block rain drifts, cards settle
+ * instead of snapping, and the press has less recoil. Reduced-motion still
+ * wins — these are longer durations, not new animations.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+[data-theme='silver'] .blockfx-fall {
+  animation-duration: 14s !important;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.5, 1);
+}
+
+[data-theme='silver'] .blockfx-drift {
+  animation-duration: 16s !important;
+}
+
+[data-theme='silver'] .lobby-card {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  [data-theme='silver'] .lobby-card:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 7px 7px 0 var(--shadow) !important;
+  }
+}
+
+[data-theme='silver'] .lobby-card:active {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--shadow) !important;
+}

@@ -226,6 +226,80 @@
   --game-over-shadow: var(--accent);
 }
 
+
+/* ─────────────────────────────────────────────────────────────
+   SILVERGOD — the level-12 prestige theme.
+
+   Unlocked by clearing level 12's card and selectable from then on. A cool,
+   pale, brushed-aluminium chrome with deep slate ink: calmer and more
+   expensive-looking than the three standard themes.
+
+   Note what is NOT here: the nine --piece-* brand colours. They are declared
+   once on :root and inherit, so leaving them out is exactly what keeps the
+   playing pieces vivid against the silver chrome. The pieces are how a player
+   reads the board at speed and several tier mechanics key off recognising a
+   specific piece colour — desaturating them would break both.
+
+   This is a LIGHT-family theme. Anything testing "is this dark" must use the
+   positive dark-set test in useTheme, not `!== 'light'`.
+   ───────────────────────────────────────────────────────────── */
+[data-theme='silver'] {
+  --page: #dfe3e9;
+  --paper: #e7eaef;
+  --paper-2: #f2f4f7;
+  --board: #eceff3;
+  --empty-cell: #e3e7ed;
+  --ink: #171b22;
+  --ink-soft: #3a414d;
+  --muted: #737d8c;
+  --rule: rgba(23, 27, 34, 0.12);
+  --shadow: #171b22;
+  --accent: #6d7f96;
+  --accent-2: #8b97a8;
+  /* Cool, not lime. --accent-soft is the connected-wallet chip on light-family
+     themes, and the standard light theme's lime tears a hole in this palette. */
+  --accent-soft: #9db4d0;
+  --label: #4a5666;
+  --label-soft: #4a5666;
+  --badge-lock: #cfd5dd;
+  --hero: #c8cfd8;
+  --dot: rgba(23, 27, 34, 0.07);
+  --danger: #ff3d3d;
+
+  --accent-yellow: #ffd51f;
+  --accent-orange: #ff7a1a;
+  --accent-lime: #b7ff3b;
+  --accent-pink: #ff3bbd;
+  --accent-cyan: #29e6e6;
+  --accent-purple: #8a3dff;
+
+  --paper-lite: var(--paper-2);
+  --paper-lime: color-mix(in srgb, var(--paper) 74%, var(--accent-lime));
+  --paper-pink: color-mix(in srgb, var(--paper) 74%, var(--accent-pink));
+  --paper-cyan: color-mix(in srgb, var(--paper) 74%, var(--accent-cyan));
+  --paper-purple: color-mix(in srgb, var(--paper) 74%, var(--accent-purple));
+
+  --ink-rgb: 23 27 34;
+  --paper-rgb: 231 234 239;
+  --paper-2-rgb: 242 244 247;
+  --ink-soft-rgb: 58 65 77;
+  --muted-rgb: 115 125 140;
+
+  --surface-shadow: 6px 6px 0 var(--shadow);
+  --surface-shadow-sm: 3px 3px 0 var(--shadow);
+  --surface-shadow-lg: 8px 8px 0 var(--shadow);
+  --surface-shadow-xl: 10px 10px 0 var(--shadow);
+  --overlay: rgba(23, 27, 34, 0.55);
+  --pattern-dot: var(--dot);
+  --pattern-line: rgba(23, 27, 34, 0.12);
+  --ink-fixed: #0c0c10;
+  --ink-contrast: #0c0c10;
+  --piece-tray-bg: #cfd5dd;
+  --combo-burst-soft: var(--paper);
+  --combo-burst-strong: rgba(109, 127, 150, 0.28);
+  --game-over-shadow: var(--accent);
+}
+
 /* ─────────────────────────────────────────────────────────────
    SCORE TIER OVERRIDES
    Applied via data-tier="N" on the root element.
@@ -373,6 +447,14 @@
   --board: #0e2516;
   --empty-cell: #112c1a;
   --piece-tray-bg: var(--accent);
+}
+
+/* Silver holds its own pale board at every tier. Tiers 4-7 hardcode near-black
+   boards, which would tear a hole in the middle of this theme. */
+[data-theme='silver'][data-tier] {
+  --board: #eceff3;
+  --empty-cell: #e3e7ed;
+  --piece-tray-bg: #cfd5dd;
 }
 
 /* Neon and Cosmic are meant to be their own darkness — these keep that, tinted

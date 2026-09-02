@@ -40,6 +40,8 @@ import { useMetaStore } from '../stores/metaStore'
 import { isMissionComplete } from '../engine/meta'
 import { getLiveNewsItems } from './lobby/news'
 import { audioEngine } from '../audio/AudioEngine'
+import { isSovereign } from '../utils/silverGod'
+import { useThemeStore } from '../stores/themeStore'
 import { Card } from './lobby/Card'
 import { BlockRain, BlockRule } from './blocks/BlockFX'
 import ProgressSheet from './lobby/ProgressSheet'
@@ -104,6 +106,17 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
   useEffect(() => {
     try { audioEngine.startMusic(0) } catch {}
   }, [])
+
+  /**
+   * SilverGod gate.
+   *
+   * Reports the server's answer straight through — nothing is cached, so there
+   * is no local flag to set and the theme cannot be granted from a console.
+   * The cost is that silver is unavailable while the ladder API is down.
+   */
+  useEffect(() => {
+    useThemeStore.getState().setSovereign(isSovereign(levelState))
+  }, [levelState])
 
   const tournamentContracts = useMemo(
     () =>

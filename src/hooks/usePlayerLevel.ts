@@ -39,6 +39,12 @@ export interface LevelState {
   /** At level 12 and cleared the card — rank held rather than gained. */
   held: boolean
   maxed: boolean
+  /**
+   * Has ever cleared level 12's card. Unlike `held`, which is only true on the
+   * refresh that clears it, this is derived from level_grants and survives
+   * every later read — it is what SilverGod unlocks on.
+   */
+  sovereign: boolean
 }
 
 async function postRefresh(

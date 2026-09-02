@@ -17,7 +17,7 @@
 // actually causes, and `unlock()` is called from the first tap so music can
 // begin without waiting for a sound effect.
 
-import { MusicEngine, type MusicIntensity } from './MusicEngine'
+import { MusicEngine, type MusicIntensity, type MusicVoicing } from './MusicEngine'
 
 const KEY_ENABLED = 'blokaz-sfx-on'
 const KEY_VOLUME  = 'blokaz-sfx-vol'
@@ -46,6 +46,8 @@ class BlokAudioEngine {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private sfxBus: GainNode | null = null
+  /** Sits between the SFX bus and master; opened wide unless silver is on. */
+  private sfxTone: BiquadFilterNode | null = null
   private musicBus: GainNode | null = null
   private musicEngine: MusicEngine | null = null
 
@@ -57,6 +59,7 @@ class BlokAudioEngine {
   private _pendingMusic: MusicIntensity | null = null
   /** Set by the first user gesture. Until then, nothing may build a context. */
   private _unlocked = false
+  private _voicing: MusicVoicing = 'default'
   /** True while the page is backgrounded and we have parked the context. */
   private _parked = false
 
@@ -67,6 +70,27 @@ class BlokAudioEngine {
     // Music sits under the effects by default; it is the bed, not the event.
     this._musicVolume = readNumber(KEY_MUSIC_VOL, 0.32)
     this.watchVisibility()
+    this.watchTheme()
+  }
+
+  /**
+   * Follow the theme. The store already dispatches `themechange` on every
+   * apply — nothing listened to it until now — so SilverGod's sweeter voicing
+   * arrives with the silver palette and leaves with it, without the theme code
+   * having to know the audio engine exists.
+   */
+  private watchTheme() {
+    if (typeof window === 'undefined') return
+    const sync = (theme: string | undefined) =>
+      this.setVoicing(theme === 'silver' ? 'silver' : 'default')
+    window.addEventListener('themechange', (e) => {
+      sync((e as CustomEvent<{ theme?: string }>).detail?.theme)
+    })
+    // The store applies the stored theme before this module is imported, so
+    // read the attribute once rather than waiting for the next change.
+    if (typeof document !== 'undefined') {
+      sync(document.documentElement.dataset.theme)
+    }
   }
 
   /**
@@ -173,6 +197,7 @@ class BlokAudioEngine {
     const ctx = this.g(true)
     if (!ctx || !this.musicBus) return
     if (!this.musicEngine) this.musicEngine = new MusicEngine(ctx, this.musicBus)
+    this.musicEngine.setVoicing(this._voicing)
     this.musicEngine.start(intensity)
   }
 
@@ -184,6 +209,31 @@ class BlokAudioEngine {
   stopMusic() {
     this._pendingMusic = null
     this.musicEngine?.stop()
+  }
+
+  /**
+   * SilverGod's sweeter voicing: a warmer chord loop and softer effects.
+   * Remembered even before a context exists, so switching theme on a page that
+   * has not made a sound yet still comes up correct.
+   */
+  setVoicing(voicing: MusicVoicing) {
+    if (this._voicing === voicing) return
+    this._voicing = voicing
+    this.musicEngine?.setVoicing(voicing)
+    this.applyVoicing()
+  }
+
+  get voicing() {
+    return this._voicing
+  }
+
+  /** Rolls the SFX tone filter to match the current voicing. */
+  private applyVoicing() {
+    if (!this.sfxTone || !this.ctx) return
+    // 20kHz is effectively open; 2.6kHz takes the glare off the transients
+    // without muffling them. Ramped, so a theme switch does not click.
+    const target = this._voicing === 'silver' ? 2600 : 20000
+    this.sfxTone.frequency.setTargetAtTime(target, this.ctx.currentTime, 0.08)
   }
 
   /**
@@ -208,9 +258,19 @@ class BlokAudioEngine {
         this.master.gain.value = 1
         this.master.connect(this.ctx.destination)
 
+        // sfxBus → tone → master. The filter is transparent by default and
+        // only closes down in silver mode, so effects keep their shape and
+        // lose their edge rather than being replaced.
+        this.sfxTone = this.ctx.createBiquadFilter()
+        this.sfxTone.type = 'lowpass'
+        this.sfxTone.frequency.value = 20000
+        this.sfxTone.Q.value = 0.7
+        this.sfxTone.connect(this.master)
+
         this.sfxBus = this.ctx.createGain()
         this.sfxBus.gain.value = this._enabled ? this._volume : 0
-        this.sfxBus.connect(this.master)
+        this.sfxBus.connect(this.sfxTone)
+        this.applyVoicing()
 
         this.musicBus = this.ctx.createGain()
         this.musicBus.gain.value = this._musicVolume

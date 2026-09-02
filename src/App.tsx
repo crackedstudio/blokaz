@@ -113,6 +113,7 @@ const App: React.FC = () => {
   // Hide the header bar while actively playing — the game chrome has its own back/pause
   const isPlayingGame = !!gameSession && (activeView === 'classic' || activeView === 'tournament-play')
   const setThemeMode = useThemeStore((state) => state.setMode)
+
   const handleSplashDone = useCallback(() => setShowSplash(false), [])
 
   const isInLobby = activeView === 'lobby' && !gameSession

@@ -6,7 +6,12 @@ import { useTheme } from '../hooks/useTheme'
 import { BrutalIcon } from './BrutalIcon'
 import ThemeToggle from './ThemeToggle'
 import { IS_MINIPAY, isWebBrowser } from '../utils/miniPay'
-import { useThemeStore, type UserTheme, type ThemeName } from '../stores/themeStore'
+import {
+  availableThemes,
+  isDarkTheme as isDarkThemeName,
+  useThemeStore,
+  type UserTheme,
+} from '../stores/themeStore'
 import LegalModal, { type LegalModalType } from './LegalModal'
 import FAQSheet from './FAQSheet'
 import HowToPlayModal from './HowToPlayModal'
@@ -28,7 +33,7 @@ interface HeaderProps {
 const MiniPayWalletBadge: React.FC = () => {
   const { address, isConnected } = useAccount()
   const { effectiveTheme } = useTheme()
-  const isDarkTheme = effectiveTheme !== 'light'
+  const isDarkTheme = isDarkThemeName(effectiveTheme)
   const walletBg = isDarkTheme ? 'var(--accent)' : 'var(--accent-soft)'
   const walletColor = isDarkTheme ? '#FFFFFF' : 'var(--ink-fixed)'
 
@@ -72,7 +77,7 @@ const LoginDropdown: React.FC<{ onConnectWallet: () => void }> = ({ onConnectWal
   const { effectiveTheme } = useTheme()
   const { connect, isPending, variables } = useConnect()
   const isSocialBusy = isPending && (variables?.connector as any)?.id === 'web3auth'
-  const isDarkTheme = effectiveTheme !== 'light'
+  const isDarkTheme = isDarkThemeName(effectiveTheme)
   const buttonBg = isDarkTheme ? 'var(--accent)' : 'var(--accent-soft)'
   const buttonColor = isDarkTheme ? '#FFFFFF' : 'var(--ink-fixed)'
 
@@ -157,12 +162,17 @@ const LoginDropdown: React.FC<{ onConnectWallet: () => void }> = ({ onConnectWal
 
 const TELEGRAM_SUPPORT = 'https://t.me/+ulIKRKsI1HYxNmQ0'
 
-const THEME_OPTIONS: { value: UserTheme; label: string; icon: string }[] = [
-  { value: 'auto',         label: 'AUTO',   icon: 'A' },
-  { value: 'light',        label: 'CREAM',  icon: '☀' },
-  { value: 'dark-navy',    label: 'NAVY',   icon: '◗' },
-  { value: 'dark-forest',  label: 'FOREST', icon: '❋' },
-]
+const THEME_META: Record<UserTheme, { label: string; icon: string }> = {
+  auto: { label: 'AUTO', icon: 'A' },
+  light: { label: 'CREAM', icon: '☀' },
+  'dark-navy': { label: 'NAVY', icon: '◗' },
+  'dark-forest': { label: 'FOREST', icon: '❋' },
+  silver: { label: 'SILVER', icon: '◈' },
+}
+
+/** Only the themes this player has earned. Silver appears after level 12. */
+const themeOptions = (sovereign: boolean) =>
+  availableThemes(sovereign).map((value) => ({ value, ...THEME_META[value] }))
 
 /**
  * Audio controls.
@@ -360,9 +370,10 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [showFAQ, setShowFAQ] = React.useState(false)
   const [showHowToPlay, setShowHowToPlay] = React.useState(false)
   const [showStats, setShowStats] = React.useState(false)
-  const { userTheme, setUserTheme } = useThemeStore((s) => ({
+  const { userTheme, setUserTheme, sovereign } = useThemeStore((s) => ({
     userTheme: s.userTheme,
     setUserTheme: s.setUserTheme,
+    sovereign: s.sovereign,
   }))
   const [themeOpen, setThemeOpen] = React.useState(false)
   const themeRef = React.useRef<HTMLDivElement>(null)
@@ -563,9 +574,9 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 >
                   <span className="flex items-center gap-2">
                     <span className="text-[15px] leading-none">
-                      {THEME_OPTIONS.find(o => o.value === userTheme)?.icon}
+                      {THEME_META[userTheme]?.icon}
                     </span>
-                    {THEME_OPTIONS.find(o => o.value === userTheme)?.label}
+                    {THEME_META[userTheme]?.label}
                   </span>
                   <span className="text-[10px] leading-none">{themeOpen ? '▴' : '▾'}</span>
                 </button>
@@ -575,7 +586,7 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     className="absolute left-0 right-0 top-[calc(100%+4px)] z-10 border-[3px] border-ink"
                     style={{ background: 'var(--paper)', boxShadow: '4px 4px 0 var(--shadow)' }}
                   >
-                    {THEME_OPTIONS.map((opt, i) => {
+                    {themeOptions(sovereign).map((opt, i) => {
                       const isActive = userTheme === opt.value
                       return (
                         <button
@@ -953,7 +964,7 @@ export const Header: React.FC<HeaderProps> = ({
     address && owner && address.toLowerCase() === owner.toLowerCase()
   const isTournamentView =
     activeView === 'tournaments' || activeView === 'tournament-play'
-  const isDarkTheme = effectiveTheme !== 'light'
+  const isDarkTheme = isDarkThemeName(effectiveTheme)
   const connectedChipBg = isDarkTheme ? 'var(--accent)' : 'var(--accent-soft)'
   const connectedChipColor = isDarkTheme ? '#FFFFFF' : 'var(--ink-fixed)'
 

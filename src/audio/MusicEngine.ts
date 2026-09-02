@@ -41,12 +41,26 @@ const NOTE = {
   A4: 440.0, C5: 523.25, D5: 587.33, E5: 659.25, G5: 784.0, A5: 880.0,
 } as const
 
+export type MusicVoicing = 'default' | 'silver'
+
 /** Four bars of i–VI–III–VII in A minor: Am, F, C, G. */
 const BARS = [
   { root: NOTE.A2, arp: [NOTE.A3, NOTE.C4, NOTE.E4, NOTE.C4], lead: [NOTE.A4, NOTE.C5, NOTE.E5] },
   { root: NOTE.F2, arp: [NOTE.F3, NOTE.A3, NOTE.C4, NOTE.A3], lead: [NOTE.C5, NOTE.A4, NOTE.F4] },
   { root: NOTE.C3, arp: [NOTE.C4, NOTE.E4, NOTE.G4, NOTE.E4], lead: [NOTE.G4, NOTE.E4, NOTE.C5] },
   { root: NOTE.G2, arp: [NOTE.G3, NOTE.D4, NOTE.G4, NOTE.D4], lead: [NOTE.D5, NOTE.G4, NOTE.A4] },
+] as const
+
+/**
+ * SilverGod's voicing: I–IV–vi–V in C major. Same four-bar shape so the
+ * transport is unchanged, but it resolves upward instead of sitting in the
+ * minor — that plus the slower tempo and softer waveforms is the "sweeter hum".
+ */
+const SILVER_BARS = [
+  { root: NOTE.C3, arp: [NOTE.E4, NOTE.G4, NOTE.C5, NOTE.G4], lead: [NOTE.G4, NOTE.C5, NOTE.E5] },
+  { root: NOTE.F2, arp: [NOTE.A3, NOTE.C4, NOTE.F4, NOTE.C4], lead: [NOTE.C5, NOTE.A4, NOTE.F4] },
+  { root: NOTE.A2, arp: [NOTE.C4, NOTE.E4, NOTE.A4, NOTE.E4], lead: [NOTE.E5, NOTE.C5, NOTE.A4] },
+  { root: NOTE.G2, arp: [NOTE.D4, NOTE.G4, NOTE.D5, NOTE.G4], lead: [NOTE.D5, NOTE.G4, NOTE.C5] },
 ] as const
 
 const STEPS_PER_BAR = 16
@@ -57,6 +71,8 @@ export type MusicIntensity = 0 | 1 | 2 | 3
 
 /** Tempo climbs with intensity so a hot run physically feels faster. */
 const BPM = [104, 112, 122, 132]
+/** Silver runs slower at every intensity — the point is that it is unhurried. */
+const SILVER_BPM = [84, 90, 98, 106]
 
 export class MusicEngine {
   private ctx: AudioContext
@@ -66,6 +82,7 @@ export class MusicEngine {
   private nextStepAt = 0
   private step = 0
   private intensity: MusicIntensity = 0
+  private voicing: MusicVoicing = 'default'
   private running = false
   /** Everything currently scheduled, so stop() can silence mid-flight notes. */
   private live = new Set<{ stop: (t?: number) => void }>()
@@ -114,9 +131,23 @@ export class MusicEngine {
     this.intensity = next
   }
 
+  /**
+   * Swap the chord table, tempo and timbre. Safe mid-playback: the scheduler
+   * reads both per step, so the change lands on the next note rather than
+   * needing a restart, and the loop position is kept.
+   */
+  setVoicing(next: MusicVoicing) {
+    this.voicing = next
+  }
+
+  private get bars() {
+    return this.voicing === 'silver' ? SILVER_BARS : BARS
+  }
+
   private get stepDuration() {
     // A step is a sixteenth note.
-    return 60 / BPM[this.intensity] / 4
+    const table = this.voicing === 'silver' ? SILVER_BPM : BPM
+    return 60 / table[this.intensity] / 4
   }
 
   /**
@@ -135,13 +166,17 @@ export class MusicEngine {
   }
 
   private scheduleStep(step: number, at: number) {
-    const bar = BARS[Math.floor(step / STEPS_PER_BAR)]
+    const bar = this.bars[Math.floor(step / STEPS_PER_BAR)]
     const beat = step % STEPS_PER_BAR
     const I = this.intensity
+    const silver = this.voicing === 'silver'
+    // No square wave in silver, and notes ring rather than click.
+    const arpWave: OscillatorType = silver ? 'sine' : 'square'
+    const tail = silver ? 2.2 : 1
 
     // ── Bass: root on the downbeat, fifth-ish push halfway through the bar ──
-    if (beat === 0) this.voice(bar.root, 'triangle', 0.44, 0.30, at)
-    if (beat === 8) this.voice(bar.root, 'triangle', 0.30, 0.20, at)
+    if (beat === 0) this.voice(bar.root, 'triangle', 0.44 * tail, 0.30, at)
+    if (beat === 8) this.voice(bar.root, 'triangle', 0.30 * tail, 0.20, at)
     if (I >= 2 && (beat === 6 || beat === 14)) {
       this.voice(bar.root * 2, 'triangle', 0.14, 0.12, at)
     }
@@ -154,13 +189,13 @@ export class MusicEngine {
     // ── Arpeggio: steady sixteenths through the bar's chord tones ──
     if (I >= 1 && beat % 2 === 0) {
       const note = bar.arp[(beat / 2) % bar.arp.length]
-      this.voice(note, 'square', 0.10, 0.055, at)
+      this.voice(note, arpWave, 0.10 * tail, silver ? 0.045 : 0.055, at)
     }
 
     // ── Lead: sparse, so it reads as melody rather than texture ──
     if (I >= 2 && (beat === 0 || beat === 6 || beat === 11)) {
       const note = bar.lead[[0, 6, 11].indexOf(beat)]
-      this.voice(note, 'triangle', 0.26, 0.10, at)
+      this.voice(note, 'triangle', 0.26 * tail, 0.10, at)
       if (I >= 3) this.voice(note * 2, 'sine', 0.20, 0.035, at)
     }
   }

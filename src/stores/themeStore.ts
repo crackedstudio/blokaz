@@ -1,6 +1,22 @@
 import { create } from 'zustand'
 
-export type ThemeName = 'light' | 'dark-navy' | 'dark-forest'
+export type ThemeName = 'light' | 'dark-navy' | 'dark-forest' | 'silver'
+
+/**
+ * Themes that have to be earned before they can be selected. Silver is the
+ * level-12 SilverGod unlock — see utils/silverGod.ts.
+ */
+export const LOCKED_THEMES: readonly ThemeName[] = ['silver']
+
+/**
+ * Dark-family themes. A positive test on purpose: the old check was
+ * `effectiveTheme !== 'light'`, which silently classes every new theme as dark
+ * — and silver is pale, so that would pick unreadable chrome for it.
+ */
+export const DARK_THEMES: readonly ThemeName[] = ['dark-navy', 'dark-forest']
+
+export const isDarkTheme = (theme: ThemeName): boolean =>
+  DARK_THEMES.includes(theme)
 export type UserTheme = 'auto' | ThemeName
 export type ThemeMode =
   | 'lobby'
@@ -24,13 +40,34 @@ const getOsTheme = (): ThemeName => {
     : 'light'
 }
 
+/**
+ * Base rotation. Earned themes are appended by `unlockedCycle()` so a locked
+ * theme is never reachable by clicking the toggle.
+ */
 const CYCLE_ORDER: UserTheme[] = ['auto', 'light', 'dark-navy', 'dark-forest']
 
 const isUserTheme = (value: string | null): value is UserTheme =>
   value === 'auto' ||
   value === 'light' ||
   value === 'dark-navy' ||
-  value === 'dark-forest'
+  value === 'dark-forest' ||
+  value === 'silver'
+
+/**
+ * Which themes this player may select. Locked themes are only offered once
+ * their unlock has been recorded; everything else is always available.
+ *
+ * Read at call time rather than cached — the unlock can land mid-session, the
+ * moment a level-12 refresh comes back.
+ */
+export const availableThemes = (sovereign: boolean): UserTheme[] => [
+  ...CYCLE_ORDER,
+  ...(sovereign ? (['silver'] as UserTheme[]) : []),
+]
+
+/** A locked theme must never apply, however it got requested. */
+const isSelectable = (theme: UserTheme, sovereign: boolean): boolean =>
+  !LOCKED_THEMES.includes(theme as ThemeName) || sovereign
 
 const computeInitialUserTheme = (): UserTheme => {
   if (typeof window === 'undefined') return 'auto'
@@ -74,13 +111,20 @@ interface ThemeState {
   effectiveTheme: ThemeName
   initialized: boolean
   initialize: (mode?: ThemeMode) => void
+  sovereign: boolean
   setUserTheme: (theme: UserTheme) => void
+  setSovereign: (sovereign: boolean) => void
   cycleTheme: () => void
   setMode: (mode: ThemeMode) => void
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
   userTheme: 'auto',
+  /**
+   * Whether the player has cleared level 12. Pushed in from the live level
+   * state and never persisted — a stored flag would be a one-line self-grant.
+   */
+  sovereign: false,
   mode: 'lobby',
   modeTheme: getModeTheme('lobby'),
   effectiveTheme: 'light',
@@ -114,16 +158,35 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   setUserTheme: (userTheme) => {
-    const { modeTheme } = get()
-    const effectiveTheme = getEffectiveTheme(userTheme, modeTheme)
-    set({ userTheme, effectiveTheme })
-    applyTheme(effectiveTheme, userTheme, modeTheme)
+    const { modeTheme, sovereign } = get()
+    // Refuse a theme this player has not earned. Reached both from the UI and
+    // from a hand-edited localStorage value on boot.
+    const safe = isSelectable(userTheme, sovereign) ? userTheme : 'auto'
+    const effectiveTheme = getEffectiveTheme(safe, modeTheme)
+    set({ userTheme: safe, effectiveTheme })
+    applyTheme(effectiveTheme, safe, modeTheme)
+  },
+
+  /**
+   * Reports whether level 12 is cleared. An unlock that lands mid-session makes
+   * silver selectable immediately; losing it (disconnect, server unreachable)
+   * drops the player back off the theme rather than leaving it stuck on.
+   */
+  setSovereign: (sovereign) => {
+    set({ sovereign })
+    const { userTheme, modeTheme } = get()
+    if (!isSelectable(userTheme, sovereign)) {
+      const effectiveTheme = getEffectiveTheme('auto', modeTheme)
+      set({ userTheme: 'auto', effectiveTheme })
+      applyTheme(effectiveTheme, 'auto', modeTheme)
+    }
   },
 
   cycleTheme: () => {
-    const { userTheme, setUserTheme } = get()
-    const currentIndex = CYCLE_ORDER.indexOf(userTheme)
-    const nextTheme = CYCLE_ORDER[(currentIndex + 1) % CYCLE_ORDER.length]
+    const { userTheme, sovereign, setUserTheme } = get()
+    // Walks the unlocked set, so a locked theme is never reachable by clicking.
+    const order = availableThemes(sovereign)
+    const nextTheme = order[(order.indexOf(userTheme) + 1) % order.length]
     setUserTheme(nextTheme)
   },
 
