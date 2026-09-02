@@ -15,7 +15,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMetaStore } from '../../stores/metaStore'
-import { isMissionComplete, MAX_LEVEL as MAX_CAREER_LEVEL } from '../../engine/meta'
+import {
+  isMissionComplete,
+  MAX_LEVEL as MAX_CAREER_LEVEL,
+} from '../../engine/meta'
 import {
   MAX_LEVEL as MAX_WEEKLY_LEVEL,
   OBJECTIVE_KEYS,
@@ -34,7 +37,10 @@ import { LadderBadge } from '../badges'
 
 type Track = 'weekly' | 'career'
 
-const OBJECTIVE_ICONS: Record<ObjectiveKey, 'play' | 'trophy' | 'shop' | 'star'> = {
+const OBJECTIVE_ICONS: Record<
+  ObjectiveKey,
+  'play' | 'trophy' | 'shop' | 'star'
+> = {
   games: 'play',
   tournaments: 'trophy',
   purchases: 'shop',
@@ -82,10 +88,16 @@ const TrackHead: React.FC<{
       </div>
     </div>
     {/* A rule that fills, not a boxed bar — one less outline on the screen. */}
-    <div className="mt-3 h-[6px] w-full" style={{ background: 'var(--paper-2)' }}>
+    <div
+      className="mt-3 h-[6px] w-full"
+      style={{ background: 'var(--paper-2)' }}
+    >
       <div
         className="h-full transition-[width] duration-500"
-        style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%`, background: fill }}
+        style={{
+          width: `${Math.max(0, Math.min(1, ratio)) * 100}%`,
+          background: fill,
+        }}
         role="progressbar"
         aria-label={name}
         aria-valuenow={Math.round(Math.max(0, Math.min(1, ratio)) * 100)}
@@ -96,7 +108,10 @@ const TrackHead: React.FC<{
   </div>
 )
 
-const SectionHead: React.FC<{ title: string; note: string }> = ({ title, note }) => (
+const SectionHead: React.FC<{ title: string; note: string }> = ({
+  title,
+  note,
+}) => (
   <div className="flex items-baseline justify-between gap-3">
     <span
       className="font-display text-[9px] uppercase tracking-[0.18em]"
@@ -119,47 +134,62 @@ const Objective: React.FC<{
   current: number
   target: number
   done: boolean
-}> = ({ objective, current, target, done }) => (
-  <div className="flex flex-col gap-2 py-2.5">
-    <div className="flex items-center gap-2.5">
-      <span
-        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center border-[2px] border-ink"
-        style={{
-          background: done ? 'var(--accent-lime)' : 'var(--accent-yellow)',
-          color: 'var(--ink-fixed)',
-        }}
-      >
-        <BrutalIcon
-          name={done ? 'check' : OBJECTIVE_ICONS[objective]}
-          size={12}
-          strokeWidth={3}
-        />
-      </span>
-      <span
-        className="min-w-0 flex-1 truncate font-display text-[10px] tracking-[0.04em]"
-        style={{
-          color: done ? 'var(--ink-soft)' : 'var(--ink)',
-          textDecoration: done ? 'line-through' : 'none',
-        }}
-      >
-        {OBJECTIVE_LABELS[objective]}
-      </span>
-      <span
-        className="shrink-0 font-display text-[10px] tabular-nums tracking-[0.04em]"
-        style={{ color: 'var(--ink-soft)' }}
-      >
-        {target === 0
-          ? '—'
-          : done
-            ? 'DONE'
-            : `${formatTarget(objective, Math.min(current, target))}/${formatTarget(objective, target)}`}
-      </span>
+}> = ({ objective, current, target, done }) => {
+  // A zero target isn't an achievement — this level simply doesn't ask for it.
+  // Ticking and striking it through reads as "already done", which had players
+  // believing past purchases had been counted for them.
+  const notRequired = target === 0
+  const earned = done && !notRequired
+
+  return (
+    <div
+      className="flex flex-col gap-2 py-2.5"
+      style={{ opacity: notRequired ? 0.5 : 1 }}
+    >
+      <div className="flex items-center gap-2.5">
+        <span
+          className="flex h-[22px] w-[22px] shrink-0 items-center justify-center border-[2px] border-ink"
+          style={{
+            background: notRequired
+              ? 'var(--paper-2)'
+              : earned
+                ? 'var(--accent-lime)'
+                : 'var(--accent-yellow)',
+            color: notRequired ? 'var(--ink-soft)' : 'var(--ink-fixed)',
+          }}
+        >
+          <BrutalIcon
+            name={earned ? 'check' : OBJECTIVE_ICONS[objective]}
+            size={12}
+            strokeWidth={3}
+          />
+        </span>
+        <span
+          className="min-w-0 flex-1 truncate font-display text-[10px] tracking-[0.04em]"
+          style={{
+            color: earned ? 'var(--ink-soft)' : 'var(--ink)',
+            textDecoration: earned ? 'line-through' : 'none',
+          }}
+        >
+          {OBJECTIVE_LABELS[objective]}
+        </span>
+        <span
+          className="shrink-0 font-display text-[10px] tabular-nums tracking-[0.04em]"
+          style={{ color: 'var(--ink-soft)' }}
+        >
+          {notRequired
+            ? 'NOT REQUIRED'
+            : earned
+              ? 'DONE'
+              : `${formatTarget(objective, Math.min(current, target))}/${formatTarget(objective, target)}`}
+        </span>
+      </div>
+      <div className="pl-[32px]">
+        <Pips current={current} target={target} done={done} />
+      </div>
     </div>
-    <div className="pl-[32px]">
-      <Pips current={current} target={target} done={done} />
-    </div>
-  </div>
-)
+  )
+}
 
 const Divider: React.FC = () => (
   <div className="h-px w-full" style={{ background: 'var(--rule)' }} />
@@ -186,7 +216,8 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
   }, [onClose])
 
   const weeklyCompletion = useMemo(
-    () => (levelState ? levelCompletion(levelState.progress, levelState.targets) : 0),
+    () =>
+      levelState ? levelCompletion(levelState.progress, levelState.targets) : 0,
     [levelState]
   )
 
@@ -214,7 +245,10 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
       >
         <div
           className="flex max-h-[92dvh] w-full max-w-md flex-col border-[3px] border-ink"
-          style={{ background: 'var(--paper)', boxShadow: '6px 6px 0 var(--shadow)' }}
+          style={{
+            background: 'var(--paper)',
+            boxShadow: '6px 6px 0 var(--shadow)',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ── */}
@@ -257,7 +291,9 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                   aria-selected={active}
                   onClick={() => setTrack(key)}
                   className="relative flex-1 px-3 pb-2.5 pt-2.5"
-                  style={{ background: active ? 'var(--paper-2)' : 'transparent' }}
+                  style={{
+                    background: active ? 'var(--paper-2)' : 'transparent',
+                  }}
                 >
                   <span
                     className="block font-display text-[11px] uppercase tracking-[0.14em]"
@@ -267,7 +303,9 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                   </span>
                   <span
                     className="mt-1 block font-display text-[8px] uppercase tracking-[0.18em]"
-                    style={{ color: active ? 'var(--ink-soft)' : 'var(--muted)' }}
+                    style={{
+                      color: active ? 'var(--ink-soft)' : 'var(--muted)',
+                    }}
                   >
                     {kind}
                   </span>
@@ -275,7 +313,11 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                       reads as decoration on a dark surface. */}
                   <span
                     className="absolute inset-x-0 bottom-0 h-[4px]"
-                    style={{ background: active ? 'var(--accent-yellow)' : 'transparent' }}
+                    style={{
+                      background: active
+                        ? 'var(--accent-yellow)'
+                        : 'transparent',
+                    }}
                   />
                 </button>
               )
@@ -302,11 +344,22 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                   <div>
                     <SectionHead
                       title="This week's targets"
-                      note={`${OBJECTIVE_KEYS.filter((k) => levelState.complete[k]).length}/${
-                        OBJECTIVE_KEYS.length
-                      } met`}
+                      note={(() => {
+                        // Objectives this level doesn't ask for are excluded
+                        // from the tally, so "3/3 met" means genuinely done.
+                        const required = OBJECTIVE_KEYS.filter(
+                          (k) => levelState.targets[k] > 0
+                        )
+                        const met = required.filter(
+                          (k) => levelState.complete[k]
+                        )
+                        return `${met.length}/${required.length} met`
+                      })()}
                     />
-                    <div className="mt-1 flex flex-col divide-y" style={{ borderColor: 'var(--rule)' }}>
+                    <div
+                      className="mt-1 flex flex-col divide-y"
+                      style={{ borderColor: 'var(--rule)' }}
+                    >
                       {OBJECTIVE_KEYS.map((key) => (
                         <Objective
                           key={key}
@@ -334,11 +387,15 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                   {levelState.atRisk && levelState.level > 1 && (
                     <div
                       className="flex items-center gap-2 border-[2px] border-ink px-3 py-2"
-                      style={{ background: 'var(--paper-pink)', color: 'var(--ink-fixed)' }}
+                      style={{
+                        background: 'var(--paper-pink)',
+                        color: 'var(--ink-fixed)',
+                      }}
                     >
                       <BrutalIcon name="alert" size={13} strokeWidth={3} />
                       <span className="font-display text-[9px] tracking-[0.08em]">
-                        CLEAR A LEVEL BEFORE MONDAY OR DROP TO {levelState.level - 1}
+                        CLEAR A LEVEL BEFORE MONDAY OR DROP TO{' '}
+                        {levelState.level - 1}
                       </span>
                     </div>
                   )}
@@ -347,7 +404,10 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                     type="button"
                     onClick={() => setShowLadder(true)}
                     className="border-[2px] border-ink px-3 py-2.5 font-display text-[9px] uppercase tracking-[0.14em]"
-                    style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}
+                    style={{
+                      background: 'var(--paper-2)',
+                      color: 'var(--ink)',
+                    }}
                   >
                     All {MAX_WEEKLY_LEVEL} levels
                   </button>
@@ -396,8 +456,8 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                       className="mt-3 font-body text-[11px] leading-snug"
                       style={{ color: 'var(--ink-soft)', margin: '12px 0 0' }}
                     >
-                      Three missions are rolled for you each day. Connect a wallet to
-                      start earning XP toward the next level.
+                      Three missions are rolled for you each day. Connect a
+                      wallet to start earning XP toward the next level.
                     </p>
                   ) : (
                     <div
@@ -420,7 +480,10 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
       </div>
 
       {showLadder && levelState && (
-        <LevelLadderModal state={levelState} onClose={() => setShowLadder(false)} />
+        <LevelLadderModal
+          state={levelState}
+          onClose={() => setShowLadder(false)}
+        />
       )}
     </>,
     document.body

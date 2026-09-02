@@ -10,6 +10,7 @@ import {
   applyRollover,
   climb,
   weekStartOf,
+  progressWindowStart,
 } from '../config/levels.js'
 
 const router = Router()
@@ -48,10 +49,13 @@ function requireAdmin(req, res) {
  * The four weekly counters, derived from the session/purchase tables. Nothing
  * the client sends can move these — only finishing a run or paying on-chain.
  */
-async function readProgress(addr, weekStart) {
+async function readProgress(addr, weekStart, joinedAt) {
   const { data, error } = await supabase.rpc('level_progress', {
     p_address: addr,
-    p_since: `${weekStart}T00:00:00Z`,
+    // Measured from whichever is latest: the week start or the moment this
+    // player joined the ladder. The join date is what lets the update ship at
+    // any time without crediting anyone for what they did before it landed.
+    p_since: progressWindowStart(weekStart, joinedAt),
   })
 
   if (error) {
@@ -301,7 +305,7 @@ router.post('/refresh', async (req, res) => {
   const demotedBy = rolled.demotedBy
 
   // ── Derive this week's progress ─────────────────────────────────────────────
-  const progress = await readProgress(addr, currentWeek)
+  const progress = await readProgress(addr, currentWeek, row.created_at)
   if (!progress) return res.status(500).json({ error: 'Failed to read progress' })
 
   // ── Climb as far as this week's progress allows ─────────────────────────────
@@ -547,7 +551,7 @@ router.get('/:address', async (req, res) => {
     })
   }
 
-  const progress = await readProgress(addr, row.week_start)
+  const progress = await readProgress(addr, row.week_start, row.created_at)
   if (!progress) return res.status(500).json({ error: 'Failed to read progress' })
 
   res.json({

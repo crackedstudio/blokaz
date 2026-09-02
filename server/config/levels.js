@@ -31,18 +31,18 @@
 /** Weekly targets that must ALL be met to clear the level. */
 export const LEVELS = [
   null, // 1-indexed — LEVELS[1] is level 1
-  { level: 1,   name: 'PAPER CADET',      accent: '#ffd51f', targets: { games: 10,  tournaments: 10, purchases: 0,  points: 1_000  } },
-  { level: 2,   name: 'STICKER SCOUT',    accent: '#ff3bbd', targets: { games: 15,  tournaments: 12, purchases: 0,  points: 3_000  } },
-  { level: 3,   name: 'STRIPED RUNNER',   accent: '#ff7a1a', targets: { games: 21,  tournaments: 15, purchases: 1,  points: 6_500  } },
-  { level: 4,   name: 'PIXEL BREAKER',    accent: '#b7ff3b', targets: { games: 28,  tournaments: 18, purchases: 2,  points: 12_000 } },
-  { level: 5,   name: 'NEON RIDER',       accent: '#29e6e6', targets: { games: 36,  tournaments: 21, purchases: 3,  points: 20_000 } },
-  { level: 6,   name: 'COSMIC DRIFTER',   accent: '#8a3dff', targets: { games: 45,  tournaments: 25, purchases: 4,  points: 32_000 } },
-  { level: 7,   name: 'LIQUID SURGE',     accent: '#29e6e6', targets: { games: 55,  tournaments: 29, purchases: 6,  points: 48_000 } },
-  { level: 8,   name: 'GLITCH WALKER',    accent: '#ff3bbd', targets: { games: 66,  tournaments: 33, purchases: 8,  points: 70_000 } },
-  { level: 9,   name: 'VOID ARCHITECT',   accent: '#b7ff3b', targets: { games: 78,  tournaments: 38, purchases: 10, points: 100_000 } },
-  { level: 10,  name: 'PRISM WARDEN',     accent: '#ff7a1a', targets: { games: 91,  tournaments: 43, purchases: 12, points: 140_000 } },
-  { level: 11,  name: 'OBSIDIAN ORACLE',  accent: '#8a3dff', targets: { games: 105, tournaments: 48, purchases: 15, points: 190_000 } },
-  { level: 12,  name: 'BLOKAZ SOVEREIGN', accent: '#ffd51f', targets: { games: 120, tournaments: 54, purchases: 18, points: 260_000 } },
+  { level: 1,   name: 'PAPER CADET',      accent: '#ffd51f', targets: { games: 10,  tournaments: 10, purchases: 1,  points: 1_000  } },
+  { level: 2,   name: 'STICKER SCOUT',    accent: '#ff3bbd', targets: { games: 15,  tournaments: 12, purchases: 2,  points: 3_000  } },
+  { level: 3,   name: 'STRIPED RUNNER',   accent: '#ff7a1a', targets: { games: 21,  tournaments: 15, purchases: 3,  points: 6_500  } },
+  { level: 4,   name: 'PIXEL BREAKER',    accent: '#b7ff3b', targets: { games: 28,  tournaments: 18, purchases: 4,  points: 12_000 } },
+  { level: 5,   name: 'NEON RIDER',       accent: '#29e6e6', targets: { games: 36,  tournaments: 21, purchases: 5,  points: 20_000 } },
+  { level: 6,   name: 'COSMIC DRIFTER',   accent: '#8a3dff', targets: { games: 45,  tournaments: 25, purchases: 6,  points: 32_000 } },
+  { level: 7,   name: 'LIQUID SURGE',     accent: '#29e6e6', targets: { games: 55,  tournaments: 29, purchases: 8,  points: 48_000 } },
+  { level: 8,   name: 'GLITCH WALKER',    accent: '#ff3bbd', targets: { games: 66,  tournaments: 33, purchases: 10,  points: 70_000 } },
+  { level: 9,   name: 'VOID ARCHITECT',   accent: '#b7ff3b', targets: { games: 78,  tournaments: 38, purchases: 12, points: 100_000 } },
+  { level: 10,  name: 'PRISM WARDEN',     accent: '#ff7a1a', targets: { games: 91,  tournaments: 43, purchases: 14, points: 140_000 } },
+  { level: 11,  name: 'OBSIDIAN ORACLE',  accent: '#8a3dff', targets: { games: 105, tournaments: 48, purchases: 17, points: 190_000 } },
+  { level: 12,  name: 'BLOKAZ SOVEREIGN', accent: '#ffd51f', targets: { games: 120, tournaments: 54, purchases: 20, points: 260_000 } },
 ]
 
 export const MAX_LEVEL = 12
@@ -83,6 +83,48 @@ export function meetsTargets(level, progress) {
   const spec = LEVELS[level]
   if (!spec) return false
   return TARGET_KEYS.every((key) => (progress[key] ?? 0) >= spec.targets[key])
+}
+
+/**
+ * Optional global re-baseline, as an ISO 8601 timestamp. Unset by default.
+ *
+ * Nothing normally needs this — each player's own start date already keeps
+ * pre-ladder activity out of their counters (see progressWindowStart). Set it
+ * only to deliberately reset the ENTIRE player base from a chosen moment, for
+ * instance if the objectives are redefined and old progress stops being
+ * comparable.
+ */
+export const LADDER_EPOCH = process.env.LADDER_EPOCH ?? null
+
+/**
+ * The instant from which a player's weekly counters are measured: the latest of
+ * the week start, the moment that player joined the ladder, and any global
+ * re-baseline.
+ *
+ * `joinedAt` is what makes the ladder safe to deploy at any moment. Counters
+ * are derived from tables that have been recording for months, so measuring
+ * from the plain week start would credit a player for everything they had
+ * already done since Monday — objectives would appear part-finished, or ticked
+ * outright, the first time they opened the updated app. Anchoring to the row's
+ * own creation means every player begins at zero from their first visit after
+ * the update ships, whenever that happens to be.
+ *
+ * Self-expiring: from the following Monday the week start is always the latest
+ * of the three, so this stops applying on its own.
+ */
+export function progressWindowStart(weekStart, joinedAt = null, epoch = LADDER_EPOCH) {
+  const weekMs = Date.parse(`${weekStart}T00:00:00Z`)
+
+  let latest = weekMs
+  for (const candidate of [joinedAt, epoch]) {
+    if (!candidate) continue
+    const ms = Date.parse(candidate)
+    // Ignore anything unparseable rather than collapsing the window to NaN,
+    // which would make the RPC return no rows and zero every counter.
+    if (!Number.isNaN(ms) && ms > latest) latest = ms
+  }
+
+  return latest === weekMs ? `${weekStart}T00:00:00Z` : new Date(latest).toISOString()
 }
 
 /** Monday 00:00 UTC of the week containing `date`, as a YYYY-MM-DD string. */
