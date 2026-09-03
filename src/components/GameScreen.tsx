@@ -35,6 +35,7 @@ import contractInfo from '../contract.json'
 import type { MoveRecord } from '../engine/game'
 import {
   CLASSIC_SESSION_STORAGE_KEY,
+  isSubmittedSeed,
   readStoredGameSession,
   writeStoredGameSession,
   clearStoredGameSession,
@@ -1300,7 +1301,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
     let cancelled = false
     fetchServerSession(address).then((session) => {
       if (cancelled) return
-      setServerGameAvailable(!!session?.moveHistory?.length)
+      // A run this device has already submitted is finished, whatever the
+      // server still says. Offering it back showed the player a score they had
+      // banked and let them register and submit it a second time.
+      const alreadySubmitted =
+        !!session && isSubmittedSeed(address, session.seed, session.onChainSeed)
+      setServerGameAvailable(!!session?.moveHistory?.length && !alreadySubmitted)
     })
     return () => {
       cancelled = true

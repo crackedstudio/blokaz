@@ -210,24 +210,44 @@ router.get('/restore/:address', async (req, res) => {
  */
 router.post('/complete', async (req, res) => {
   if (!requireDb(res)) return
-  const { address, seed } = req.body
+  const { address, seed, onChainSeed } = req.body
 
   if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
-  if (!validateSeed(seed)) return res.status(400).json({ error: 'Invalid seed' })
+  if (!validateSeed(seed) && !validateSeed(onChainSeed)) {
+    return res.status(400).json({ error: 'Invalid seed' })
+  }
 
-  const { error } = await supabase
+  // A row is keyed by the local session seed, but the client historically sent
+  // the on-chain one — a value that lives in a different column, so the match
+  // silently found nothing and the session stayed active. Restore then kept
+  // offering an already-submitted run, which the player could resubmit.
+  // Accepting either identifies the row whichever seed the caller has.
+  const candidates = []
+  if (validateSeed(seed)) candidates.push(`seed.eq.${String(seed)}`)
+  if (validateSeed(onChainSeed)) candidates.push(`on_chain_seed.eq.${String(onChainSeed)}`)
+
+  const { data, error } = await supabase
     .from('game_sessions')
     .update({ status: 'submitted' })
     .eq('address', address.toLowerCase())
-    .eq('seed', String(seed))
     .eq('status', 'active')
+    .or(candidates.join(','))
+    .select('id')
 
   if (error) {
     console.error('session/complete error:', error)
     return res.status(500).json({ error: 'Failed to complete session' })
   }
 
-  res.json({ ok: true })
+  const updated = data?.length ?? 0
+  // Nothing matched: either a duplicate call after the row was already
+  // completed, or a seed that belongs to no active session. Worth saying out
+  // loud — a session left active is one the player can be offered again.
+  if (updated === 0) {
+    console.warn(`[session] complete matched no active session (${address}, ${seed ?? onChainSeed})`)
+  }
+
+  res.json({ ok: true, updated })
 })
 
 export default router

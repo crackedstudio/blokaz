@@ -159,3 +159,55 @@ export function readResumableTournamentRun(
     moves: stored.snapshot.moveHistory.filter((m) => m.pieceIndex >= 0).length,
   }
 }
+
+// ── Submitted runs ───────────────────────────────────────────────────────────
+
+const SUBMITTED_SEEDS_KEY = 'blokaz_submitted_seeds'
+/** Enough to cover any session still lingering server-side, not enough to grow. */
+const SUBMITTED_SEEDS_KEPT = 20
+
+function submittedSeedsKey(address: string) {
+  return `${SUBMITTED_SEEDS_KEY}_${address.toLowerCase()}`
+}
+
+function readSubmittedSeeds(address: string): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(submittedSeedsKey(address)) ?? '[]')
+    return Array.isArray(raw) ? raw.map(String) : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Remembers that a run was submitted on-chain, by every seed that identifies it.
+ *
+ * The server record is the real answer, but it is a network call that can fail
+ * or be marked against nothing — and when it is, an already-submitted run comes
+ * back as a resumable game, showing the player a score they have banked and
+ * inviting them to register and submit it a second time. This is the local
+ * backstop: the device that submitted the run always knows it did.
+ */
+export function recordSubmittedSeeds(
+  address: string,
+  ...seeds: (string | null | undefined)[]
+) {
+  const fresh = seeds.filter((s): s is string => !!s).map(String)
+  if (!fresh.length) return
+  try {
+    const kept = [...new Set([...fresh, ...readSubmittedSeeds(address)])].slice(
+      0,
+      SUBMITTED_SEEDS_KEPT
+    )
+    localStorage.setItem(submittedSeedsKey(address), JSON.stringify(kept))
+  } catch {}
+}
+
+/** True when any of these seeds belongs to a run this device already submitted. */
+export function isSubmittedSeed(
+  address: string,
+  ...seeds: (string | null | undefined)[]
+): boolean {
+  const known = readSubmittedSeeds(address)
+  return seeds.some((seed) => !!seed && known.includes(String(seed)))
+}

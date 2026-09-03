@@ -31,6 +31,7 @@ import {
   readTournamentSession,
   clearStoredGameSession,
   readStoredGameSession,
+  recordSubmittedSeeds,
 } from '../utils/gameSessionStorage'
 import { BrutalIcon } from './BrutalIcon'
 import { IS_MINIPAY } from '../utils/miniPay'
@@ -601,12 +602,28 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
 
   React.useEffect(() => {
     if (isAllSuccess && address) {
-      const seed = useGameStore.getState().onChainSeed
+      const state = useGameStore.getState()
+      const onChainSeed = state.onChainSeed
+      // The server row is keyed by the local session seed; the on-chain seed is
+      // what this modal has always had. Send both, and the row is found either
+      // way — sending only the on-chain one matched nothing and left the run
+      // active, which is what let a submitted score be offered again.
+      const sessionSeed = state.gameSession?.seed?.toString() ?? null
+
+      // Recorded before the network call: a device that submitted a run must
+      // never offer to resume it, whatever the server ends up knowing.
+      recordSubmittedSeeds(address, sessionSeed, onChainSeed)
+
       ;(async () => {
         if (isTournamentMode && tournamentId !== null) {
-          if (seed) await markTournamentSessionComplete(address, tournamentId.toString(), seed)
+          await markTournamentSessionComplete(
+            address,
+            tournamentId.toString(),
+            sessionSeed,
+            onChainSeed
+          )
         } else {
-          if (seed) await markSessionComplete(address, seed)
+          await markSessionComplete(address, sessionSeed, onChainSeed)
         }
         clearStoredGameSession(storageKey)
       })()

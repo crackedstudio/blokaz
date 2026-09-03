@@ -234,9 +234,18 @@ export async function fetchServerSession(address: string): Promise<{
  * Marks the session as submitted after successful on-chain score submission.
  * Retries up to 3 times — losing this record means the session could be
  * offered for restore after it was already submitted.
+ *
+ * Both seeds go up. The row is keyed by the local session seed, but the caller
+ * usually has the on-chain one to hand, and sending only that matched nothing:
+ * the two live in different columns, so the session stayed active and came
+ * back as a resumable run the player could submit a second time.
  */
-export async function markSessionComplete(address: string, seed: string): Promise<void> {
-  await postWithRetry('/session/complete', { address, seed }, 3)
+export async function markSessionComplete(
+  address: string,
+  seed: string | null,
+  onChainSeed?: string | null
+): Promise<void> {
+  await postWithRetry('/session/complete', { address, seed, onChainSeed }, 3)
 }
 
 /**
@@ -370,9 +379,14 @@ export function useTournamentMoveSync(tournamentId: bigint | null) {
 export async function markTournamentSessionComplete(
   address: string,
   tournamentId: string,
-  seed: string,
+  seed: string | null,
+  onChainSeed?: string | null,
 ): Promise<void> {
-  await postWithRetry('/tournament-session/complete', { address, tournamentId, seed }, 3)
+  await postWithRetry(
+    '/tournament-session/complete',
+    { address, tournamentId, seed, onChainSeed },
+    3
+  )
 }
 
 /**

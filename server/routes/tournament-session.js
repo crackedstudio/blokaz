@@ -229,26 +229,42 @@ router.get('/restore/:address/:tournamentId', async (req, res) => {
  */
 router.post('/complete', async (req, res) => {
   if (!requireDb(res)) return
-  const { address, tournamentId, seed } = req.body
+  const { address, tournamentId, seed, onChainSeed } = req.body
 
   if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
   if (!validateTournamentId(tournamentId)) return res.status(400).json({ error: 'Invalid tournamentId' })
-  if (!validateSeed(seed)) return res.status(400).json({ error: 'Invalid seed' })
+  if (!validateSeed(seed) && !validateSeed(onChainSeed)) {
+    return res.status(400).json({ error: 'Invalid seed' })
+  }
 
-  const { error } = await supabase
+  // Same match as /session/complete: the row is keyed by the local seed while
+  // the caller may only hold the on-chain one.
+  const candidates = []
+  if (validateSeed(seed)) candidates.push(`seed.eq.${String(seed)}`)
+  if (validateSeed(onChainSeed)) candidates.push(`on_chain_seed.eq.${String(onChainSeed)}`)
+
+  const { data, error } = await supabase
     .from('tournament_sessions')
     .update({ status: 'submitted' })
     .eq('address', address.toLowerCase())
     .eq('tournament_id', String(tournamentId))
-    .eq('seed', String(seed))
     .eq('status', 'active')
+    .or(candidates.join(','))
+    .select('id')
 
   if (error) {
     console.error('tournament-session/complete error:', error)
     return res.status(500).json({ error: 'Failed to complete tournament session' })
   }
 
-  res.json({ ok: true })
+  const updated = data?.length ?? 0
+  if (updated === 0) {
+    console.warn(
+      `[tournament-session] complete matched no active session (${address}, t${tournamentId})`
+    )
+  }
+
+  res.json({ ok: true, updated })
 })
 
 /**
