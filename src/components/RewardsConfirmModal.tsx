@@ -89,7 +89,7 @@ const RewardsConfirmModal: React.FC<Props> = ({
             letterSpacing: '0.08em',
             textAlign: 'center',
           }}>
-            If you tapped YES by mistake, the link stays available in Settings → Rewards
+            Already marked as claimed — the link stays available in Settings → Rewards
           </div>
 
           {/* Buttons */}
@@ -131,7 +131,7 @@ const RewardsConfirmModal: React.FC<Props> = ({
                 cursor: isConfirming ? 'not-allowed' : 'pointer',
               }}
             >
-              NO, TRY AGAIN
+              NO — OPEN THE LINK AGAIN
             </button>
           </div>
         </div>

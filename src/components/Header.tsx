@@ -17,7 +17,8 @@ import FAQSheet from './FAQSheet'
 import HowToPlayModal from './HowToPlayModal'
 import StatsModal from './StatsModal'
 import { audioEngine } from '../audio/AudioEngine'
-import { usePlayerRewards, getRewardUrl } from '../hooks/useRewards'
+import { usePlayerRewards } from '../hooks/useRewards'
+import { loadClaimedLinks, startRewardClaim } from '../lib/rewardClaim'
 
 type HeaderView = 'lobby' | 'classic' | 'tournaments' | 'tournament-play' | 'admin'
 
@@ -413,33 +414,26 @@ const SettingsSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [claimingId, setClaimingId] = React.useState<string | null>(null)
   const [claimErr, setClaimErr] = React.useState<string | null>(null)
 
-  // Load locally saved cash link URLs so claimed rewards can still be opened
+  // Locally saved cash links, so a claimed reward can still be opened.
   const savedLinks: Record<string, string> = React.useMemo(() => {
     if (!address) return {}
-    try {
-      const raw = JSON.parse(localStorage.getItem(`blokaz_claimed_${address.toLowerCase()}`) ?? '{}')
-      const result: Record<string, string> = {}
-      for (const [id, entry] of Object.entries(raw)) {
-        result[id] = (entry as any).cashLinkUrl
-      }
-      return result
-    } catch { return {} }
+    const result: Record<string, string> = {}
+    for (const [id, entry] of Object.entries(loadClaimedLinks(address))) {
+      result[id] = entry.cashLinkUrl
+    }
+    return result
   }, [address])
 
   const handleSettingsClaim = async (rewardId: string, label: string, amount: string, token: string) => {
     if (!address) return
     setClaimingId(rewardId)
     setClaimErr(null)
-    const result = await getRewardUrl(address, rewardId)
+    // Shared with the level card and the rewards panel: it marks the reward
+    // claimed, keeps the link, and leaves the pending record that prompts the
+    // player on their return.
+    const result = await startRewardClaim(address, { id: rewardId, label, amount, token })
     setClaimingId(null)
-    if (result.ok && result.cashLinkUrl) {
-      // Save pending claim — confirmation modal will appear when user returns
-      const pending = { rewardId, cashLinkUrl: result.cashLinkUrl, label, amount, token }
-      localStorage.setItem(`blokaz_pending_claim_${address.toLowerCase()}`, JSON.stringify(pending))
-      window.location.href = result.cashLinkUrl
-    } else {
-      setClaimErr(result.error ?? 'Failed to get reward')
-    }
+    if (!result.ok) setClaimErr(result.error)
   }
 
   const claimed   = rewards.filter(r => r.claimed_at)

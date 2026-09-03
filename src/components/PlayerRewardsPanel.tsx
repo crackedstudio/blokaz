@@ -6,31 +6,13 @@ import RewardsConfirmModal from './RewardsConfirmModal'
 // Step one of a claim, and the record that survives the trip to the cash link.
 // Shared so a claim started on a level card is confirmed by this panel too.
 import {
+  loadClaimedLinks,
   loadPendingClaim,
   savePendingClaim,
   startRewardClaim,
+  type ClaimedEntry,
   type PendingClaim,
 } from '../lib/rewardClaim'
-
-interface ClaimedEntry {
-  cashLinkUrl: string
-  label: string
-  amount: string
-  token: string
-}
-
-function claimedStorageKey(address: string) {
-  return `blokaz_claimed_${address.toLowerCase()}`
-}
-
-function loadClaimed(address: string): Record<string, ClaimedEntry> {
-  try { return JSON.parse(localStorage.getItem(claimedStorageKey(address)) ?? '{}') }
-  catch { return {} }
-}
-
-function saveClaimed(address: string, claimed: Record<string, ClaimedEntry>) {
-  localStorage.setItem(claimedStorageKey(address), JSON.stringify(claimed))
-}
 
 interface Props {
   address: string
@@ -51,7 +33,7 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
 
   // Load persisted state on mount
   useEffect(() => {
-    setClaimedLinks(loadClaimed(address))
+    setClaimedLinks(loadClaimedLinks(address))
     const pending = loadPendingClaim(address)
     if (pending) {
       setPendingClaim(pending)
@@ -98,38 +80,27 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
     else setClaimError(result.error)
   }
 
-  // Step 2a: user confirms they received the reward → mark as claimed
+  // The reward was already marked claimed when the link was handed over, and
+  // the link itself was already saved. This repeats the write as a retry — it
+  // is idempotent, and covers a player who was offline as they claimed.
   const handleConfirm = async () => {
     if (!pendingClaim) return
     setIsConfirming(true)
     const result = await confirmRewardClaimed(address, pendingClaim.rewardId)
     setIsConfirming(false)
-    if (result.ok) {
-      const entry: ClaimedEntry = {
-        cashLinkUrl: pendingClaim.cashLinkUrl,
-        label: pendingClaim.label,
-        amount: pendingClaim.amount,
-        token: pendingClaim.token,
-      }
-      const updated = { ...claimedLinks, [pendingClaim.rewardId]: entry }
-      setClaimedLinks(updated)
-      saveClaimed(address, updated)
-      savePendingClaim(address, null)
-      setPendingClaim(null)
-      setShowConfirm(false)
-      refetch()
-    } else {
-      setClaimError(result.error ?? 'Failed to confirm')
-      setShowConfirm(false)
-    }
-  }
-
-  // Step 2b: user did not receive it → keep unclaimed, let them try again
-  const handleNotYet = () => {
+    if (!result.ok) setClaimError(result.error ?? 'Failed to confirm')
     savePendingClaim(address, null)
     setPendingClaim(null)
     setShowConfirm(false)
-    setModalOpen(true)
+    setClaimedLinks(loadClaimedLinks(address))
+    refetch()
+  }
+
+  // The money did not arrive. The link is single-use and already assigned to
+  // this player, so the useful answer is to send them back to it rather than to
+  // put the reward back in the queue and leave them to find it again.
+  const handleNotYet = () => {
+    if (pendingClaim) window.location.href = pendingClaim.cashLinkUrl
   }
 
   const handleModalClose = () => {
