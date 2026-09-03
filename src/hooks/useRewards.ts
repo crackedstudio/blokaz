@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { rewardsDb, adminRewardsDb } from '../lib/rewardsDb'
+import { levelFromRewardLabel } from '../constants/levels'
 
 export interface Reward {
   id: string
@@ -40,6 +41,35 @@ export function usePlayerRewards(address?: string) {
   useEffect(() => { fetch() }, [fetch])
 
   return { rewards, isLoading, refetch: fetch }
+}
+
+/**
+ * The player's UNCLAIMED ladder rewards, keyed by the level that paid them.
+ *
+ * A cash link is earned by clearing a level but claimed whenever the player
+ * gets round to it — by which time they have usually moved up. Keying by level
+ * is what lets the ladder show the reward against the rung it came from instead
+ * of stranding it in a flat list where it looks like it belongs to wherever the
+ * player happens to be standing.
+ *
+ * Rewards arrive newest first, so if a level somehow paid twice the newer row
+ * wins and the older one stays in the rewards sheet.
+ */
+export function useLevelRewards(address?: string) {
+  const { rewards, isLoading, refetch } = usePlayerRewards(address)
+
+  const byLevel = useMemo(() => {
+    const map = new Map<number, Reward>()
+    for (const reward of rewards) {
+      if (reward.claimed_at) continue
+      const level = levelFromRewardLabel(reward.label)
+      if (level === null || map.has(level)) continue
+      map.set(level, reward)
+    }
+    return map
+  }, [rewards])
+
+  return { byLevel, isLoading, refetch }
 }
 
 // ─── Player: claim a reward — marks claimed_at and returns cash_link_url ─────

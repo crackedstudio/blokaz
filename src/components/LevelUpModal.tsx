@@ -190,7 +190,7 @@ const LevelUpModal: React.FC<Props> = ({ address, advances, accent }) => {
                       >
                         {advance.cash.pending
                           ? 'CASH REWARD RESERVED — LANDS IN YOUR REWARDS SHORTLY'
-                          : `CASH REWARD · ${advance.cash.amount} ${advance.cash.token} — CLAIM IT IN REWARDS`}
+                          : `CASH REWARD · ${advance.cash.amount} ${advance.cash.token} — CLAIM IT ON LEVEL ${advance.level} IN PROGRESS`}
                       </div>
                     )}
                   </>

@@ -29,8 +29,10 @@ import {
   type ObjectiveKey,
 } from '../../constants/levels'
 import type { LevelState } from '../../hooks/usePlayerLevel'
+import { useLevelRewards } from '../../hooks/useRewards'
 import { BrutalIcon } from '../BrutalIcon'
 import MissionRow, { Pips } from '../MissionRow'
+import LevelCashClaim from '../LevelCashClaim'
 import LevelLadderModal from '../LevelLadderModal'
 import { BlockCluster } from '../blocks/BlockFX'
 import { LadderBadge } from '../badges'
@@ -200,9 +202,11 @@ const Divider: React.FC = () => (
 interface Props {
   levelState: LevelState | null
   onClose: () => void
+  /** Needed to claim a cash link; absent when no wallet is connected. */
+  address?: string
 }
 
-const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
+const ProgressSheet: React.FC<Props> = ({ levelState, onClose, address }) => {
   const { level, intoLevel, needed, title, progress } = useMetaStore()
   const [track, setTrack] = useState<Track>(levelState ? 'weekly' : 'career')
   const [showLadder, setShowLadder] = useState(false)
@@ -219,6 +223,15 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
     () =>
       levelState ? levelCompletion(levelState.progress, levelState.targets) : 0,
     [levelState]
+  )
+
+  // Cash links already earned and not yet taken, keyed by the level that paid
+  // them — a level 1 reward stays a level 1 reward however far the player has
+  // climbed since.
+  const { byLevel: rewardsByLevel } = useLevelRewards(address)
+  const unclaimed = useMemo(
+    () => [...rewardsByLevel.entries()].sort(([a], [b]) => a - b),
+    [rewardsByLevel]
   )
 
   const spec = levelSpec(levelState?.level ?? 1)
@@ -336,14 +349,31 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
                     name={levelState.name}
                     note={`Level ${levelState.level} of ${MAX_WEEKLY_LEVEL} · ${Math.floor(
                       weeklyCompletion * 100
-                    )}% this week`}
+                    )}% of this level`}
                     ratio={weeklyCompletion}
                     fill={accent}
                   />
 
+                  {address && unclaimed.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <SectionHead
+                        title="Cash rewards to claim"
+                        note={`${unclaimed.length} waiting`}
+                      />
+                      {unclaimed.map(([rewardLevel, reward]) => (
+                        <LevelCashClaim
+                          key={reward.id}
+                          address={address}
+                          level={rewardLevel}
+                          reward={reward}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   <div>
                     <SectionHead
-                      title="This week's targets"
+                      title="This level's targets"
                       note={(() => {
                         // Objectives this level doesn't ask for are excluded
                         // from the tally, so "3/3 met" means genuinely done.
@@ -483,6 +513,8 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose }) => {
         <LevelLadderModal
           state={levelState}
           onClose={() => setShowLadder(false)}
+          rewardsByLevel={rewardsByLevel}
+          address={address}
         />
       )}
     </>,

@@ -401,7 +401,11 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
         />
       )}
       {sheet === 'progress' && (
-        <ProgressSheet levelState={levelState} onClose={closeSheet} />
+        <ProgressSheet
+          levelState={levelState}
+          onClose={closeSheet}
+          address={address}
+        />
       )}
       {sheet === 'news' && <NewsSheet onClose={closeSheet} />}
       {sheet === 'stats' && <StatsModal onClose={closeSheet} />}

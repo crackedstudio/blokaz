@@ -10,6 +10,8 @@ import {
   type ObjectiveKey,
 } from '../constants/levels'
 import type { LevelState } from '../hooks/usePlayerLevel'
+import type { Reward } from '../hooks/useRewards'
+import LevelCashClaim from './LevelCashClaim'
 
 /** Where a level sits relative to the player right now. */
 type RowStatus = 'cleared' | 'current' | 'reclaim' | 'locked'
@@ -52,10 +54,13 @@ function statusFor(level: number, state: LevelState): RowStatus {
 
 // ── One rung ─────────────────────────────────────────────────────────────────
 
-const LadderRow: React.FC<{ level: number; state: LevelState }> = ({
-  level,
-  state,
-}) => {
+const LadderRow: React.FC<{
+  level: number
+  state: LevelState
+  /** Unclaimed cash link earned on THIS level, if there is one. */
+  reward?: Reward
+  address?: string
+}> = ({ level, state, reward, address }) => {
   const spec = LEVELS[level]
   const status = statusFor(level, state)
   const isCurrent = status === 'current'
@@ -144,6 +149,18 @@ const LadderRow: React.FC<{ level: number; state: LevelState }> = ({
         >
           {spec.reward}
         </div>
+
+        {/* A cash link is earned here but usually claimed later, from further
+            up the ladder. Showing it on the rung that paid it is what keeps it
+            attached to the level instead of floating in the rewards sheet. */}
+        {reward && address && (
+          <LevelCashClaim
+            address={address}
+            level={level}
+            reward={reward}
+            variant="row"
+          />
+        )}
       </div>
     </div>
   )
@@ -154,6 +171,9 @@ const LadderRow: React.FC<{ level: number; state: LevelState }> = ({
 interface Props {
   state: LevelState
   onClose: () => void
+  /** Unclaimed cash links keyed by the level that paid them. */
+  rewardsByLevel?: Map<number, Reward>
+  address?: string
 }
 
 /**
@@ -161,7 +181,12 @@ interface Props {
  * player's own position marked. Everything here comes from the client mirror in
  * constants/levels.ts, so opening it costs no round trip.
  */
-const LevelLadderModal: React.FC<Props> = ({ state, onClose }) =>
+const LevelLadderModal: React.FC<Props> = ({
+  state,
+  onClose,
+  rewardsByLevel,
+  address,
+}) =>
   // Portalled to the body: the lobby animates its tiles in, and any lingering
   // transform on an ancestor would become the containing block for this fixed
   // overlay, trapping it inside a grid cell instead of covering the screen.
@@ -218,16 +243,23 @@ const LevelLadderModal: React.FC<Props> = ({ state, onClose }) =>
         className="border-b-[3px] border-ink px-4 py-3 font-body text-[10px] leading-relaxed"
         style={{ background: 'var(--paper)', color: 'var(--ink-soft)' }}
       >
-        Hit all four targets in one week to clear a level. Targets are weekly
-        totals and they carry over, so a strong week can climb several rungs at
-        once. Gain no level in a week and you drop one on Monday — any advance
-        keeps you safe. Each level pays out the first time you reach it.
+        Hit all four targets to clear a level. Every level starts you from
+        zero — nothing you did on the level below carries over, so each rung is
+        its own week's work. Gain no level in a week and you drop one on Monday
+        — any advance keeps you safe. Each level pays out the first time you
+        reach it.
       </div>
 
       {/* ── The 12 rungs ── */}
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((level) => (
-          <LadderRow key={level} level={level} state={state} />
+          <LadderRow
+            key={level}
+            level={level}
+            state={state}
+            reward={rewardsByLevel?.get(level)}
+            address={address}
+          />
         ))}
       </div>
       </div>

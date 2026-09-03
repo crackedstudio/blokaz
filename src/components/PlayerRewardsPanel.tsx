@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { usePlayerRewards, getRewardUrl, confirmRewardClaimed, type Reward } from '../hooks/useRewards'
+import { usePlayerRewards, confirmRewardClaimed, type Reward } from '../hooks/useRewards'
 import RewardsClaimModal from './RewardsClaimModal'
 import RewardsMiniBar from './RewardsMiniBar'
 import RewardsConfirmModal from './RewardsConfirmModal'
+// Step one of a claim, and the record that survives the trip to the cash link.
+// Shared so a claim started on a level card is confirmed by this panel too.
+import {
+  loadPendingClaim,
+  savePendingClaim,
+  startRewardClaim,
+  type PendingClaim,
+} from '../lib/rewardClaim'
 
 interface ClaimedEntry {
-  cashLinkUrl: string
-  label: string
-  amount: string
-  token: string
-}
-
-interface PendingClaim {
-  rewardId: string
   cashLinkUrl: string
   label: string
   amount: string
@@ -23,10 +23,6 @@ function claimedStorageKey(address: string) {
   return `blokaz_claimed_${address.toLowerCase()}`
 }
 
-function pendingStorageKey(address: string) {
-  return `blokaz_pending_claim_${address.toLowerCase()}`
-}
-
 function loadClaimed(address: string): Record<string, ClaimedEntry> {
   try { return JSON.parse(localStorage.getItem(claimedStorageKey(address)) ?? '{}') }
   catch { return {} }
@@ -34,16 +30,6 @@ function loadClaimed(address: string): Record<string, ClaimedEntry> {
 
 function saveClaimed(address: string, claimed: Record<string, ClaimedEntry>) {
   localStorage.setItem(claimedStorageKey(address), JSON.stringify(claimed))
-}
-
-function loadPending(address: string): PendingClaim | null {
-  try { return JSON.parse(localStorage.getItem(pendingStorageKey(address)) ?? 'null') }
-  catch { return null }
-}
-
-function savePending(address: string, pending: PendingClaim | null) {
-  if (pending) localStorage.setItem(pendingStorageKey(address), JSON.stringify(pending))
-  else localStorage.removeItem(pendingStorageKey(address))
 }
 
 interface Props {
@@ -66,7 +52,7 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
   // Load persisted state on mount
   useEffect(() => {
     setClaimedLinks(loadClaimed(address))
-    const pending = loadPending(address)
+    const pending = loadPendingClaim(address)
     if (pending) {
       setPendingClaim(pending)
       setShowConfirm(true)
@@ -77,7 +63,7 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        const pending = loadPending(address)
+        const pending = loadPendingClaim(address)
         if (pending && !showConfirm) {
           setPendingClaim(pending)
           setShowConfirm(true)
@@ -106,22 +92,10 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
   const handleClaim = async (reward: Reward) => {
     setClaiming(reward.id)
     setClaimError(null)
-    const result = await getRewardUrl(address, reward.id)
+    const result = await startRewardClaim(address, reward)
     setClaiming(null)
-    if (result.ok && result.cashLinkUrl) {
-      const pending: PendingClaim = {
-        rewardId: reward.id,
-        cashLinkUrl: result.cashLinkUrl,
-        label: reward.label,
-        amount: reward.amount,
-        token: reward.token,
-      }
-      savePending(address, pending)
-      setPendingClaim(pending)
-      window.location.href = result.cashLinkUrl
-    } else {
-      setClaimError(result.error ?? 'Failed to get reward')
-    }
+    if (result.ok) setPendingClaim(result.pending)
+    else setClaimError(result.error)
   }
 
   // Step 2a: user confirms they received the reward → mark as claimed
@@ -140,7 +114,7 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
       const updated = { ...claimedLinks, [pendingClaim.rewardId]: entry }
       setClaimedLinks(updated)
       saveClaimed(address, updated)
-      savePending(address, null)
+      savePendingClaim(address, null)
       setPendingClaim(null)
       setShowConfirm(false)
       refetch()
@@ -152,7 +126,7 @@ const PlayerRewardsPanel: React.FC<Props> = ({ address }) => {
 
   // Step 2b: user did not receive it → keep unclaimed, let them try again
   const handleNotYet = () => {
-    savePending(address, null)
+    savePendingClaim(address, null)
     setPendingClaim(null)
     setShowConfirm(false)
     setModalOpen(true)
