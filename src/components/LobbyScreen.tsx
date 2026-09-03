@@ -30,7 +30,6 @@ import UsernameSetupModal, {
   hasDismissedUsernamePrompt,
 } from './UsernameSetupModal'
 import { NewsNudge } from './GameNotification'
-import CampaignReminderModal from './CampaignReminderModal'
 import WinnerClaimModal from './WinnerClaimModal'
 import PlayerRewardsPanel from './PlayerRewardsPanel'
 import LevelUpModal from './LevelUpModal'
@@ -426,7 +425,6 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
         newsItems={getLiveNewsItems()}
         onNavigateTournaments={onPlayTournaments}
       />
-      <CampaignReminderModal />
       <WinnerClaimModal />
     </>
   )

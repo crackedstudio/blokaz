@@ -26,6 +26,14 @@ export const TOURNAMENT_LAUNCH_MS = Date.parse('2026-07-09T16:00:00+01:00')
 // ✏️  Edit this array to publish new news items — newest first
 export const NEWS_ITEMS: NewsItem[] = [
   {
+    id: 'ladder-fresh-start',
+    tag: 'UPDATE',
+    date: '3 SEP 2026',
+    headline: 'The ladder changed — every level now starts you from zero',
+    body:
+      'Levels no longer inherit what you did on the level below. Clear a level and all four counters — games, tournament runs, shop purchases and points — restart on the next card, so every rung is its own piece of work and each one asks for its own shop purchase. One level at a time, too: a huge week no longer skips you past rungs you never played. Clearing a level still credits power-ups the first time you reach it, and levels 4, 8 and 12 also pay a stablecoin cash reward — which you can now claim straight from the level that paid it, in PROGRESS or on the rung itself in the ladder.',
+  },
+  {
     id: 'tournaments-live',
     tag: 'TOURNAMENT',
     date: '9 JUL 2026',
