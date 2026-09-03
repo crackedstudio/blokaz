@@ -405,13 +405,30 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose, address }) => {
                   <Divider />
 
                   <div>
-                    <SectionHead title="Clearing this level pays" note="" />
+                    {/* "Pays" belongs to money. Most levels credit power-ups
+                        and nothing else, so saying they pay led players to
+                        expect cash on a level that has none. Cash is stated
+                        separately, and only where there is some. */}
+                    <SectionHead title="Clearing this level gives" note="" />
                     <p
                       className="mt-2 font-body text-[11px] leading-snug"
                       style={{ color: 'var(--ink-soft)', margin: '8px 0 0' }}
                     >
                       {spec.reward}
                     </p>
+                    {spec.cashMilestone && (
+                      <div
+                        className="mt-2 inline-flex items-center gap-1.5 border-[2px] border-ink px-2 py-1"
+                        style={{ background: accent, color: 'var(--ink-fixed)' }}
+                      >
+                        <span className="font-display text-[11px]" aria-hidden>
+                          $
+                        </span>
+                        <span className="font-display text-[9px] tracking-[0.1em]">
+                          PLUS A CASH REWARD
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {levelState.atRisk && levelState.level > 1 && (

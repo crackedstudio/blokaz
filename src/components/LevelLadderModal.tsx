@@ -148,6 +148,16 @@ const LadderRow: React.FC<{
           style={{ borderColor: 'var(--ink-soft)', color: 'var(--ink-soft)' }}
         >
           {spec.reward}
+          {/* Cash is called out rather than listed, so the three rungs that
+              carry money are the only ones that look like they do. */}
+          {spec.cashMilestone && (
+            <span
+              className="ml-1.5 font-display text-[9px] tracking-[0.08em]"
+              style={{ color: spec.accent }}
+            >
+              + $ CASH REWARD
+            </span>
+          )}
         </div>
 
         {/* A cash link is earned here but usually claimed later, from further
@@ -246,8 +256,8 @@ const LevelLadderModal: React.FC<Props> = ({
         Hit all four targets to clear a level. Every level starts you from
         zero — nothing you did on the level below carries over, so each rung is
         its own week's work. Gain no level in a week and you drop one on Monday
-        — any advance keeps you safe. Each level pays out the first time you
-        reach it.
+        — any advance keeps you safe. Each level rewards you the first
+        time you reach it; levels 4, 8 and 12 are the ones that pay cash.
       </div>
 
       {/* ── The 12 rungs ── */}
