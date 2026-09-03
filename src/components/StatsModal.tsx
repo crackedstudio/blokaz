@@ -17,7 +17,10 @@ import MissionRow from './MissionRow'
 import { BlockRain } from './blocks/BlockFX'
 import { AchievementBadge } from './badges'
 import StreakStrip from './StreakStrip'
+import { LadderBadge } from './badges'
 import { useDailyStreak } from '../hooks/useDailyStreak'
+import { useLadderSnapshot } from '../hooks/usePlayerLevel'
+import { MAX_LEVEL as MAX_WEEKLY_LEVEL } from '../constants/levels'
 
 // ── Section heading ──────────────────────────────────────────────────────────
 
@@ -136,6 +139,11 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
   const { level, intoLevel, needed, title, progress, address } = useMetaStore()
   // Derived from finished runs, so it matches the lobby tile exactly.
   const { streak } = useDailyStreak(address ?? undefined)
+  // The other ladder. Blokaz runs two that both say LEVEL — this sheet counts
+  // career XP from missions, while the weekly ladder is the 12-rung one the
+  // lobby and PROGRESS show. Naming only one of them here had players reading
+  // a career level as their rung.
+  const ladder = useLadderSnapshot(address ?? undefined)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -185,7 +193,7 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
             <div className="min-w-0 leading-tight">
               <div className="font-display text-[10px] tracking-[0.18em]">MY STATS</div>
               <div className="mt-0.5 truncate font-display text-[14px] tracking-[0.04em]">
-                {address ? `LEVEL ${level} · ${title}` : 'NOT CONNECTED'}
+                {address ? `CAREER LEVEL ${level} · ${title}` : 'NOT CONNECTED'}
               </div>
             </div>
           </div>
@@ -218,7 +226,7 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
                   className="font-display text-[9px] tracking-[0.14em]"
                   style={{ color: 'var(--label-soft)' }}
                 >
-                  {atMax ? 'MAX LEVEL' : `NEXT: LEVEL ${level + 1}`}
+                  {atMax ? 'MAX CAREER LEVEL' : `NEXT: CAREER LEVEL ${level + 1}`}
                 </span>
                 <span
                   className="font-display text-[9px] tabular-nums tracking-[0.08em]"
@@ -248,6 +256,29 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
                 />
               </div>
             </div>
+
+            {/* ── The weekly ladder, named so it cannot be read as the
+                   career level above ── */}
+            {ladder && (
+              <>
+                <SectionBar title="WEEKLY LADDER" />
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <LadderBadge level={ladder.level} size={40} state="earned" />
+                  <div className="min-w-0">
+                    <div className="font-display text-[13px] tracking-[0.04em]">
+                      LEVEL {ladder.level} · {ladder.name}
+                    </div>
+                    <div
+                      className="mt-0.5 font-body text-[10px] uppercase tracking-[0.1em]"
+                      style={{ color: 'var(--ink-soft)' }}
+                    >
+                      Rung {ladder.level} of {MAX_WEEKLY_LEVEL} · separate from
+                      career level · see PROGRESS
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* ── Daily streak ── */}
             <SectionBar

@@ -82,7 +82,7 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const { leaderboard } = useLeaderboard()
   const { count: tournamentCount } = useTournamentCount()
   const { state: levelState } = usePlayerLevel(address)
-  const { level, progress, address: metaAddress } = useMetaStore()
+  const { progress, address: metaAddress } = useMetaStore()
 
   type Sheet = 'modes' | 'progress' | 'news' | 'stats'
   const [sheet, setSheet] = useState<Sheet | null>(null)
@@ -328,7 +328,10 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
                     ? `${missionsDone}/${progress.missions.length} missions today`
                     : 'Progress'
                 }
-                value={hasProgress ? `LVL ${levelState?.level ?? level}` : '—'}
+                // The weekly rung, or nothing yet. Falling back to the career
+                // level put a 15 where a 2 belongs — two different ladders
+                // wearing one label.
+                value={levelState ? `LVL ${levelState.level}` : '—'}
                 tone="purple"
                 delay={150}
                 onClick={() => openSheet('progress')}

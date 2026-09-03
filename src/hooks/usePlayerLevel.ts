@@ -122,3 +122,37 @@ export function usePlayerLevel(address?: string) {
 
   return { state, isLoading, refresh }
 }
+
+
+/**
+ * Read-only snapshot of the weekly ladder — GET, no rollover, no payouts.
+ *
+ * usePlayerLevel POSTs /levels/refresh, which advances the player and pays out
+ * cleared levels; a display surface must not do that as a side effect of being
+ * opened. This is for screens that only need to name the rung the player is on.
+ */
+export function useLadderSnapshot(address?: string) {
+  const [state, setState] = useState<LevelState | null>(null)
+
+  useEffect(() => {
+    if (!address) {
+      setState(null)
+      return
+    }
+    let cancelled = false
+    fetch(`${SERVER_URL}/levels/${address.toLowerCase()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setState((data?.state as LevelState) ?? null)
+      })
+      .catch(() => {
+        // Offline — the surface falls back to showing nothing rather than a
+        // level the player is not on.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [address])
+
+  return state
+}
