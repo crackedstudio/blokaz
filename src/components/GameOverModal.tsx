@@ -1284,13 +1284,18 @@ const GameOverModal: React.FC<GameOverModalProps> = ({
                     ) : (
                       <BrutalIcon name="play" size={18} strokeWidth={2.5} />
                     )}
+                    {/* One button, three jobs, and the label has to name the
+                        one it is about to do: submit the score, then start the
+                        next game once that has landed. Classic used to say PLAY
+                        AGAIN here from a time when it did not submit on this
+                        press — it does now, in both modes, and a button that
+                        promises a new game while banking a score reads as a
+                        failure when the game does not start. */}
                     {isRegistering
                       ? 'SUBMITTING...'
                       : isAllSuccess
                         ? 'PLAY AGAIN'
-                        : isTournamentMode
-                          ? `SUBMIT SCORE${countdown !== null && countdown > 0 ? ` (${countdown}s)` : ''}`
-                          : `PLAY AGAIN${countdown !== null && countdown > 0 ? ` (${countdown}s)` : ''}`}
+                        : `SUBMIT SCORE${countdown !== null && countdown > 0 ? ` (${countdown}s)` : ''}`}
                   </div>
                   {countdown !== null &&
                     countdown > 0 &&
