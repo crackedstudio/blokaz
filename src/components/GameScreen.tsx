@@ -40,6 +40,8 @@ import {
   writeStoredGameSession,
   clearStoredGameSession,
 } from '../utils/gameSessionStorage'
+import { useDailyStreak } from '../hooks/useDailyStreak'
+import StreakStrip from './StreakStrip'
 import { IS_MINIPAY, isWebBrowser, markTrialUsed, isWebTrialGated } from '../utils/miniPay'
 import { isWebWhitelisted } from '../utils/featureFlags'
 import { MiniPayGateModal } from './MiniPayGateModal'
@@ -84,9 +86,22 @@ interface GameScreenProps {
 
 // ─── Desktop sidebar widgets ────────────────────────────────────────────────
 
+/**
+ * The player's real daily streak: consecutive days with at least one finished
+ * run, derived server-side from the sessions themselves.
+ *
+ * This panel used to be a mock — a hardcoded DAY 7, bars filled from the
+ * current weekday, and a 2× bonus that does not exist — so it told every
+ * player the same story whatever they had played.
+ */
 const DailyStreakPanel: React.FC = () => {
-  const today = new Date().getDay()
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const { address } = useAccount()
+  const { streak } = useDailyStreak(address)
+
+  // Nothing to show before a wallet is connected: the streak belongs to a
+  // player, and an empty week here would read as a broken one.
+  if (!address) return null
+
   return (
     <div
       className="border-4 border-ink"
@@ -109,34 +124,24 @@ const DailyStreakPanel: React.FC = () => {
           className="font-display text-sm"
           style={{ color: 'var(--ink-fixed)' }}
         >
-          DAY 7
+          {streak.current > 0 ? `DAY ${streak.current}` : 'NONE'}
         </div>
       </div>
       <div className="px-4 py-3">
-        <div className="mb-2 flex gap-1.5">
-          {days.map((d, i) => (
-            <div key={i} className="flex flex-1 flex-col items-center gap-1">
-              <div
-                className="w-full border-2 border-ink"
-                style={{
-                  height: 18,
-                  background: i < today ? 'var(--accent-lime)' : 'var(--rule)',
-                }}
-              />
-              <span
-                className="font-display text-[8px]"
-                style={{ color: 'var(--ink-soft)' }}
-              >
-                {d}
-              </span>
-            </div>
-          ))}
+        <div className="mb-2">
+          <StreakStrip week={streak.week} />
         </div>
         <div
           className="font-body text-[10px] uppercase tracking-[0.08em]"
           style={{ color: 'var(--ink-soft)' }}
         >
-          2× BONUS ACTIVE ON ALL CLEARS
+          {streak.playedToday
+            ? streak.longest > streak.current
+              ? `TODAY COUNTED · BEST ${streak.longest} DAYS`
+              : 'TODAY COUNTED · NEW BEST'
+            : streak.current > 0
+              ? 'FINISH A GAME TODAY TO KEEP IT'
+              : 'FINISH A GAME TO START ONE'}
         </div>
       </div>
     </div>

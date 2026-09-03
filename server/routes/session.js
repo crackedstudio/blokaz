@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { supabase } from '../db/supabase.js'
 import { syncLimiter } from '../middleware/rateLimits.js'
+import { computeStreak, recentDays, utcDay } from '../config/streak.js'
 
 const router = Router()
 
@@ -201,6 +202,41 @@ router.get('/restore/:address', async (req, res) => {
       reviveCount:    data.revive_count,
       updatedAt:      data.updated_at,
     },
+  })
+})
+
+/**
+ * GET /session/streak/:address
+ * The player's daily streak, derived from the runs they have finished.
+ */
+router.get('/streak/:address', async (req, res) => {
+  if (!requireDb(res)) return
+  const address = req.params.address
+
+  if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
+
+  // A year is far more than any streak needs and keeps the row count bounded;
+  // the RPC returns one row per DAY played, not per session.
+  const since = new Date(Date.now() - 365 * 86_400_000).toISOString()
+
+  const { data, error } = await supabase.rpc('player_play_days', {
+    p_address: address.toLowerCase(),
+    p_since: since,
+  })
+
+  if (error) {
+    console.error('session/streak error:', error)
+    return res.status(500).json({ error: 'Failed to read streak' })
+  }
+
+  const days = (data ?? []).map((row) => (typeof row === 'string' ? row : row.play_day))
+  const today = utcDay()
+
+  res.json({
+    ...computeStreak(days, today),
+    // Oldest first — the strip both the lobby and the game sidebar draw.
+    week: recentDays(days, today),
+    today,
   })
 })
 

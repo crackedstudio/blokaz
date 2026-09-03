@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAccount } from 'wagmi'
+import { useDailyStreak } from '../hooks/useDailyStreak'
+import StreakStrip from './StreakStrip'
 import { BrutalIcon } from './BrutalIcon'
 import { useLeaderboard, useTournamentCount } from '../hooks/useBlokzGame'
 import { useGameStore } from '../stores/gameStore'
@@ -16,6 +18,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
   onOpenLeaderboard,
 }) => {
   const { address } = useAccount()
+  const { streak } = useDailyStreak(address)
   const { leaderboard, currentEpoch } = useLeaderboard()
   const { count: tournamentCount } = useTournamentCount()
   const [countdown, setCountdown] = useState({ days: 2, hours: 14, minutes: 48 })
@@ -322,37 +325,22 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex items-center gap-2 font-display text-[11px] font-black tracking-[0.14em] text-paper-2">
               <BrutalIcon name="flame" size={16} /> DAILY STREAK
             </div>
-            <div className="font-display text-[12px] font-black text-paper-2">DAY 7</div>
+            <div className="font-display text-[12px] font-black text-paper-2">
+              {streak.current > 0 ? `DAY ${streak.current}` : 'NONE'}
+            </div>
           </div>
           <div className="p-4">
-            <div className="mb-3 flex gap-1.5">
-              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <div
-                    className="w-full border-2 border-ink"
-                    style={{
-                      height: 20,
-                      background: i < 6 ? 'var(--piece-lime)' : 'var(--paper-2)',
-                    }}
-                  />
-                  <span className="font-display text-[8px] font-black text-ink/60">{day}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-1.5 mb-3">
-              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="flex-1 border-2 border-ink"
-                  style={{
-                    height: 14,
-                    background: i < 6 ? 'var(--piece-lime)' : 'var(--paper-2)',
-                  }}
-                />
-              ))}
+            <div className="mb-3">
+              <StreakStrip week={streak.week} height={20} />
             </div>
             <div className="font-display text-[10px] font-black tracking-[0.12em] text-ink">
-              2× BONUS ACTIVE ON ALL CLEARS
+              {!address
+                ? 'CONNECT A WALLET TO START A STREAK'
+                : streak.playedToday
+                  ? 'TODAY COUNTED — COME BACK TOMORROW'
+                  : streak.current > 0
+                    ? 'FINISH A GAME TODAY TO KEEP IT'
+                    : 'FINISH A GAME TO START ONE'}
             </div>
           </div>
         </div>

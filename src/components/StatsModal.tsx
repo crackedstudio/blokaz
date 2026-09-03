@@ -16,6 +16,8 @@ import { BrutalIcon } from './BrutalIcon'
 import MissionRow from './MissionRow'
 import { BlockRain } from './blocks/BlockFX'
 import { AchievementBadge } from './badges'
+import StreakStrip from './StreakStrip'
+import { useDailyStreak } from '../hooks/useDailyStreak'
 
 // ── Section heading ──────────────────────────────────────────────────────────
 
@@ -132,6 +134,8 @@ interface Props {
 
 const StatsModal: React.FC<Props> = ({ onClose }) => {
   const { level, intoLevel, needed, title, progress, address } = useMetaStore()
+  // Derived from finished runs, so it matches the lobby tile exactly.
+  const { streak } = useDailyStreak(address ?? undefined)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -243,6 +247,37 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
                   }}
                 />
               </div>
+            </div>
+
+            {/* ── Daily streak ── */}
+            <SectionBar
+              title="DAILY STREAK"
+              trailing={
+                <CountChip complete={streak.playedToday}>
+                  {streak.current > 0 ? `${streak.current}D` : 'NONE'}
+                </CountChip>
+              }
+            />
+            <div className="px-4 py-3">
+              <StreakStrip week={streak.week} height={20} />
+              <div
+                className="mt-2.5 font-body text-[10px] uppercase tracking-[0.08em]"
+                style={{ color: 'var(--ink-soft)' }}
+              >
+                {streak.playedToday
+                  ? 'Today counted — come back tomorrow to extend it.'
+                  : streak.current > 0
+                    ? 'Finish a game today or the streak resets.'
+                    : 'Finish a game to start a streak.'}
+              </div>
+              {streak.longest > 0 && (
+                <div
+                  className="mt-1 font-body text-[10px] uppercase tracking-[0.08em]"
+                  style={{ color: 'var(--ink-soft)' }}
+                >
+                  Best run: {streak.longest} day{streak.longest === 1 ? '' : 's'}
+                </div>
+              )}
             </div>
 
             {/* ── Lifetime record ── */}

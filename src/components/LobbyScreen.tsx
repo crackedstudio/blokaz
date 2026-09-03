@@ -44,6 +44,7 @@ import { useThemeStore } from '../stores/themeStore'
 import { Card } from './lobby/Card'
 import { BlockRain, BlockRule } from './blocks/BlockFX'
 import ProgressSheet from './lobby/ProgressSheet'
+import { useDailyStreak } from '../hooks/useDailyStreak'
 import NewsSheet from './lobby/NewsSheet'
 import ModePicker from './lobby/ModePicker'
 
@@ -172,14 +173,10 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
     return { rank: idx + 1, bestScore: sortedLeaderboard[idx].score }
   }, [sortedLeaderboard, address])
 
-  const [streak] = useState<number>(() => {
-    try {
-      const s = localStorage.getItem('blokaz_streak')
-      return s ? parseInt(s, 10) : 0
-    } catch {
-      return 0
-    }
-  })
+  // Derived from the runs this player has finished, not from a local counter —
+  // the key this used to read was never written by anything, so the tile said
+  // "No streak" to every player forever.
+  const { streak } = useDailyStreak(address)
 
   // ─── Username setup prompt ───────────────────────────────────────────────
   const { username, isLoading: isLoadingUsername } = useUsername(
@@ -369,10 +366,15 @@ const LobbyScreen: React.FC<LobbyScreenProps> = ({
               )}
               <Card
                 icon="flame"
-                label={streak > 0 ? `${streak}-day streak` : 'No streak'}
+                label={
+                  streak.current > 0
+                    ? `${streak.current}-day streak${streak.playedToday ? '' : ' · play today'}`
+                    : 'No streak — play today'
+                }
                 tone="orange"
                 mini
                 delay={260}
+                onClick={() => openSheet('stats')}
               />
               {newsCount > 0 && (
                 <Card

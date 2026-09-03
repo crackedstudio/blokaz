@@ -277,6 +277,36 @@ begin
 end;
 $$;
 
+-- ── Play days RPC ────────────────────────────────────────────────────────────
+-- The UTC days on which a player finished at least one run, newest first, for
+-- the daily streak. Both modes count: a day spent in tournaments is a day
+-- played.
+--
+-- Distinct days rather than sessions, computed in the database: a heavy player
+-- has thousands of runs behind a long streak, and paging those back to count
+-- the days they fall on would truncate exactly the streaks worth showing.
+--
+-- A run counts once it is over or has been submitted, the same test level
+-- progress uses — an abandoned mid-game session is not a game played.
+
+create or replace function player_play_days(
+  p_address text,
+  p_since   timestamptz
+) returns table (play_day date) language sql stable as $$
+  select day from (
+    select distinct (created_at at time zone 'UTC')::date as day
+      from game_sessions
+     where address = p_address and created_at >= p_since
+       and (is_game_over or status = 'submitted')
+    union
+    select distinct (created_at at time zone 'UTC')::date as day
+      from tournament_sessions
+     where address = p_address and created_at >= p_since
+       and (is_game_over or status = 'submitted')
+  ) days
+  order by day desc;
+$$;
+
 -- ── Auto-update updated_at ────────────────────────────────────────────────────
 
 create or replace function set_updated_at()
