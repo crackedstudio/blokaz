@@ -193,6 +193,100 @@ describe('mirror contract with server/config/levels.js', () => {
   })
 })
 
+describe('a full climb with per-level windows', () => {
+  // The sequence POST /levels/refresh runs, driven by the same pure functions
+  // the route uses: read the window, count what falls inside it, clear the card,
+  // stamp the moment the next level was entered.
+  //
+  // The counter below mirrors level_progress in server/db/levels.sql — a row
+  // counts when it was recorded at or after the window opens. That is the whole
+  // mechanism behind the fresh start, so modelling it here is what lets this
+  // file assert the behaviour for every rung rather than for the one that
+  // happened to be tested by hand.
+  const WEEK = '2026-08-31'
+  const MONDAY = Date.parse(`${WEEK}T00:00:00Z`)
+  const HOUR = 3_600_000
+  const ZERO: LevelTargets = { games: 0, tournaments: 0, purchases: 0, points: 0 }
+
+  interface Activity extends LevelTargets {
+    at: number
+  }
+
+  const countedFrom = (log: Activity[], windowStart: string): LevelTargets => {
+    const since = Date.parse(windowStart)
+    return log
+      .filter((entry) => entry.at >= since)
+      .reduce(
+        (total, entry) => ({
+          games: total.games + entry.games,
+          tournaments: total.tournaments + entry.tournaments,
+          purchases: total.purchases + entry.purchases,
+          points: total.points + entry.points,
+        }),
+        { ...ZERO }
+      )
+  }
+
+  it('never counts a level toward the next one, all the way to 12', () => {
+    const log: Activity[] = []
+    let clock = MONDAY + HOUR
+    let level = 1
+    let levelStartedAt = new Date(clock).toISOString()
+
+    while (level < MAX_LEVEL) {
+      // Play exactly this level's card and nothing more.
+      clock += HOUR
+      log.push({ at: clock, ...LEVELS[level].targets })
+
+      const banked = countedFrom(log, progressWindowStart(WEEK, null, levelStartedAt))
+      // Everything from the levels below sits outside the window, so the card
+      // reads its own numbers however much has been played before it.
+      expect(banked, `level ${level} inherited progress`).toEqual(LEVELS[level].targets)
+
+      const ascent = climb(level, banked)
+      expect(ascent.cleared, `level ${level} did not clear`).toEqual([level])
+
+      level = ascent.level
+      clock += 1_000
+      levelStartedAt = new Date(clock).toISOString()
+
+      // The rung just reached starts empty — including the work that reached it.
+      const fresh = countedFrom(log, progressWindowStart(WEEK, null, levelStartedAt))
+      expect(fresh, `level ${level} started part-finished`).toEqual(ZERO)
+      expect(climb(level, fresh)).toEqual({ level, cleared: [], held: false })
+    }
+
+    expect(level).toBe(MAX_LEVEL)
+    // Twelve cards played, one entry each, none of it shared.
+    expect(log).toHaveLength(MAX_LEVEL - 1)
+  })
+
+  it('starts the card from scratch after a demotion too', () => {
+    // A player who cleared level 4 and then lost it on a Monday must earn it
+    // again — the runs that took them through it the first time are behind the
+    // stamp the route writes when the demotion is applied.
+    const log: Activity[] = [{ at: MONDAY + HOUR, ...LEVELS[4].targets }]
+    const demotedAt = new Date(MONDAY + 2 * HOUR).toISOString()
+
+    const afterDemotion = countedFrom(log, progressWindowStart(WEEK, null, demotedAt))
+    expect(afterDemotion).toEqual(ZERO)
+    expect(climb(4, afterDemotion).cleared).toEqual([])
+  })
+
+  it('restarts the card at the week boundary even without moving level', () => {
+    // Sitting still is not a way to bank a card across weeks: the window is the
+    // later of the week start and the level entry, so Monday clears it.
+    const enteredLastWeek = '2026-08-31T09:00:00Z'
+    const log: Activity[] = [{ at: Date.parse('2026-09-02T10:00:00Z'), ...LEVELS[3].targets }]
+
+    const thisWeek = countedFrom(log, progressWindowStart(WEEK, null, enteredLastWeek))
+    expect(thisWeek).toEqual(LEVELS[3].targets)
+
+    const nextWeek = countedFrom(log, progressWindowStart('2026-09-07', null, enteredLastWeek))
+    expect(nextWeek).toEqual(ZERO)
+  })
+})
+
 describe('server reward table', () => {
   it('pays every level something', () => {
     for (let n = 1; n <= SERVER_MAX_LEVEL; n++) {
