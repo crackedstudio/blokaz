@@ -277,6 +277,55 @@ begin
 end;
 $$;
 
+-- ── player_meta ───────────────────────────────────────────────────────────────
+-- Career progress that only the browser can compute: XP, achievements, the
+-- day's missions, best combo and lines cleared. Games played, total score and
+-- best score are NOT stored here — they are counted from the sessions below,
+-- which is a record no client can write to.
+--
+-- Kept so a player who changes phone or clears their cache keeps their career.
+-- Client-reported and therefore client-forgeable: safe only while nothing pays
+-- out on it. Anything that later rewards career level must derive it instead.
+
+create table if not exists player_meta (
+  address    text primary key,
+  progress   jsonb not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create or replace trigger player_meta_updated_at
+  before update on player_meta
+  for each row execute function set_updated_at();
+
+-- ── Lifetime stats RPC ───────────────────────────────────────────────────────
+-- Games played, total score and best score across both modes, counted from the
+-- runs themselves. One row back instead of every session, so a player with
+-- thousands of games costs the same as one with ten.
+--
+-- A run counts once it is over or has been submitted — the same test the ladder
+-- and the streak use, so all three agree on what a game played is.
+
+create or replace function player_lifetime(p_address text)
+returns table (
+  games_played integer,
+  total_score  bigint,
+  best_score   integer
+) language sql stable as $$
+  with runs as (
+    select score from game_sessions
+     where address = p_address and (is_game_over or status = 'submitted')
+    union all
+    select score from tournament_sessions
+     where address = p_address and (is_game_over or status = 'submitted')
+  )
+  select
+    count(*)::integer,
+    coalesce(sum(score), 0)::bigint,
+    coalesce(max(score), 0)::integer
+  from runs;
+$$;
+
 -- ── Play days RPC ────────────────────────────────────────────────────────────
 -- The UTC days on which a player finished at least one run, newest first, for
 -- the daily streak. Both modes count: a day spent in tournaments is a day
@@ -331,7 +380,12 @@ create or replace trigger player_inventory_updated_at
 alter table game_sessions enable row level security;
 alter table player_inventory enable row level security;
 alter table purchase_log enable row level security;
+alter table player_meta enable row level security;
+
+-- CREATE POLICY has no IF NOT EXISTS, so drop first to keep this file re-runnable.
+drop policy if exists "service role only" on player_meta;
 
 create policy "service role only" on game_sessions as restrictive using (false) with check (false);
 create policy "service role only" on player_inventory as restrictive using (false) with check (false);
 create policy "service role only" on purchase_log as restrictive using (false) with check (false);
+create policy "service role only" on player_meta as restrictive using (false) with check (false);

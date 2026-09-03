@@ -1,9 +1,19 @@
 /**
  * Meta-progression store — player level, daily missions, achievements.
  *
- * Address-keyed localStorage, mirroring powerUpStore's pattern. Entirely
- * client-side: nothing here touches the chain, the signer, or the score-replay
- * path, so it cannot affect submissions or leaderboard integrity.
+ * Address-keyed localStorage, backed by Supabase. localStorage stays the
+ * primary copy — it is instant, works offline, and is what every read in the UI
+ * hits — while the server holds the durable one, so a new phone or a cleared
+ * cache picks the career up rather than starting it again at zero.
+ *
+ * The server's copy is not a mirror of this one. Games played, total score and
+ * best score are counted from game_sessions, a record no client can write to,
+ * and overwrite whatever the device believed. The rest — XP, achievements,
+ * missions, best combo, lines — exists only here, so the server stores it back
+ * and merges two devices by taking the better of each.
+ *
+ * Nothing here touches the chain, the signer, or the score-replay path, so it
+ * cannot affect submissions or leaderboard integrity.
  */
 
 import { create } from 'zustand'
@@ -73,6 +83,45 @@ function save(address: string, progress: MetaProgress) {
   }
 }
 
+const SERVER_URL =
+  (import.meta.env.VITE_SIGNER_URL as string | undefined) ?? 'http://localhost:3001'
+
+/** Pulls the durable copy. Returns null when the server cannot be reached. */
+async function fetchServerProgress(address: string): Promise<MetaProgress | null> {
+  try {
+    const res = await fetch(`${SERVER_URL}/session/meta/${address.toLowerCase()}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data?.progress as MetaProgress) ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Pushes this device's copy and adopts what comes back.
+ *
+ * Fire-and-forget by design: a run is already recorded locally by the time this
+ * runs, so a failed save costs nothing but a later sync — never the game.
+ */
+async function pushServerProgress(
+  address: string,
+  progress: MetaProgress
+): Promise<MetaProgress | null> {
+  try {
+    const res = await fetch(`${SERVER_URL}/session/meta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, progress }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data?.progress as MetaProgress) ?? null
+  } catch {
+    return null
+  }
+}
+
 /** Refresh the mission set if the local day rolled over. */
 function withCurrentMissions(address: string, progress: MetaProgress): MetaProgress {
   const day = todayKey()
@@ -99,6 +148,7 @@ interface MetaState {
   title: string
 
   loadForAddress: (address: string) => void
+  syncFromServer: () => Promise<void>
   refreshMissions: () => void
   recordRun: (run: RunSummary) => RunRewards | null
 }
@@ -117,6 +167,31 @@ export const useMetaStore = create<MetaState>((set, get) => ({
     const progress = withCurrentMissions(address, load(address))
     save(address, progress)
     set({ address, progress, ...derive(progress) })
+
+    // Then reconcile with the durable copy. Pushing rather than only reading is
+    // what carries a device's own history up on first sync, so a player who
+    // played before this shipped does not lose it — the server merges the two
+    // and returns the result, counted stats included.
+    pushServerProgress(address, progress).then((remote) => {
+      if (!remote) return
+      // Ignore a late reply for a wallet the player has already switched away
+      // from — it would write one player's career under another's address.
+      if (get().address !== address) return
+      const next = withCurrentMissions(address, remote)
+      save(address, next)
+      set({ progress: next, ...derive(next) })
+    })
+  },
+
+  /** Re-reads the durable copy without pushing — used on a plain refresh. */
+  syncFromServer: async () => {
+    const { address } = get()
+    if (!address) return
+    const remote = await fetchServerProgress(address)
+    if (!remote || get().address !== address) return
+    const next = withCurrentMissions(address, remote)
+    save(address, next)
+    set({ progress: next, ...derive(next) })
   },
 
   refreshMissions: () => {
@@ -189,6 +264,15 @@ export const useMetaStore = create<MetaState>((set, get) => ({
 
     save(address, next)
     set({ progress: next, ...derive(next) })
+
+    // The run is already banked locally; this carries it to the durable copy so
+    // it survives this device.
+    pushServerProgress(address, next).then((remote) => {
+      if (!remote || get().address !== address) return
+      const merged = withCurrentMissions(address, remote)
+      save(address, merged)
+      set({ progress: merged, ...derive(merged) })
+    })
 
     return {
       xpGained,

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { supabase } from '../db/supabase.js'
 import { syncLimiter } from '../middleware/rateLimits.js'
 import { computeStreak, recentDays, utcDay } from '../config/streak.js'
+import { emptyProgress, mergeProgress, withDerivedLifetime } from '../config/meta.js'
 
 const router = Router()
 
@@ -203,6 +204,90 @@ router.get('/restore/:address', async (req, res) => {
       updatedAt:      data.updated_at,
     },
   })
+})
+
+// ── Career progress ──────────────────────────────────────────────────────────
+
+/** Games played, total score and best score, counted from the sessions. */
+async function readLifetime(addr) {
+  const { data, error } = await supabase.rpc('player_lifetime', { p_address: addr })
+  if (error) {
+    console.error('player_lifetime rpc error:', error)
+    return null
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  return {
+    gamesPlayed: Number(row?.games_played ?? 0),
+    totalScore: Number(row?.total_score ?? 0),
+    bestScore: Number(row?.best_score ?? 0),
+  }
+}
+
+async function readStoredProgress(addr) {
+  const { data, error } = await supabase
+    .from('player_meta')
+    .select('progress')
+    .eq('address', addr)
+    .maybeSingle()
+
+  if (error) {
+    console.error('player_meta read error:', error)
+    return null
+  }
+  return data?.progress ?? null
+}
+
+/**
+ * GET /session/meta/:address
+ * The player's career progress: what the sessions prove, over what the device
+ * last stored. This is what makes a new phone or a cleared cache pick up where
+ * the player left off instead of starting them at zero.
+ */
+router.get('/meta/:address', async (req, res) => {
+  if (!requireDb(res)) return
+  const address = req.params.address
+
+  if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
+
+  const addr = address.toLowerCase()
+  const [stored, derived] = await Promise.all([readStoredProgress(addr), readLifetime(addr)])
+
+  res.json({ progress: withDerivedLifetime(stored ?? emptyProgress(), derived) })
+})
+
+/**
+ * POST /session/meta
+ * Stores the half of career progress only the browser can compute.
+ *
+ * Merged, never overwritten: two devices hold different halves of the same
+ * history, and the one that saved last would otherwise erase the other. The
+ * merged result comes back so the caller can adopt it.
+ */
+router.post('/meta', syncLimiter, async (req, res) => {
+  if (!requireDb(res)) return
+  const { address, progress } = req.body
+
+  if (!validateAddress(address)) return res.status(400).json({ error: 'Invalid address' })
+  if (!progress || typeof progress !== 'object') {
+    return res.status(400).json({ error: 'progress required' })
+  }
+
+  const addr = address.toLowerCase()
+  const stored = await readStoredProgress(addr)
+  const merged = mergeProgress(stored, progress)
+
+  const { error } = await supabase
+    .from('player_meta')
+    .upsert({ address: addr, progress: merged }, { onConflict: 'address' })
+
+  if (error) {
+    console.error('player_meta write error:', error)
+    return res.status(500).json({ error: 'Failed to save progress' })
+  }
+
+  // Counted, not stored — the response says the same thing GET does.
+  const derived = await readLifetime(addr)
+  res.json({ progress: withDerivedLifetime(merged, derived) })
 })
 
 /**
