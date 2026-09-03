@@ -50,13 +50,15 @@ function requireAdmin(req, res) {
  * The four weekly counters, derived from the session/purchase tables. Nothing
  * the client sends can move these — only finishing a run or paying on-chain.
  */
-async function readProgress(addr, weekStart, joinedAt) {
+async function readProgress(addr, weekStart, joinedAt, levelStartedAt) {
   const { data, error } = await supabase.rpc('level_progress', {
     p_address: addr,
-    // Measured from whichever is latest: the week start or the moment this
-    // player joined the ladder. The join date is what lets the update ship at
-    // any time without crediting anyone for what they did before it landed.
-    p_since: progressWindowStart(weekStart, joinedAt),
+    // Measured from whichever is latest: the week start, the moment this player
+    // joined the ladder, or the moment they entered their current level. The
+    // level stamp is what makes each card a fresh start; the join date is what
+    // lets the update ship at any time without crediting anyone for what they
+    // did before it landed.
+    p_since: progressWindowStart(weekStart, joinedAt, levelStartedAt),
   })
 
   if (error) {
@@ -307,11 +309,15 @@ router.post('/refresh', async (req, res) => {
   row.levels_gained_this_week = rolled.levelsGained
   const demotedBy = rolled.demotedBy
 
-  // ── Derive this week's progress ─────────────────────────────────────────────
-  const progress = await readProgress(addr, currentWeek, row.created_at)
+  // A demotion drops the player onto a card they have to earn from scratch, so
+  // the window moves with them rather than crediting the level they just lost.
+  if (demotedBy > 0) row.level_started_at = new Date().toISOString()
+
+  // ── Derive progress on the current card ─────────────────────────────────────
+  const progress = await readProgress(addr, currentWeek, row.created_at, row.level_started_at)
   if (!progress) return res.status(500).json({ error: 'Failed to read progress' })
 
-  // ── Climb as far as this week's progress allows ─────────────────────────────
+  // ── Clear the card, if it is cleared ────────────────────────────────────────
   const ascent = climb(row.level, progress)
 
   const advanced = []
@@ -323,6 +329,16 @@ router.post('/refresh', async (req, res) => {
   const gained = ascent.level - row.level
   row.level = ascent.level
   row.levels_gained_this_week += gained
+
+  // Entering a level restarts its counters. Everything banked belonged to the
+  // level just cleared — including the run in progress, which was started
+  // before this moment and so falls outside the new window.
+  if (gained > 0) row.level_started_at = new Date().toISOString()
+
+  // Nothing has been played against the new card yet, and the window opens now,
+  // so the counters are zero by construction — no second RPC needed to say so.
+  const cardProgress =
+    gained > 0 ? Object.fromEntries(TARGET_KEYS.map((key) => [key, 0])) : progress
 
   // Level 12 has nowhere to climb, so clearing its card holds the rank rather
   // than gaining one — otherwise a maxed player would be demoted every Monday.
@@ -344,6 +360,7 @@ router.post('/refresh', async (req, res) => {
         highest_level: row.highest_level,
         week_start: row.week_start,
         levels_gained_this_week: row.levels_gained_this_week,
+        level_started_at: row.level_started_at,
       })
       .eq('address', addr)
       .eq('level', levelBefore)
@@ -352,7 +369,7 @@ router.post('/refresh', async (req, res) => {
   }
 
   res.json({
-    state: buildState(row, progress, {
+    state: buildState(row, cardProgress, {
       advanced,
       demotedBy,
       held: ascent.held,
@@ -564,7 +581,12 @@ router.get('/:address', async (req, res) => {
     })
   }
 
-  const progress = await readProgress(addr, row.week_start, row.created_at)
+  const progress = await readProgress(
+    addr,
+    row.week_start,
+    row.created_at,
+    row.level_started_at
+  )
   if (!progress) return res.status(500).json({ error: 'Failed to read progress' })
 
   res.json({

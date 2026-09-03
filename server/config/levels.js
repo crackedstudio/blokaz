@@ -11,12 +11,22 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * How the ladder works
  *
- * Counters are WEEKLY and thresholds are CUMULATIVE within that week. A player
- * sitting at level N sees LEVELS[N].targets as their challenge card; meeting
- * all four advances them to N+1 immediately, mid-week. Because level N+1's
- * targets are strictly higher absolute numbers, the progress already banked
- * this week carries straight over — a strong player can chain several levels
- * in one week without any counter being reset under them.
+ * Every level is a FRESH START. A player sitting at level N sees
+ * LEVELS[N].targets as their challenge card, and the four counters are measured
+ * from the moment they entered that level — not from the start of the week and
+ * not from where the previous level left off. Clearing the card advances them
+ * to N+1 immediately, mid-week, and every counter goes back to zero under them:
+ * the purchase that cleared level 1 does not count toward level 2, and neither
+ * do its points, games or tournament runs.
+ *
+ * That is what makes each rung its own piece of work rather than a threshold
+ * the previous rung has already half-paid. It also means only one level can be
+ * cleared per refresh — the window resets on the way through, so there is no
+ * banked progress left to carry into the next card.
+ *
+ * The counters are still bounded by the week: they never reach back past the
+ * current Monday, so a level entered on Sunday gets the rest of Sunday, not a
+ * full seven days.
  *
  * At the end of the week (Monday 00:00 UTC) a player who gained no level that
  * week drops one, floored at level 1. Level 12 has nowhere to advance to, so
@@ -28,7 +38,11 @@
  * high-tier play.
  */
 
-/** Weekly targets that must ALL be met to clear the level. */
+/**
+ * Targets that must ALL be met to clear the level, counted from the moment the
+ * player entered it. Absolute per level, not cumulative across the ladder — a
+ * level 12 card is 120 games played while sitting at level 12.
+ */
 export const LEVELS = [
   null, // 1-indexed — LEVELS[1] is level 1
   { level: 1,   name: 'PAPER CADET',      accent: '#ffd51f', targets: { games: 10,  tournaments: 10, purchases: 1,  points: 1_000  } },
@@ -151,9 +165,16 @@ export function meetsTargets(level, progress) {
 export const LADDER_EPOCH = process.env.LADDER_EPOCH ?? null
 
 /**
- * The instant from which a player's weekly counters are measured: the latest of
- * the week start, the moment that player joined the ladder, and any global
- * re-baseline.
+ * The instant from which a player's counters are measured: the latest of the
+ * week start, the moment that player joined the ladder, the moment they entered
+ * their current level, and any global re-baseline.
+ *
+ * `levelStartedAt` is what makes every level a fresh start. Counters are
+ * derived on read, so without it a card would be scored against everything the
+ * player did since Monday — including the runs and purchases that cleared the
+ * level below, which is exactly the carry-over the ladder is not supposed to
+ * have. Anchoring to the moment the level was entered zeroes all four counters
+ * the instant a player advances or is demoted.
  *
  * `joinedAt` is what makes the ladder safe to deploy at any moment. Counters
  * are derived from tables that have been recording for months, so measuring
@@ -164,13 +185,18 @@ export const LADDER_EPOCH = process.env.LADDER_EPOCH ?? null
  * the update ships, whenever that happens to be.
  *
  * Self-expiring: from the following Monday the week start is always the latest
- * of the three, so this stops applying on its own.
+ * of the four, so the join date stops applying on its own.
  */
-export function progressWindowStart(weekStart, joinedAt = null, epoch = LADDER_EPOCH) {
+export function progressWindowStart(
+  weekStart,
+  joinedAt = null,
+  levelStartedAt = null,
+  epoch = LADDER_EPOCH
+) {
   const weekMs = Date.parse(`${weekStart}T00:00:00Z`)
 
   let latest = weekMs
-  for (const candidate of [joinedAt, epoch]) {
+  for (const candidate of [joinedAt, levelStartedAt, epoch]) {
     if (!candidate) continue
     const ms = Date.parse(candidate)
     // Ignore anything unparseable rather than collapsing the window to NaN,
@@ -229,26 +255,23 @@ export function applyRollover(row, currentWeek) {
 }
 
 /**
- * How far this week's progress carries a player from `level`.
+ * Whether this level's progress clears the card, and where that leaves the
+ * player.
  *
- * Thresholds are cumulative, so clearing a level rolls the banked progress
- * straight into the next card and a strong week can chain several levels.
+ * At most ONE level per call. Each level is measured from the moment it was
+ * entered, so the progress passed in belongs to `level` alone — the next card
+ * starts from zero and cannot be judged against a snapshot taken before the
+ * advance. The caller resets the window and the player climbs the next rung on
+ * a later refresh, having actually played it.
+ *
  * Level 12 has nowhere to climb: clearing its card is reported as `held`, which
  * is what protects a maxed player from the end-of-week demotion.
  *
- * Returns the levels cleared in order — the caller pays each one out.
+ * `cleared` is kept as an array — the caller pays out each entry, and the
+ * shape is what the client renders in the level-up modal.
  */
 export function climb(level, progress) {
-  const cleared = []
-  let current = level
-
-  while (current < MAX_LEVEL && meetsTargets(current, progress)) {
-    cleared.push(current)
-    current += 1
-  }
-
-  const held = current === MAX_LEVEL && meetsTargets(MAX_LEVEL, progress)
-  if (held) cleared.push(MAX_LEVEL)
-
-  return { level: current, cleared, held }
+  if (!meetsTargets(level, progress)) return { level, cleared: [], held: false }
+  if (level >= MAX_LEVEL) return { level: MAX_LEVEL, cleared: [MAX_LEVEL], held: true }
+  return { level: level + 1, cleared: [level], held: false }
 }

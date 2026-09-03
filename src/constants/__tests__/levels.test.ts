@@ -320,12 +320,13 @@ describe('climb', () => {
     expect(result.cleared).toEqual([1])
   })
 
-  it('chains several levels in one pass because thresholds are cumulative', () => {
-    // A strong week that satisfies level 3 outright should carry 1 → 4, paying
-    // out every level on the way rather than skipping them.
+  it('clears one level at a time however strong the card', () => {
+    // Progress belongs to the level it was measured on. Satisfying level 3's
+    // numbers while sitting at level 1 still only clears level 1: entering
+    // level 2 restarts every counter, so level 2 has to be played for.
     const result = climb(1, LEVELS[3].targets)
-    expect(result.level).toBe(4)
-    expect(result.cleared).toEqual([1, 2, 3])
+    expect(result.level).toBe(2)
+    expect(result.cleared).toEqual([1])
   })
 
   it('holds rather than advances at the top of the ladder', () => {
@@ -350,11 +351,24 @@ describe('climb', () => {
       purchases: 10_000,
       points: 10_000_000,
     })
-    const result = climb(1, huge)
+    const result = climb(MAX_LEVEL, huge)
     expect(result.level).toBe(MAX_LEVEL)
     expect(result.held).toBe(true)
-    // Every level from 1 to 12 paid out exactly once.
-    expect(result.cleared).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    expect(result.cleared).toEqual([MAX_LEVEL])
+  })
+
+  it('pays no more than one level however far the numbers reach', () => {
+    const huge = progress({
+      games: 10_000,
+      tournaments: 10_000,
+      purchases: 10_000,
+      points: 10_000_000,
+    })
+    for (let n = 1; n < MAX_LEVEL; n++) {
+      const result = climb(n, huge)
+      expect(result.level, `level ${n} skipped a rung`).toBe(n + 1)
+      expect(result.cleared).toEqual([n])
+    }
   })
 })
 
@@ -383,6 +397,9 @@ describe('progress window', () => {
     // the RPC matches nothing and the player looks like they did nothing.
     expect(progressWindowStart('2026-09-07', 'garbage')).toBe('2026-09-07T00:00:00Z')
     expect(progressWindowStart('2026-09-07', null, 'garbage')).toBe('2026-09-07T00:00:00Z')
+    expect(progressWindowStart('2026-09-07', null, null, 'garbage')).toBe(
+      '2026-09-07T00:00:00Z'
+    )
   })
 
   it('never rewinds the window before the current week', () => {
@@ -396,8 +413,25 @@ describe('progress window', () => {
 
   it('lets a global re-baseline override a older join date', () => {
     // The escape hatch for redefining objectives: LADDER_EPOCH resets everyone.
-    expect(progressWindowStart('2026-08-31', JOINED, '2026-09-04T00:00:00Z')).toBe(
+    expect(progressWindowStart('2026-08-31', JOINED, null, '2026-09-04T00:00:00Z')).toBe(
       '2026-09-04T00:00:00.000Z'
+    )
+  })
+
+  it('measures from the level entry once a player advances', () => {
+    // The point of the per-level window: the runs and purchases that cleared
+    // the level below sit before this instant, so the new card reads zero.
+    const entered = '2026-09-09T18:00:00Z'
+    expect(progressWindowStart('2026-09-07', JOINED, entered)).toBe(
+      '2026-09-09T18:00:00.000Z'
+    )
+  })
+
+  it('never rewinds to a level entered before the current week', () => {
+    // A player who has sat on the same level since last week is measured from
+    // Monday, not from whenever they got there.
+    expect(progressWindowStart('2026-09-14', JOINED, '2026-09-09T18:00:00Z')).toBe(
+      '2026-09-14T00:00:00Z'
     )
   })
 })

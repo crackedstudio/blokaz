@@ -8,11 +8,13 @@
 -- Design notes
 -- ────────────
 -- Challenge progress is NEVER written by the client and never stored twice.
--- All four counters are derived on read from tables that already exist:
---   games       → game_sessions        (finished runs this week)
---   tournaments → tournament_sessions  (finished runs this week)
---   purchases   → purchase_log         (items bought this week)
---   points      → sum of both session tables' scores this week
+-- All four counters are derived on read from tables that already exist, over
+-- the window that opens when the player enters their current level (never
+-- reaching back past the current Monday):
+--   games       → game_sessions        (finished runs on this level)
+--   tournaments → tournament_sessions  (finished runs on this level)
+--   purchases   → purchase_log         (items bought on this level)
+--   points      → sum of both session tables' scores on this level
 -- That means a level can't be inflated by a forged request — the only way to
 -- move the counters is to actually finish a run or pay for an item on-chain.
 
@@ -29,9 +31,19 @@ create table if not exists player_levels (
   week_start              date    not null,
   -- Any advance during the week protects against the end-of-week demotion.
   levels_gained_this_week integer not null default 0,
+  -- When the player entered the level they are on. Every counter is measured
+  -- from here, which is what makes each level a fresh start instead of
+  -- inheriting the runs and purchases that cleared the level below.
+  level_started_at        timestamptz not null default now(),
   created_at              timestamptz not null default now(),
   updated_at              timestamptz not null default now()
 );
+
+-- Existing deployments predate level_started_at. Backfilling with now() puts
+-- every player at the start of their current card, which is the same fresh
+-- start a newly entered level gets.
+alter table player_levels
+  add column if not exists level_started_at timestamptz not null default now();
 
 create index if not exists idx_player_levels_level
   on player_levels (level desc, highest_level desc);

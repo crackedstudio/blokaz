@@ -73,24 +73,27 @@ export declare function applyRollover(row: LadderRow, currentWeek: string): Roll
 export interface ClimbResult {
   /** Level the player ends on. */
   level: number
-  /** Levels cleared by this climb, in order. */
+  /** The level cleared by this call, or empty. At most one — each level's
+   *  counters restart when it is entered, so the next card cannot be judged
+   *  against a snapshot taken before the advance. */
   cleared: number[]
   /** At level 12 and cleared its card — rank held rather than gained. */
   held: boolean
 }
 
-/** How far this week's progress carries a player from `level`. */
+/** Whether this level's progress clears its card, and where that leaves the player. */
 export declare function climb(level: number, progress: Partial<LevelTargets>): ClimbResult
 
 /** Optional global re-baseline (ISO 8601). Unset by default. */
 export declare const LADDER_EPOCH: string | null
 
 /**
- * The latest of the week start, the player's join date, and any global
- * re-baseline, as an ISO timestamp.
+ * The latest of the week start, the player's join date, the moment they entered
+ * their current level, and any global re-baseline, as an ISO timestamp.
  */
 export declare function progressWindowStart(
   weekStart: string,
   joinedAt?: string | null,
+  levelStartedAt?: string | null,
   epoch?: string | null
 ): string

@@ -14,9 +14,11 @@
  *
  *  · Four objectives per level: games played, tournament games played, shop
  *    items bought, and points scored. ALL four must be met to clear a level.
- *  · Counters are weekly (Monday 00:00 UTC) and thresholds are cumulative, so
- *    clearing a level mid-week rolls your banked progress straight into the
- *    next card — a strong week can carry several levels.
+ *  · Every level starts from zero. The four counters are measured from the
+ *    moment you enter a level, so nothing that cleared the level below counts
+ *    toward the next one, and only one level can be cleared at a time. They are
+ *    still bounded by the week (Monday 00:00 UTC) — a level entered on Sunday
+ *    gets the rest of Sunday.
  *  · Gain no level in a week and you drop one at the rollover, floored at 1.
  *    Any advance at all protects you. Level 12 has nowhere to climb, so
  *    clearing its card holds the rank instead.
@@ -47,6 +49,22 @@ export interface LevelSpec {
 }
 
 export const MAX_LEVEL = 12
+
+/**
+ * The level a cash reward was paid for, read back from the label the server
+ * writes when it issues one (`Level 4 — PIXEL BREAKER`).
+ *
+ * The rewards table is shared with tournament prizes and one-off admin payouts,
+ * which carry their own labels; those return null and stay out of the ladder
+ * UI. The label is written in exactly two places server-side (the pool draw in
+ * grantLevel and POST /levels/admin/fulfil), both in this shape.
+ */
+export function levelFromRewardLabel(label: string): number | null {
+  const match = /^\s*level\s+(\d+)\b/i.exec(label)
+  if (!match) return null
+  const level = Number(match[1])
+  return level >= 1 && level <= MAX_LEVEL ? level : null
+}
 
 export const OBJECTIVE_KEYS: ObjectiveKey[] = [
   'games',
