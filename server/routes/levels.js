@@ -478,7 +478,10 @@ router.get('/admin/pending', async (req, res) => {
   for (const level of milestoneLevels) available[level] = 0
   for (const r of pool ?? []) available[r.level] = (available[r.level] ?? 0) + 1
 
-  res.json({ pending, paid, available })
+  // `fundable` is what POST /levels/admin/pool will accept. Sent explicitly so
+  // the portal offers exactly those levels rather than inferring them from
+  // `available`, which also carries any level with links still stranded in it.
+  res.json({ pending, paid, available, fundable: milestoneLevels })
 })
 
 /**

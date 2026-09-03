@@ -91,27 +91,26 @@ export const LEVEL_POWERUPS = {
 export const CASH_MILESTONES = new Set([4, 8, 12])
 
 /**
- * TEST-ONLY milestone whitelist.
+ * TEST-ONLY milestone whitelist. EMPTY in normal operation, which is what makes
+ * the ladder behave for everyone: with no addresses listed, TEST_CASH_LEVELS
+ * pays nobody, poolLevels() is CASH_MILESTONES exactly, and level 1 is an
+ * ordinary power-up level again.
  *
- * Levels listed here pay a cash link, but ONLY to the addresses listed below —
- * for everyone else they remain ordinary power-up levels. It exists so the
- * claim flow (pool draw → rewards row → PlayerRewardsPanel claim) can be
- * exercised end to end on level 1 instead of having to grind to level 4.
+ * Set TEST_CASH_ADDRESSES (comma separated) to arm it. Those addresses — and
+ * only those — are then paid a cash link for clearing a test level, so the
+ * claim flow (pool draw → rewards row → claim) can be exercised on level 1
+ * instead of grinding to level 4. Unset it and the behaviour is gone; nothing
+ * else has to change.
  *
  * Deliberately kept separate from CASH_MILESTONES: the client mirror in
  * src/constants/levels.ts advertises CASH_MILESTONES on the public challenge
- * board, and level 1 must not promise every player money it will not pay.
- *
- * Extra addresses can be added with TEST_CASH_ADDRESSES (comma separated).
- * Remove the seeded address below when testing is finished.
+ * board, and a test level must not promise every player money it will not pay.
  */
 export const TEST_CASH_LEVELS = new Set([1])
 
 export const TEST_CASH_ADDRESSES = new Set(
-  [
-    '0xFd1a3980f7473bdFE7461e78ADDe78c33d7b006b',
-    ...(process.env.TEST_CASH_ADDRESSES ?? '').split(','),
-  ]
+  (process.env.TEST_CASH_ADDRESSES ?? '')
+    .split(',')
     .map((a) => a.trim().toLowerCase())
     .filter(Boolean)
 )

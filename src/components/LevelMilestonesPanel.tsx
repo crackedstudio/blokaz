@@ -6,11 +6,19 @@ import {
   type MilestoneGrant,
 } from '../hooks/useLevelMilestones'
 
-// Mirrors poolLevels() on the server. Level 1 is the TEST-ONLY milestone: its
-// pool is drawn only by the addresses whitelisted in server/config/levels.js,
-// so links loaded here reach the tester and nobody else. Drop the 1 when the
-// whitelist there is removed.
-const MILESTONE_LEVELS = [1, 4, 8, 12]
+// The real milestones, used until the ledger has answered. Everything below
+// reads the levels back from the server instead of hardcoding them, so arming
+// the TEST_CASH_ADDRESSES whitelist adds its test level to this panel — and
+// disarming it takes the level away again — with no change here.
+const DEFAULT_MILESTONE_LEVELS = [4, 8, 12]
+
+/**
+ * Levels to offer, ascending. The server says which it will accept; the
+ * constant above only stands in until the first response lands.
+ */
+function fundableLevels(fundable: number[]): number[] {
+  return fundable.length > 0 ? [...fundable].sort((a, b) => a - b) : DEFAULT_MILESTONE_LEVELS
+}
 
 function shortAddr(a: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`
@@ -148,11 +156,12 @@ const PendingRow: React.FC<{
 
 // ── Pool top-up ──────────────────────────────────────────────────────────────
 
-const PoolLoader: React.FC<{ adminAddress: string; onLoaded: () => void }> = ({
-  adminAddress,
-  onLoaded,
-}) => {
-  const [level, setLevel] = useState(4)
+const PoolLoader: React.FC<{
+  adminAddress: string
+  levels: number[]
+  onLoaded: () => void
+}> = ({ adminAddress, levels, onLoaded }) => {
+  const [level, setLevel] = useState(levels[0] ?? 4)
   const [amount, setAmount] = useState('')
   const [token, setToken] = useState('USDT')
   const [urls, setUrls] = useState('')
@@ -200,7 +209,7 @@ const PoolLoader: React.FC<{ adminAddress: string; onLoaded: () => void }> = ({
             onChange={(e) => setLevel(Number(e.target.value))}
             className="brutal-input w-full"
           >
-            {MILESTONE_LEVELS.map((l) => (
+            {levels.map((l) => (
               <option key={l} value={l}>
                 {l}
               </option>
@@ -273,13 +282,15 @@ const PoolLoader: React.FC<{ adminAddress: string; onLoaded: () => void }> = ({
  * funded links. Anything the pool could not cover lands in OWED, which is the
  * queue this panel exists to clear.
  *
- * Level 1 appears here too, as a test milestone: only the addresses whitelisted
- * server-side draw from its pool.
+ * Which levels appear comes from the server's own ledger, so a test milestone
+ * armed through TEST_CASH_ADDRESSES shows up here to be funded and disappears
+ * when the whitelist is emptied.
  */
 const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
   adminAddress,
 }) => {
   const { data, isLoading, error, refetch } = useLevelMilestones(adminAddress)
+  const milestoneLevels = fundableLevels(data.fundable)
 
   return (
     <div className="mt-12">
@@ -299,8 +310,7 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
         CASH MILESTONES
       </h2>
       <p className="mt-2 font-body text-[13px] uppercase tracking-[0.16em] text-ink/60">
-        Players who reached level 4, 8 or 12 — plus level 1 for whitelisted
-        testers.
+        Players who reached a cash milestone.
       </p>
 
       {error && (
@@ -311,7 +321,7 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
 
       {/* ── Pool stock ── */}
       <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {MILESTONE_LEVELS.map((level) => {
+        {milestoneLevels.map((level) => {
           const left = data.available[String(level)] ?? 0
           return (
             <div
@@ -323,7 +333,7 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
               }}
             >
               <div className="font-display text-[10px] uppercase tracking-[0.14em] text-ink/60">
-                Level {level} pool{level === 1 ? ' · test' : ''}
+                Level {level} pool
               </div>
               <div className="mt-1 font-display text-[26px] tabular-nums leading-none">
                 {left}
@@ -388,7 +398,11 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
             milestones pay out automatically.
           </p>
           <div className="mt-4 border-[3px] border-ink bg-paper p-4">
-            <PoolLoader adminAddress={adminAddress} onLoaded={refetch} />
+            <PoolLoader
+              adminAddress={adminAddress}
+              levels={milestoneLevels}
+              onLoaded={refetch}
+            />
           </div>
         </div>
       </div>

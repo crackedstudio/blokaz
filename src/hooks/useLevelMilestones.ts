@@ -23,9 +23,11 @@ export interface MilestoneData {
   paid: MilestoneGrant[]
   /** Unassigned links left in the pool, keyed by level. */
   available: Record<string, number>
+  /** Levels the server will accept a funded link for, ascending. */
+  fundable: number[]
 }
 
-const EMPTY: MilestoneData = { pending: [], paid: [], available: {} }
+const EMPTY: MilestoneData = { pending: [], paid: [], available: {}, fundable: [] }
 
 function adminHeaders(adminAddress: string, json = false): HeadersInit {
   return {
@@ -69,6 +71,7 @@ export function useLevelMilestones(adminAddress?: string) {
         pending: json.pending ?? [],
         paid: json.paid ?? [],
         available: json.available ?? {},
+        fundable: json.fundable ?? [],
       })
     } catch {
       setError('Could not reach the server.')
