@@ -32,6 +32,18 @@ export declare const LEVEL_POWERUPS: Record<number, Record<string, number>>
 /** Levels that additionally pay a stablecoin cash link. */
 export declare const CASH_MILESTONES: Set<number>
 
+/** TEST-ONLY: levels that pay a cash link to whitelisted addresses only. */
+export declare const TEST_CASH_LEVELS: Set<number>
+
+/** TEST-ONLY: lowercased addresses the test levels pay. */
+export declare const TEST_CASH_ADDRESSES: Set<string>
+
+/** Does clearing `level` pay `address` a cash link? */
+export declare function isCashMilestone(level: number, address?: string | null): boolean
+
+/** Every level a cash-link pool can be funded for, ascending. */
+export declare function poolLevels(): number[]
+
 export declare const TARGET_KEYS: readonly (keyof LevelTargets)[]
 
 export declare function meetsTargets(level: number, progress: Partial<LevelTargets>): boolean

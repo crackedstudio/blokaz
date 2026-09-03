@@ -5,7 +5,8 @@ import {
   LEVELS,
   MAX_LEVEL,
   LEVEL_POWERUPS,
-  CASH_MILESTONES,
+  isCashMilestone,
+  poolLevels,
   TARGET_KEYS,
   applyRollover,
   climb,
@@ -97,7 +98,9 @@ async function grantLevel(addr, level) {
   // it was already recorded as owed. Defaulting to pending is what makes the
   // crash recoverable: the worst case is a milestone an admin has to settle,
   // never one the player silently loses.
-  const isMilestone = CASH_MILESTONES.has(level)
+  // Address-aware: the real milestones pay everybody, while a test level pays
+  // only the whitelist in config/levels.js.
+  const isMilestone = isCashMilestone(level, addr)
 
   const { data: grant, error } = await supabase
     .from('level_grants')
@@ -373,8 +376,9 @@ router.post('/admin/pool', async (req, res) => {
 
   const { level, links } = req.body
 
-  if (!CASH_MILESTONES.has(Number(level))) {
-    return res.status(400).json({ error: `level must be one of ${[...CASH_MILESTONES].join(', ')}` })
+  const fundable = poolLevels()
+  if (!fundable.includes(Number(level))) {
+    return res.status(400).json({ error: `level must be one of ${fundable.join(', ')}` })
   }
   if (!Array.isArray(links) || links.length === 0) {
     return res.status(400).json({ error: 'links[] required' })
@@ -417,7 +421,9 @@ router.get('/admin/pending', async (req, res) => {
   if (!requireDb(res)) return
   if (!requireAdmin(req, res)) return
 
-  const milestoneLevels = [...CASH_MILESTONES]
+  // poolLevels(), not CASH_MILESTONES, so a whitelisted test level's grants and
+  // remaining links show up in the ledger alongside the real ones.
+  const milestoneLevels = poolLevels()
 
   const [{ data: grants, error: grantsError }, { data: pool, error: poolError }] =
     await Promise.all([
@@ -436,16 +442,23 @@ router.get('/admin/pending', async (req, res) => {
 
   const withName = (g) => ({ ...g, name: LEVELS[g.level].name })
 
+  // Every player holds a grant for a test level (level 1 pays power-ups to
+  // everyone), so keep only the ones that actually carry a cash entitlement —
+  // otherwise the ledger fills with rows no admin can act on.
+  const isCashGrant = (g) => isCashMilestone(g.level, g.address)
+
+  const cashGrants = (grants ?? []).filter(isCashGrant)
+
   // Oldest first for pending — that is the queue the admin works through.
-  const pending = (grants ?? [])
+  const pending = cashGrants
     .filter((g) => g.cash_pending)
     .map(withName)
     .reverse()
 
-  const paid = (grants ?? []).filter((g) => !g.cash_pending).map(withName)
+  const paid = cashGrants.filter((g) => !g.cash_pending).map(withName)
 
   const available = {}
-  for (const level of CASH_MILESTONES) available[level] = 0
+  for (const level of milestoneLevels) available[level] = 0
   for (const r of pool ?? []) available[r.level] = (available[r.level] ?? 0) + 1
 
   res.json({ pending, paid, available })

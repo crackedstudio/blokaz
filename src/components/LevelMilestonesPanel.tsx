@@ -6,7 +6,11 @@ import {
   type MilestoneGrant,
 } from '../hooks/useLevelMilestones'
 
-const MILESTONE_LEVELS = [4, 8, 12]
+// Mirrors poolLevels() on the server. Level 1 is the TEST-ONLY milestone: its
+// pool is drawn only by the addresses whitelisted in server/config/levels.js,
+// so links loaded here reach the tester and nobody else. Drop the 1 when the
+// whitelist there is removed.
+const MILESTONE_LEVELS = [1, 4, 8, 12]
 
 function shortAddr(a: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`
@@ -268,6 +272,9 @@ const PoolLoader: React.FC<{ adminAddress: string; onLoaded: () => void }> = ({
  * Players reaching level 4, 8 or 12 are paid automatically while the pool has
  * funded links. Anything the pool could not cover lands in OWED, which is the
  * queue this panel exists to clear.
+ *
+ * Level 1 appears here too, as a test milestone: only the addresses whitelisted
+ * server-side draw from its pool.
  */
 const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
   adminAddress,
@@ -292,7 +299,8 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
         CASH MILESTONES
       </h2>
       <p className="mt-2 font-body text-[13px] uppercase tracking-[0.16em] text-ink/60">
-        Players who reached level 4, 8 or 12.
+        Players who reached level 4, 8 or 12 — plus level 1 for whitelisted
+        testers.
       </p>
 
       {error && (
@@ -302,7 +310,7 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
       )}
 
       {/* ── Pool stock ── */}
-      <div className="mt-8 grid grid-cols-3 gap-4">
+      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         {MILESTONE_LEVELS.map((level) => {
           const left = data.available[String(level)] ?? 0
           return (
@@ -315,7 +323,7 @@ const LevelMilestonesPanel: React.FC<{ adminAddress: string }> = ({
               }}
             >
               <div className="font-display text-[10px] uppercase tracking-[0.14em] text-ink/60">
-                Level {level} pool
+                Level {level} pool{level === 1 ? ' · test' : ''}
               </div>
               <div className="mt-1 font-display text-[26px] tabular-nums leading-none">
                 {left}

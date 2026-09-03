@@ -76,6 +76,60 @@ export const LEVEL_POWERUPS = {
  */
 export const CASH_MILESTONES = new Set([4, 8, 12])
 
+/**
+ * TEST-ONLY milestone whitelist.
+ *
+ * Levels listed here pay a cash link, but ONLY to the addresses listed below —
+ * for everyone else they remain ordinary power-up levels. It exists so the
+ * claim flow (pool draw → rewards row → PlayerRewardsPanel claim) can be
+ * exercised end to end on level 1 instead of having to grind to level 4.
+ *
+ * Deliberately kept separate from CASH_MILESTONES: the client mirror in
+ * src/constants/levels.ts advertises CASH_MILESTONES on the public challenge
+ * board, and level 1 must not promise every player money it will not pay.
+ *
+ * Extra addresses can be added with TEST_CASH_ADDRESSES (comma separated).
+ * Remove the seeded address below when testing is finished.
+ */
+export const TEST_CASH_LEVELS = new Set([1])
+
+export const TEST_CASH_ADDRESSES = new Set(
+  [
+    '0xFd1a3980f7473bdFE7461e78ADDe78c33d7b006b',
+    ...(process.env.TEST_CASH_ADDRESSES ?? '').split(','),
+  ]
+    .map((a) => a.trim().toLowerCase())
+    .filter(Boolean)
+)
+
+/**
+ * Does clearing `level` pay `address` a cash link?
+ *
+ * The real milestones pay everybody; the test levels pay only the whitelist.
+ * `address` is matched case-insensitively, so callers can pass either form.
+ */
+export function isCashMilestone(level, address) {
+  const n = Number(level)
+  if (CASH_MILESTONES.has(n)) return true
+  return (
+    TEST_CASH_LEVELS.has(n) &&
+    TEST_CASH_ADDRESSES.has(String(address ?? '').toLowerCase())
+  )
+}
+
+/**
+ * Every level a cash-link pool can be funded for, ascending.
+ *
+ * The pool and the admin ledger are per level, not per player, so they cover
+ * the test levels too whenever the whitelist is non-empty — an admin has to be
+ * able to load level 1 links for the whitelisted tester to draw.
+ */
+export function poolLevels() {
+  const levels = new Set(CASH_MILESTONES)
+  if (TEST_CASH_ADDRESSES.size > 0) for (const l of TEST_CASH_LEVELS) levels.add(l)
+  return [...levels].sort((a, b) => a - b)
+}
+
 export const TARGET_KEYS = ['games', 'tournaments', 'purchases', 'points']
 
 /** True when every target for `level` is met by `progress`. */
