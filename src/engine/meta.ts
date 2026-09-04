@@ -64,7 +64,12 @@ export function summarizeRun(moveHistory: MoveRecord[], finalScore: number): Run
 
 // ── Levels ───────────────────────────────────────────────────────────────────
 
-export const MAX_LEVEL = 60
+/**
+ * The last level with a title of its own. NOT a cap — the career ladder does
+ * not end, and levels past this one keep costing more and keep counting. It
+ * exists so the title table knows where its named run stops.
+ */
+export const TITLED_LEVEL = 60
 
 /**
  * XP needed to go from `level` to `level + 1`.
@@ -73,22 +78,27 @@ export const MAX_LEVEL = 60
  * so the system announces itself while the player is still deciding whether to
  * come back) and steepening after ~level 10, where the players who are still
  * around are the ones worth giving a long chase.
+ *
+ * The curve never stops. A player who reaches the end of the named titles has
+ * a next level waiting, roughly 30k XP away and widening — which is the point
+ * of an endless ladder: always another rung, never a cheap one.
  */
 export function xpToNextLevel(level: number): number {
-  if (level >= MAX_LEVEL) return Infinity
   return Math.round(120 * Math.pow(level, 1.35))
 }
 
 export function levelFromTotalXp(totalXp: number): { level: number; intoLevel: number; needed: number } {
   let level = 1
   let remaining = Math.max(0, Math.floor(totalXp))
-  while (level < MAX_LEVEL) {
+  // Terminates for any finite XP: each level costs more than the last, so the
+  // remainder falls short in a bounded number of steps — a few hundred even for
+  // an XP total no player will reach.
+  for (;;) {
     const needed = xpToNextLevel(level)
     if (remaining < needed) return { level, intoLevel: remaining, needed }
     remaining -= needed
     level++
   }
-  return { level: MAX_LEVEL, intoLevel: 0, needed: Infinity }
 }
 
 /**
@@ -100,7 +110,13 @@ export function xpForRun(run: RunSummary): number {
   return Math.max(1, Math.floor(run.score / 10) + run.linesCleared * 2 + run.bestCombo * 5)
 }
 
-/** Cosmetic titles unlocked purely by level. Data-only — no new art needed. */
+/**
+ * Cosmetic titles unlocked purely by level. Data-only — no new art needed.
+ *
+ * The named run ends at BLOKAZ; past it the title takes a numeral so an endless
+ * ladder still says something about how far a player has come, rather than
+ * freezing on one word forever.
+ */
 export const LEVEL_TITLES: Array<{ level: number; title: string }> = [
   { level: 1, title: 'ROOKIE' },
   { level: 3, title: 'STACKER' },
@@ -114,10 +130,29 @@ export const LEVEL_TITLES: Array<{ level: number; title: string }> = [
   { level: 60, title: 'BLOKAZ' },
 ]
 
+/** I, II, III… for the tiers beyond the last named title. */
+const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+
+function numeral(n: number): string {
+  // Past the table, plain numbers: XI is already harder to read than 11, and a
+  // player at level 400 is better served by a figure than by ceremony.
+  return NUMERALS[n - 1] ?? String(n)
+}
+
 export function titleForLevel(level: number): string {
   let title = LEVEL_TITLES[0].title
   for (const entry of LEVEL_TITLES) {
     if (level >= entry.level) title = entry.title
+  }
+
+  // Beyond the last named level the title advances a tier every 10 levels:
+  // BLOKAZ, then BLOKAZ II at 70, BLOKAZ III at 80, and on.
+  const past = level - TITLED_LEVEL
+  if (past > 0) {
+    // The first ten levels past the table still wear the plain title — a
+    // numeral appears only once a player has put a whole tier behind them.
+    const tier = Math.floor(past / 10)
+    if (tier > 0) return `${title} ${numeral(tier + 1)}`
   }
   return title
 }

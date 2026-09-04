@@ -15,10 +15,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMetaStore } from '../../stores/metaStore'
-import {
-  isMissionComplete,
-  MAX_LEVEL as MAX_CAREER_LEVEL,
-} from '../../engine/meta'
+import { isMissionComplete } from '../../engine/meta'
 import {
   MAX_LEVEL as MAX_WEEKLY_LEVEL,
   OBJECTIVE_KEYS,
@@ -236,8 +233,8 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose, address }) => {
 
   const spec = levelSpec(levelState?.level ?? 1)
   const accent = levelState?.accent ?? spec.accent
-  const careerMaxed = level >= MAX_CAREER_LEVEL
-  const careerRatio = careerMaxed ? 1 : needed > 0 ? intoLevel / needed : 0
+  // No ceiling on the career track: every level has a next one to fill toward.
+  const careerRatio = needed > 0 ? intoLevel / needed : 0
 
   const missionsDone = progress.missions.filter(isMissionComplete).length
   // What today is still worth — a section header that only counts completions
@@ -476,11 +473,7 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose, address }) => {
                   chipBg="var(--ink-fixed)"
                   chipFg="var(--accent-yellow)"
                   name={title}
-                  note={
-                    careerMaxed
-                      ? `Max level · ${progress.totalXp.toLocaleString()} XP`
-                      : `${intoLevel.toLocaleString()} / ${needed.toLocaleString()} XP to level ${level + 1}`
-                  }
+                  note={`${intoLevel.toLocaleString()} / ${needed.toLocaleString()} XP to level ${level + 1}`}
                   ratio={careerRatio}
                   fill="var(--accent-lime)"
                 />

@@ -4,7 +4,7 @@ import {
   advanceMission,
   isMissionComplete,
   levelFromTotalXp,
-  MAX_LEVEL,
+  TITLED_LEVEL,
   rollDailyMissions,
   summarizeRun,
   titleForLevel,
@@ -69,15 +69,30 @@ describe('levels', () => {
     expect(levelFromTotalXp(needed).level).toBe(2)
   })
 
-  it('is monotonic and never exceeds the cap', () => {
+  it('is monotonic and never stops climbing', () => {
     let last = 0
     for (const xp of [0, 500, 5_000, 50_000, 500_000, 50_000_000]) {
       const { level } = levelFromTotalXp(xp)
       expect(level).toBeGreaterThanOrEqual(last)
-      expect(level).toBeLessThanOrEqual(MAX_LEVEL)
       last = level
     }
-    expect(levelFromTotalXp(Number.MAX_SAFE_INTEGER).level).toBe(MAX_LEVEL)
+    // Past the last titled level there is still a level, and still a next one
+    // to work toward — that is what makes the ladder endless rather than a bar
+    // that fills once and stops.
+    const beyond = levelFromTotalXp(1_000_000)
+    expect(beyond.level).toBeGreaterThan(TITLED_LEVEL)
+    expect(Number.isFinite(beyond.needed)).toBe(true)
+    expect(beyond.needed).toBeGreaterThan(0)
+  })
+
+  it('terminates on an absurd xp total instead of spinning', () => {
+    // No cap means the loop's only brake is the rising cost of each level.
+    // A corrupted total must still land, and quickly.
+    const started = Date.now()
+    const { level } = levelFromTotalXp(Number.MAX_SAFE_INTEGER)
+    expect(Number.isFinite(level)).toBe(true)
+    expect(level).toBeGreaterThan(TITLED_LEVEL)
+    expect(Date.now() - started).toBeLessThan(2_000)
   })
 
   it('gets steeper as levels climb', () => {
@@ -86,11 +101,23 @@ describe('levels', () => {
   })
 
   it('awards a title for every level', () => {
-    for (let l = 1; l <= MAX_LEVEL; l++) {
+    for (let l = 1; l <= TITLED_LEVEL; l++) {
       expect(titleForLevel(l)).toBeTruthy()
     }
     expect(titleForLevel(1)).toBe('ROOKIE')
-    expect(titleForLevel(MAX_LEVEL)).toBe('BLOKAZ')
+    expect(titleForLevel(TITLED_LEVEL)).toBe('BLOKAZ')
+  })
+
+  it('keeps naming levels past the last titled one', () => {
+    // An endless ladder whose title froze on one word would stop saying
+    // anything about how far a player had come.
+    expect(titleForLevel(TITLED_LEVEL + 1)).toBe('BLOKAZ')
+    expect(titleForLevel(TITLED_LEVEL + 9)).toBe('BLOKAZ')
+    expect(titleForLevel(TITLED_LEVEL + 10)).toBe('BLOKAZ II')
+    expect(titleForLevel(TITLED_LEVEL + 20)).toBe('BLOKAZ III')
+    expect(titleForLevel(TITLED_LEVEL + 90)).toBe('BLOKAZ X')
+    // Past the numerals, a plain figure — XI reads worse than 11 does.
+    expect(titleForLevel(TITLED_LEVEL + 100)).toBe('BLOKAZ 11')
   })
 
   it('always pays at least 1 xp, even for a scoreless run', () => {

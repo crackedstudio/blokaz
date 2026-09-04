@@ -11,7 +11,7 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useMetaStore } from '../stores/metaStore'
-import { ACHIEVEMENTS, isMissionComplete, MAX_LEVEL } from '../engine/meta'
+import { ACHIEVEMENTS, isMissionComplete } from '../engine/meta'
 import { BrutalIcon } from './BrutalIcon'
 import MissionRow from './MissionRow'
 import { BlockRain } from './blocks/BlockFX'
@@ -153,8 +153,9 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const atMax = level >= MAX_LEVEL
-  const pct = atMax ? 100 : Math.min(100, Math.round((intoLevel / needed) * 100))
+  // The career ladder has no top, so there is no maxed state to render — there
+  // is always a next level and always a bar to fill.
+  const pct = needed > 0 ? Math.min(100, Math.round((intoLevel / needed) * 100)) : 0
   const unlocked = new Set(progress.unlockedAchievements)
   const missionsDone = progress.missions.filter(isMissionComplete).length
   const { lifetime } = progress
@@ -226,15 +227,13 @@ const StatsModal: React.FC<Props> = ({ onClose }) => {
                   className="font-display text-[9px] tracking-[0.14em]"
                   style={{ color: 'var(--label-soft)' }}
                 >
-                  {atMax ? 'MAX CAREER LEVEL' : `NEXT: CAREER LEVEL ${level + 1}`}
+                  {`NEXT: CAREER LEVEL ${level + 1}`}
                 </span>
                 <span
                   className="font-display text-[9px] tabular-nums tracking-[0.08em]"
                   style={{ color: 'var(--ink-soft)' }}
                 >
-                  {atMax
-                    ? `${progress.totalXp.toLocaleString()} XP`
-                    : `${intoLevel.toLocaleString()} / ${needed.toLocaleString()} XP`}
+                  {`${intoLevel.toLocaleString()} / ${needed.toLocaleString()} XP`}
                 </span>
               </div>
               <div
