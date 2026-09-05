@@ -10,7 +10,14 @@ export interface LevelAdvance {
   level: number
   name: string
   powerups: Record<string, number>
-  cash: { amount?: string; token?: string; pending?: boolean } | null
+  cash: {
+    amount?: string
+    token?: string
+    /** Owed but undelivered — an admin settles it. */
+    pending?: boolean
+    /** The level's funded links were all claimed before this player got here. */
+    soldOut?: boolean
+  } | null
   /**
    * False when this level had been cleared before and is being climbed again
    * after a demotion — the climb still counts, but rewards are paid once only.
@@ -45,6 +52,12 @@ export interface LevelState {
    * every later read — it is what SilverGod unlocks on.
    */
   sovereign: boolean
+  /**
+   * Funded cash links per level — how many are left of how many there were.
+   * The pool is a fixed set of slots handed out in clearing order, so this is
+   * the offer's real shape and players are shown it.
+   */
+  cashSlots: Record<string, { left: number; total: number }> | null
 }
 
 async function postRefresh(
