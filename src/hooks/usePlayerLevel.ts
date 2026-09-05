@@ -163,3 +163,57 @@ export function useLadderSnapshot(address?: string) {
 
   return state
 }
+
+
+export interface LadderStanding {
+  rank: number
+  address: string
+  level: number
+  name: string
+  highestLevel: number
+}
+
+export interface LadderStandings {
+  standings: LadderStanding[]
+  /** Players currently standing on each rung, keyed by level. */
+  distribution: Record<string, number>
+  players: number
+}
+
+/**
+ * Who is where on the ladder — public, and read only when a screen asks for it.
+ *
+ * A rung reads differently when you can see it is occupied, and a player
+ * weighing up whether level 8 is worth the week is really asking a question
+ * about other people.
+ */
+export function useLadderStandings(limit = 25) {
+  const [data, setData] = useState<LadderStandings | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    fetch(`${SERVER_URL}/levels/leaderboard?limit=${limit}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled || !json) return
+        setData({
+          standings: json.standings ?? [],
+          distribution: json.distribution ?? {},
+          players: json.players ?? 0,
+        })
+      })
+      .catch(() => {
+        // Offline — the ladder still renders, just without the crowd on it.
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [limit])
+
+  return { data, isLoading }
+}

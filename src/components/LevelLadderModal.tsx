@@ -9,9 +9,11 @@ import {
   formatTarget,
   type ObjectiveKey,
 } from '../constants/levels'
-import type { LevelState } from '../hooks/usePlayerLevel'
+import type { LevelState, LadderStanding } from '../hooks/usePlayerLevel'
+import { useLadderStandings } from '../hooks/usePlayerLevel'
 import type { Reward } from '../hooks/useRewards'
 import LevelCashClaim from './LevelCashClaim'
+import PlayerName from './PlayerName'
 
 /** Where a level sits relative to the player right now. */
 type RowStatus = 'cleared' | 'current' | 'reclaim' | 'locked'
@@ -60,7 +62,9 @@ const LadderRow: React.FC<{
   /** Unclaimed cash link earned on THIS level, if there is one. */
   reward?: Reward
   address?: string
-}> = ({ level, state, reward, address }) => {
+  /** How many players are standing on this rung right now. */
+  occupants?: number
+}> = ({ level, state, reward, address, occupants }) => {
   const spec = LEVELS[level]
   const status = statusFor(level, state)
   const isCurrent = status === 'current'
@@ -101,6 +105,16 @@ const LadderRow: React.FC<{
           {isLocked && <BrutalIcon name="skull" size={11} strokeWidth={2.5} />}
           {STATUS_LABEL[status]}
         </span>
+        {/* Who else is here. A rung with nobody on it reads as a wall; a rung
+            with fourteen players reads as somewhere to get to. */}
+        {occupants !== undefined && occupants > 0 && (
+          <span
+            className="ml-1.5 font-display text-[8px] tabular-nums tracking-[0.1em]"
+            style={{ color: 'var(--ink-soft)' }}
+          >
+            {occupants} HERE
+          </span>
+        )}
       </div>
 
       <div className="px-3 py-2.5">
@@ -191,16 +205,74 @@ interface Props {
  * player's own position marked. Everything here comes from the client mirror in
  * constants/levels.ts, so opening it costs no round trip.
  */
+// ── Who's up there ───────────────────────────────────────────────────────────
+
+/**
+ * The players furthest up the ladder.
+ *
+ * Names come from the on-chain username registry, one read per row, exactly as
+ * the score rankings resolve them — so a player is called the same thing in
+ * both places.
+ */
+const Standings: React.FC<{ rows: LadderStanding[]; you?: string }> = ({ rows, you }) => {
+  if (rows.length === 0) return null
+
+  return (
+    <div className="border-b-[3px] border-ink px-4 py-3" style={{ background: 'var(--paper-2)' }}>
+      <div
+        className="font-display text-[9px] tracking-[0.16em]"
+        style={{ color: 'var(--label-soft)' }}
+      >
+        FURTHEST UP THE LADDER
+      </div>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {rows.map((row) => {
+          const isYou = !!you && row.address.toLowerCase() === you.toLowerCase()
+          return (
+            <div
+              key={row.address}
+              className="flex items-center gap-2 border-[2px] border-ink px-2 py-1"
+              style={{
+                background: isYou ? LEVELS[row.level].accent : 'var(--paper)',
+                color: isYou ? 'var(--ink-fixed)' : 'var(--ink)',
+              }}
+            >
+              <span className="w-5 shrink-0 font-display text-[10px] tabular-nums">
+                {row.rank}
+              </span>
+              <LadderBadge level={row.level} size={20} state="earned" showLevel={false} />
+              <span className="min-w-0 flex-1 truncate">
+                <PlayerName
+                  address={row.address}
+                  isCurrentUser={isYou}
+                  className="font-body text-[11px]"
+                />
+              </span>
+              <span className="shrink-0 font-display text-[9px] tracking-[0.08em]">
+                LVL {row.level}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const LevelLadderModal: React.FC<Props> = ({
   state,
   onClose,
   rewardsByLevel,
   address,
-}) =>
+}) => {
+  // Read only while the ladder is open — nobody needs the crowd until they are
+  // looking at the rungs.
+  const { data: crowd } = useLadderStandings(10)
+
   // Portalled to the body: the lobby animates its tiles in, and any lingering
   // transform on an ancestor would become the containing block for this fixed
   // overlay, trapping it inside a grid cell instead of covering the screen.
-  createPortal(
+  return createPortal(
     <div
       // Above the 420 sheet tier, not below it: this modal is opened from
       // inside ProgressSheet, so anything at or under that sheet's z-index
@@ -260,6 +332,9 @@ const LevelLadderModal: React.FC<Props> = ({
         time you reach it; levels 4, 8 and 12 are the ones that pay cash.
       </div>
 
+      {/* ── Who is furthest up ── */}
+      {crowd && <Standings rows={crowd.standings} you={address} />}
+
       {/* ── The 12 rungs ── */}
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((level) => (
@@ -269,6 +344,7 @@ const LevelLadderModal: React.FC<Props> = ({
             state={state}
             reward={rewardsByLevel?.get(level)}
             address={address}
+            occupants={crowd?.distribution?.[String(level)]}
           />
         ))}
       </div>
@@ -276,5 +352,6 @@ const LevelLadderModal: React.FC<Props> = ({
     </div>,
     document.body
   )
+}
 
 export default LevelLadderModal

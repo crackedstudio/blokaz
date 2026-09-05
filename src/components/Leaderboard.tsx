@@ -8,27 +8,12 @@ import {
 import { useAccount } from 'wagmi'
 import contractInfo from '../contract.json'
 import { BrutalIcon } from './BrutalIcon'
+// Shared with the ladder standings so a player is named the same on both.
+import PlayerName from './PlayerName'
 
 interface LeaderboardProps {
   isOpen: boolean
   onClose: () => void
-}
-
-const PlayerName: React.FC<{ address: string; isCurrentUser: boolean }> = ({
-  address,
-  isCurrentUser,
-}) => {
-  const { username, isLoading } = useUsername(address as `0x${string}`)
-  const truncated = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`
-  return (
-    <span className={`font-body text-sm ${isCurrentUser ? 'font-bold' : ''}`} style={{ color: 'inherit' }}>
-      {isLoading ? (
-        <span className="inline-block h-3 w-20 animate-pulse rounded-sm bg-current opacity-20" />
-      ) : (
-        username || truncated(address)
-      )}
-    </span>
-  )
 }
 
 const UsernameRegistration: React.FC = () => {

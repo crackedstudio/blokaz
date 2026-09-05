@@ -392,6 +392,66 @@ router.post('/refresh', async (req, res) => {
   })
 })
 
+// ── Public standings ─────────────────────────────────────────────────────────
+
+/**
+ * GET /levels/leaderboard
+ * Who is where on the ladder: the players furthest up it, and how many are
+ * standing on each rung.
+ *
+ * Public on purpose. A rung means more when you can see it is occupied — and a
+ * player deciding whether level 8 is worth the week is answering a question
+ * about other people, not about themselves.
+ *
+ * Addresses only; names are resolved from the on-chain username registry by the
+ * client, the same way the score leaderboard does it. Nothing here exposes
+ * anything a player has not already published by playing.
+ */
+router.get('/leaderboard', async (req, res) => {
+  if (!requireDb(res)) return
+
+  const requested = Number(req.query.limit)
+  const limit = Number.isFinite(requested) ? Math.min(Math.max(Math.trunc(requested), 1), 100) : 25
+
+  const [{ data: rows, error: rowsError }, { data: spread, error: spreadError }] =
+    await Promise.all([
+      supabase
+        .from('player_levels')
+        .select('address, level, highest_level, level_started_at')
+        .order('level', { ascending: false })
+        .order('highest_level', { ascending: false })
+        // Ties go to whoever got there first, so the order stops shuffling
+        // under a player who is not moving.
+        .order('level_started_at', { ascending: true })
+        .limit(limit),
+      supabase.rpc('level_distribution'),
+    ])
+
+  if (rowsError || spreadError) {
+    console.error('levels/leaderboard error:', rowsError ?? spreadError)
+    return res.status(500).json({ error: 'Failed to read standings' })
+  }
+
+  const distribution = {}
+  let players = 0
+  for (const row of spread ?? []) {
+    distribution[row.level] = row.players
+    players += row.players
+  }
+
+  res.json({
+    standings: (rows ?? []).map((row, index) => ({
+      rank: index + 1,
+      address: row.address,
+      level: row.level,
+      name: LEVELS[row.level]?.name ?? '',
+      highestLevel: row.highest_level,
+    })),
+    distribution,
+    players,
+  })
+})
+
 // ── Admin ────────────────────────────────────────────────────────────────────
 
 /**

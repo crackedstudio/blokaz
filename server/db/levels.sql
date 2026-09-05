@@ -128,6 +128,23 @@ create or replace function level_progress(
       ), 0))::bigint;
 $$;
 
+-- ── level_distribution RPC ────────────────────────────────────────────────────
+-- How many players are standing on each rung. Counted in the database rather
+-- than by paging player_levels back: the whole point is a number that stays
+-- right as the player base grows, and PostgREST would cap the rows long before
+-- the count stopped mattering.
+--
+-- Only the current level counts, not the highest ever reached — this answers
+-- "who is up there now", which is what makes a rung look worth climbing to.
+
+create or replace function level_distribution()
+returns table (level integer, players integer) language sql stable as $$
+  select level, count(*)::integer
+    from player_levels
+   group by level
+   order by level;
+$$;
+
 -- ── claim_level_cashlink RPC ──────────────────────────────────────────────────
 -- Atomically hands one unassigned link of the right level to a player.
 -- SKIP LOCKED means two players clearing the same milestone at the same instant
