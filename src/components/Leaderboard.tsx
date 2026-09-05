@@ -142,7 +142,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
   const [viewEpoch, setViewEpoch] = useState<bigint | undefined>(undefined)
   // Server-derived, and unrelated to the epoch being viewed — the ladder is a
   // standing position, not a weekly scoreboard.
-  const { data: ladder } = useLadderStandings(10)
+  const { data: ladder } = useLadderStandings(25)
+  // Two boards in one panel. Scores open by default: it is the older habit, and
+  // the one the lobby card's rank number refers to.
+  const [board, setBoard] = useState<'scores' | 'ladder'>('scores')
 
   // When the panel opens or currentEpoch loads, reset to current epoch
   useEffect(() => {
@@ -188,12 +191,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
                 className="font-display text-paper"
                 style={{ fontSize: 28, letterSpacing: '-0.03em', lineHeight: 1 }}
               >
-                CLASSIC RANKINGS
+                {board === 'ladder' ? 'THE LADDER' : 'CLASSIC RANKINGS'}
               </div>
               <BlockCluster cell={8} />
             </div>
             {/* Epoch navigation */}
-            <div className="mt-3 flex items-center gap-2">
+            {/* Weeks apply to scores alone — a rung is where a player stands
+                now, not something you can page back through. */}
+            <div
+              className="mt-3 flex items-center gap-2"
+              style={{ display: board === 'scores' ? undefined : 'none' }}
+            >
               <button
                 onClick={() => setViewEpoch(e => e !== undefined && e > 0n ? e - 1n : e)}
                 disabled={!canGoBack}
@@ -233,33 +241,59 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* ── Board switch ── */}
+        <div className="relative z-10 flex shrink-0 border-b-4 border-ink">
+          {([
+            ['scores', 'WEEK SCORES'],
+            ['ladder', 'THE LADDER'],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setBoard(key)}
+              className="flex-1 border-r-4 border-ink px-3 py-3 font-display text-[10px] tracking-[0.14em] last:border-r-0"
+              style={{
+                background: board === key ? 'var(--accent-yellow)' : 'var(--paper-2)',
+                color: board === key ? 'var(--ink-fixed)' : 'var(--ink-soft)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="relative z-10 flex flex-1 flex-col overflow-y-auto px-4 py-6">
           <UsernameRegistration />
 
-          {/* ── The ladder: who is on which rung ──
-              This is the screen players open to look at other players, so the
-              ladder belongs here and not only two taps deep inside PROGRESS.
-              Scores and rungs answer different questions: one is the best week
-              anyone has had, the other is how far up anyone has climbed. */}
-          {ladder && ladder.standings.length > 0 && (
+          {/* ── The ladder ──
+              Its own board rather than a block above the scores: the two answer
+              different questions. A score is the best week anyone has had; a
+              rung is how far up anyone has climbed, and it does not reset on
+              Thursday. */}
+          {board === 'ladder' ? (
             <div className="mt-4 flex flex-col gap-4">
               <div className="flex items-baseline justify-between px-2 pb-2">
-                <span className="brutal-label-soft opacity-100">THE LADDER</span>
+                <span className="brutal-label-soft opacity-100">WHO IS WHERE</span>
                 <span
                   className="font-display text-[9px] tabular-nums tracking-[0.12em]"
                   style={{ color: 'var(--ink-soft)' }}
                 >
-                  {ladder.players} CLIMBING
+                  {ladder ? `${ladder.players} CLIMBING` : ''}
                 </span>
               </div>
-              <LadderStandings
-                rows={ladder.standings}
-                you={address}
-                variant="full"
-              />
-            </div>
-          )}
 
+              {ladder && ladder.standings.length > 0 ? (
+                <LadderStandings rows={ladder.standings} you={address} variant="full" />
+              ) : (
+                <p
+                  className="py-10 text-center font-display text-[10px] uppercase leading-relaxed tracking-[0.14em]"
+                  style={{ color: 'var(--ink-soft)' }}
+                >
+                  {ladder ? 'Nobody on the ladder yet' : 'Loading the ladder...'}
+                </p>
+              )}
+            </div>
+          ) : (
           <div className="mt-4 flex flex-col gap-4">
             <div className="brutal-label-soft px-2 pb-2 opacity-100">
               CLASSIC PLAYERS
@@ -355,6 +389,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
               </div>
             )}
           </div>
+          )}
         </div>
 
         <div
@@ -365,11 +400,23 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
             className="font-display text-[9px] leading-relaxed tracking-[0.14em] opacity-60"
             style={{ color: 'var(--paper)' }}
           >
+            {board === 'ladder' ? (
+              <>
+                THE LADDER IS 12 RUNGS.
+                <br />
+                EVERY LEVEL STARTS YOU FROM ZERO.
+                <br />
+                CLEAR ONE EVERY WEEK OR DROP A RUNG.
+              </>
+            ) : (
+              <>
             LEADERBOARD RESETS EVERY THURSDAY.
             <br />
             GLOBAL IDENTITIES ARE PERMANENT.
             <br />
             TOP PLAYERS SHARE NATIVE REWARD POOL.
+              </>
+            )}
           </div>
         </div>
       </div>
