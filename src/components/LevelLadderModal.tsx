@@ -9,11 +9,11 @@ import {
   formatTarget,
   type ObjectiveKey,
 } from '../constants/levels'
-import type { LevelState, LadderStanding } from '../hooks/usePlayerLevel'
+import type { LevelState } from '../hooks/usePlayerLevel'
 import { useLadderStandings } from '../hooks/usePlayerLevel'
 import type { Reward } from '../hooks/useRewards'
 import LevelCashClaim from './LevelCashClaim'
-import PlayerName from './PlayerName'
+import LadderStandings from './LadderStandings'
 
 /** Where a level sits relative to the player right now. */
 type RowStatus = 'cleared' | 'current' | 'reclaim' | 'locked'
@@ -205,60 +205,6 @@ interface Props {
  * player's own position marked. Everything here comes from the client mirror in
  * constants/levels.ts, so opening it costs no round trip.
  */
-// ── Who's up there ───────────────────────────────────────────────────────────
-
-/**
- * The players furthest up the ladder.
- *
- * Names come from the on-chain username registry, one read per row, exactly as
- * the score rankings resolve them — so a player is called the same thing in
- * both places.
- */
-const Standings: React.FC<{ rows: LadderStanding[]; you?: string }> = ({ rows, you }) => {
-  if (rows.length === 0) return null
-
-  return (
-    <div className="border-b-[3px] border-ink px-4 py-3" style={{ background: 'var(--paper-2)' }}>
-      <div
-        className="font-display text-[9px] tracking-[0.16em]"
-        style={{ color: 'var(--label-soft)' }}
-      >
-        FURTHEST UP THE LADDER
-      </div>
-      <div className="mt-2 flex flex-col gap-1.5">
-        {rows.map((row) => {
-          const isYou = !!you && row.address.toLowerCase() === you.toLowerCase()
-          return (
-            <div
-              key={row.address}
-              className="flex items-center gap-2 border-[2px] border-ink px-2 py-1"
-              style={{
-                background: isYou ? LEVELS[row.level].accent : 'var(--paper)',
-                color: isYou ? 'var(--ink-fixed)' : 'var(--ink)',
-              }}
-            >
-              <span className="w-5 shrink-0 font-display text-[10px] tabular-nums">
-                {row.rank}
-              </span>
-              <LadderBadge level={row.level} size={20} state="earned" showLevel={false} />
-              <span className="min-w-0 flex-1 truncate">
-                <PlayerName
-                  address={row.address}
-                  isCurrentUser={isYou}
-                  className="font-body text-[11px]"
-                />
-              </span>
-              <span className="shrink-0 font-display text-[9px] tracking-[0.08em]">
-                LVL {row.level}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 const LevelLadderModal: React.FC<Props> = ({
   state,
   onClose,
@@ -333,7 +279,20 @@ const LevelLadderModal: React.FC<Props> = ({
       </div>
 
       {/* ── Who is furthest up ── */}
-      {crowd && <Standings rows={crowd.standings} you={address} />}
+      {crowd && crowd.standings.length > 0 && (
+        <div
+          className="border-b-[3px] border-ink px-4 py-3"
+          style={{ background: 'var(--paper-2)' }}
+        >
+          <div
+            className="mb-2 font-display text-[9px] tracking-[0.16em]"
+            style={{ color: 'var(--label-soft)' }}
+          >
+            FURTHEST UP THE LADDER
+          </div>
+          <LadderStandings rows={crowd.standings} you={address} variant="compact" />
+        </div>
+      )}
 
       {/* ── The 12 rungs ── */}
       <div className="flex-1 space-y-2 overflow-y-auto p-3">

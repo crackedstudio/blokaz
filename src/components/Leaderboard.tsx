@@ -10,6 +10,8 @@ import contractInfo from '../contract.json'
 import { BrutalIcon } from './BrutalIcon'
 // Shared with the ladder standings so a player is named the same on both.
 import PlayerName from './PlayerName'
+import LadderStandings from './LadderStandings'
+import { useLadderStandings } from '../hooks/usePlayerLevel'
 
 interface LeaderboardProps {
   isOpen: boolean
@@ -138,6 +140,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
   const { address } = useAccount()
   const { currentEpoch } = useLeaderboard()
   const [viewEpoch, setViewEpoch] = useState<bigint | undefined>(undefined)
+  // Server-derived, and unrelated to the epoch being viewed — the ladder is a
+  // standing position, not a weekly scoreboard.
+  const { data: ladder } = useLadderStandings(10)
 
   // When the panel opens or currentEpoch loads, reset to current epoch
   useEffect(() => {
@@ -230,6 +235,30 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ isOpen, onClose }) => {
 
         <div className="relative z-10 flex flex-1 flex-col overflow-y-auto px-4 py-6">
           <UsernameRegistration />
+
+          {/* ── The ladder: who is on which rung ──
+              This is the screen players open to look at other players, so the
+              ladder belongs here and not only two taps deep inside PROGRESS.
+              Scores and rungs answer different questions: one is the best week
+              anyone has had, the other is how far up anyone has climbed. */}
+          {ladder && ladder.standings.length > 0 && (
+            <div className="mt-4 flex flex-col gap-4">
+              <div className="flex items-baseline justify-between px-2 pb-2">
+                <span className="brutal-label-soft opacity-100">THE LADDER</span>
+                <span
+                  className="font-display text-[9px] tabular-nums tracking-[0.12em]"
+                  style={{ color: 'var(--ink-soft)' }}
+                >
+                  {ladder.players} CLIMBING
+                </span>
+              </div>
+              <LadderStandings
+                rows={ladder.standings}
+                you={address}
+                variant="full"
+              />
+            </div>
+          )}
 
           <div className="mt-4 flex flex-col gap-4">
             <div className="brutal-label-soft px-2 pb-2 opacity-100">
