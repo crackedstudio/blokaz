@@ -59,9 +59,25 @@ with a black `$`, black border, hard shadow.
 That `$` chip is the exact motif the game already uses on those badges. A player
 should recognise it instantly from the ladder screen.
 
+**Under each of the three paying badges**, a small ink chip with yellow text
+giving how many rewards that level has this season:
+
+| Badge | Chip |
+|---|---|
+| 4 | `10 REWARDS` |
+| 8 | `5 REWARDS` |
+| 12 | `3 REWARDS` |
+
 **Body line under the strip:**
 `Clear level 4, 8 or 12 and you earn a stablecoin reward — paid straight to your
 wallet.`
+
+**Kicker line, smaller, beneath that:**
+`18 rewards this season. First to clear the level takes them.`
+
+The counts are the point of this panel as much as the levels are: three rewards
+at level 12 says more about what reaching level 12 means than any adjective
+would.
 
 ---
 
@@ -92,8 +108,9 @@ bullet:
 
 - **ONCE PER LEVEL, EVER.** Earn it the first time you reach the level. Climbing
   back after a drop pays nothing.
-- **FUNDED IN ADVANCE.** Rewards are loaded before the season starts. When a
-  level's rewards are taken, they're gone until the next one.
+- **10, 5 AND 3.** That is how many rewards levels 4, 8 and 12 carry this
+  season. Loaded before it starts; when they're taken, they're gone until the
+  next one.
 - **CLEAR IT PROPERLY.** Every level starts you from zero — games, tournaments,
   shop items and points all reset when you move up.
 
@@ -122,20 +139,25 @@ content.
 
 ## Decide first: do the amounts appear?
 
-The prompt above deliberately shows **no figures** — it matches the in-app UI,
-which says "PLUS A CASH REWARD" without a number.
+The prompt publishes **how many** rewards each level carries (10 / 5 / 3) but not
+**what each is worth**. That is a deliberate split, and worth understanding
+before you change it.
 
-**Leave them off if** you want freedom to change payouts per season without a
-graphic contradicting the app, and you would rather not advertise a specific
-amount to players who arrive after that level's rewards are taken.
+Publishing the counts is safe: they are the size of the season's offer, fixed
+when you fund it, and scarcity is exactly what makes a player finish a level this
+week. It is different from the live remaining-count inside the app, which stays
+hidden — a public "3 left" tells everyone else not to bother.
 
-**Put them in if** you want the explainer to sell the ladder rather than only
-describe it — "$2 · $6 · $12" under badges 4, 8 and 12 is a far stronger panel 1.
-If you choose this, add to the prompt:
+Adding the amounts makes panel 1 much stronger — "10 rewards" invites the
+question "of what?", and `$2 · $6 · $12` answers it. The cost is a graphic that
+contradicts the app if you re-fund at different values, and a specific figure
+advertised to players who arrive after a level's rewards are taken.
 
-> Under badges 4, 8 and 12 put their reward amounts as small ink chips with
-> yellow text: `$2`, `$6`, `$12`. Add a line to panel 3: `AMOUNTS CAN CHANGE EACH
-> SEASON.`
+If you want them in, add to the prompt:
+
+> Beside each count chip put the amount: badge 4 `10 REWARDS · $2 EACH`, badge 8
+> `5 REWARDS · $6 EACH`, badge 12 `3 REWARDS · $12 EACH`. Add a line to panel 3:
+> `AMOUNTS AND COUNTS CAN CHANGE EACH SEASON.`
 
 That last line is what keeps the graphic honest when you re-fund at different
 values.
@@ -154,8 +176,12 @@ how cash rewards work on blokaz 🧱
 clear level 4, 8 or 12 and you earn a stablecoin reward — paid to your
 wallet, claimed on the level that paid it.
 
-once per level, ever. funded in advance, so when a level's rewards are
-taken they're gone until the next season.
+18 up for grabs this season:
+· 10 at level 4
+· 5 at level 8
+· 3 at level 12
+
+once per level, ever. first to clear it takes it.
 
 blokaz.xyz
 
@@ -167,10 +193,11 @@ blokaz.xyz
 ```
 three rungs on the blokaz ladder pay real money 💸
 
-level 4 · level 8 · level 12
+10 rewards at level 4
+5 at level 8
+3 at level 12
 
-clear one and the reward waits on that level until you claim it. once per
-level, ever.
+clear the level, claim it there. once per level, ever.
 
 blokaz.xyz
 
@@ -182,9 +209,11 @@ blokaz.xyz
 ```
 cash rewards are loaded on blokaz 🧱
 
-levels 4, 8 and 12 each pay a stablecoin reward straight to your wallet.
-they're funded in advance and limited — first players to clear the level
-take them.
+18 stablecoin rewards, funded and waiting:
+10 at level 4 · 5 at level 8 · 3 at level 12
+
+first players to clear the level take them. when they're gone, they're
+gone until next season.
 
 ladder's open: blokaz.xyz
 

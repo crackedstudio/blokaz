@@ -54,7 +54,7 @@ all-caps label and one line of body copy:
 | Accent | Label | Line |
 |---|---|---|
 | Pink | FRESH START EVERY LEVEL | Clear a level and all four objectives reset. No inherited progress. |
-| Lime | CASH REWARDS, ON THE LEVEL | Claim a level's stablecoin reward from the level that paid it. |
+| Lime | CASH REWARDS, ON THE LEVEL | 18 this season — 10 at level 4, 5 at level 8, 3 at level 12. Claim yours on the level that paid it. |
 | Cyan | DAILY STREAK IS LIVE | Play once a day, keep the run alive. It follows your wallet, not your phone. |
 | Purple | CAREER LEVELS NEVER END | The cap is gone. There is always a next level. |
 
@@ -77,9 +77,10 @@ as "levels" instantly and is worth including near the headline.
 - Keep the headline readable at thumbnail size — it must survive being 200px wide
   in a feed.
 - No numbers that could date the graphic (no "v2.1", no dates).
-- Do not put reward amounts on the graphic unless asked — the in-app UI says
-  "PLUS A CASH REWARD" without figures, and the graphic should not promise more
-  specifically than the product does.
+- Reward **counts** are on the graphic (10 / 5 / 3) — they are the size of the
+  season's offer and the scarcity is the point. Reward **amounts** are not,
+  unless asked: the in-app UI says "PLUS A CASH REWARD" without figures, and the
+  graphic should not promise more specifically than the product does.
 
 ---
 
@@ -94,7 +95,8 @@ every level now starts you from zero — clear one and all four objectives
 reset. no inherited progress, one rung at a time.
 
 also live:
-· cash rewards claimable on the level that paid them
+· 18 cash rewards up for grabs — 10 at level 4, 5 at level 8, 3 at level 12
+· claim them on the level that paid them
 · daily streak, tracked properly
 · career levels with no cap
 
@@ -109,7 +111,8 @@ blokaz.xyz
 big blokaz update, live now 🧱
 
 → every level starts from zero, no carry-over
-→ claim your cash reward on the level that paid it
+→ 18 cash rewards this season: 10 at lvl 4, 5 at lvl 8, 3 at lvl 12
+→ claim yours on the level that paid it
 → daily streak is real
 → career levels never end
 
@@ -124,7 +127,10 @@ your move: blokaz.xyz
 stablecoin rewards on blokaz are now claimable straight from the level
 that paid them 💸
 
-and the ladder was rebuilt underneath it — every level starts you from
+18 up for grabs this season — 10 at level 4, 5 at level 8, 3 at level 12.
+first to clear the level takes it.
+
+and the ladder was rebuilt underneath it: every level starts you from
 zero, so each rung is its own week's work.
 
 daily streaks are live too.
