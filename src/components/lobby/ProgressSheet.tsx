@@ -413,35 +413,19 @@ const ProgressSheet: React.FC<Props> = ({ levelState, onClose, address }) => {
                     >
                       {spec.reward}
                     </p>
-                    {spec.cashMilestone &&
-                      (() => {
-                        // The pool is a fixed set of slots handed out in the
-                        // order players clear the level, so what is left is the
-                        // offer itself — not a detail. A player who can see six
-                        // remaining has a reason to finish this week.
-                        const slot = levelState.cashSlots?.[String(levelState.level)]
-                        const gone = slot ? slot.left === 0 && slot.total > 0 : false
-                        return (
-                          <div
-                            className="mt-2 inline-flex items-center gap-1.5 border-[2px] border-ink px-2 py-1"
-                            style={{
-                              background: gone ? 'var(--rule)' : accent,
-                              color: gone ? 'var(--ink-soft)' : 'var(--ink-fixed)',
-                            }}
-                          >
-                            <span className="font-display text-[11px]" aria-hidden>
-                              $
-                            </span>
-                            <span className="font-display text-[9px] tracking-[0.1em]">
-                              {gone
-                                ? 'CASH REWARDS ALL CLAIMED'
-                                : slot && slot.total > 0
-                                  ? `PLUS A CASH REWARD · ${slot.left} OF ${slot.total} LEFT`
-                                  : 'PLUS A CASH REWARD'}
-                            </span>
-                          </div>
-                        )
-                      })()}
+                    {spec.cashMilestone && (
+                      <div
+                        className="mt-2 inline-flex items-center gap-1.5 border-[2px] border-ink px-2 py-1"
+                        style={{ background: accent, color: 'var(--ink-fixed)' }}
+                      >
+                        <span className="font-display text-[11px]" aria-hidden>
+                          $
+                        </span>
+                        <span className="font-display text-[9px] tracking-[0.1em]">
+                          PLUS A CASH REWARD
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {levelState.atRisk && levelState.level > 1 && (

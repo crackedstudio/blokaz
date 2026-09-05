@@ -150,23 +150,14 @@ const LadderRow: React.FC<{
           {spec.reward}
           {/* Cash is called out rather than listed, so the three rungs that
               carry money are the only ones that look like they do. */}
-          {spec.cashMilestone &&
-            (() => {
-              const slot = state.cashSlots?.[String(level)]
-              const gone = slot ? slot.left === 0 && slot.total > 0 : false
-              return (
-                <span
-                  className="ml-1.5 font-display text-[9px] tracking-[0.08em]"
-                  style={{ color: gone ? 'var(--ink-soft)' : spec.accent }}
-                >
-                  {gone
-                    ? '+ $ CASH — ALL CLAIMED'
-                    : slot && slot.total > 0
-                      ? `+ $ CASH REWARD · ${slot.left}/${slot.total} LEFT`
-                      : '+ $ CASH REWARD'}
-                </span>
-              )
-            })()}
+          {spec.cashMilestone && (
+            <span
+              className="ml-1.5 font-display text-[9px] tracking-[0.08em]"
+              style={{ color: spec.accent }}
+            >
+              + $ CASH REWARD
+            </span>
+          )}
         </div>
 
         {/* A cash link is earned here but usually claimed later, from further

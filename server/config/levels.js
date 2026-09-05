@@ -42,6 +42,19 @@
  * Targets that must ALL be met to clear the level, counted from the moment the
  * player entered it. Absolute per level, not cumulative across the ladder — a
  * level 12 card is 120 games played while sitting at level 12.
+ *
+ * ⚠️  The `purchases` column is the funding rule, not a difficulty dial.
+ * A milestone pays twice what the climb to it costs, so the purchases between
+ * one milestone and the next must come to exactly half that payout at the
+ * shop's $0.10 unit price:
+ *
+ *   levels 1–4    10 buys = $1.00   → pays $2
+ *   levels 5–8    30 buys = $3.00   → pays $6
+ *   levels 9–12   60 buys = $6.00   → pays $12
+ *
+ * Change a purchases number and the stretch it belongs to must still total 10,
+ * 30 or 60, or the game is paying out more than it takes in. The mirror in
+ * src/constants/levels.ts carries the same numbers.
  */
 export const LEVELS = [
   null, // 1-indexed — LEVELS[1] is level 1
@@ -50,13 +63,13 @@ export const LEVELS = [
   { level: 3,   name: 'STRIPED RUNNER',   accent: '#ff7a1a', targets: { games: 21,  tournaments: 15, purchases: 3,  points: 6_500  } },
   { level: 4,   name: 'PIXEL BREAKER',    accent: '#b7ff3b', targets: { games: 28,  tournaments: 18, purchases: 4,  points: 12_000 } },
   { level: 5,   name: 'NEON RIDER',       accent: '#29e6e6', targets: { games: 36,  tournaments: 21, purchases: 5,  points: 20_000 } },
-  { level: 6,   name: 'COSMIC DRIFTER',   accent: '#8a3dff', targets: { games: 45,  tournaments: 25, purchases: 6,  points: 32_000 } },
+  { level: 6,   name: 'COSMIC DRIFTER',   accent: '#8a3dff', targets: { games: 45,  tournaments: 25, purchases: 7,  points: 32_000 } },
   { level: 7,   name: 'LIQUID SURGE',     accent: '#29e6e6', targets: { games: 55,  tournaments: 29, purchases: 8,  points: 48_000 } },
   { level: 8,   name: 'GLITCH WALKER',    accent: '#ff3bbd', targets: { games: 66,  tournaments: 33, purchases: 10,  points: 70_000 } },
   { level: 9,   name: 'VOID ARCHITECT',   accent: '#b7ff3b', targets: { games: 78,  tournaments: 38, purchases: 12, points: 100_000 } },
   { level: 10,  name: 'PRISM WARDEN',     accent: '#ff7a1a', targets: { games: 91,  tournaments: 43, purchases: 14, points: 140_000 } },
-  { level: 11,  name: 'OBSIDIAN ORACLE',  accent: '#8a3dff', targets: { games: 105, tournaments: 48, purchases: 17, points: 190_000 } },
-  { level: 12,  name: 'BLOKAZ SOVEREIGN', accent: '#ffd51f', targets: { games: 120, tournaments: 54, purchases: 20, points: 260_000 } },
+  { level: 11,  name: 'OBSIDIAN ORACLE',  accent: '#8a3dff', targets: { games: 105, tournaments: 48, purchases: 16, points: 190_000 } },
+  { level: 12,  name: 'BLOKAZ SOVEREIGN', accent: '#ffd51f', targets: { games: 120, tournaments: 54, purchases: 18, points: 260_000 } },
 ]
 
 export const MAX_LEVEL = 12

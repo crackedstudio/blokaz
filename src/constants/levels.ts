@@ -98,13 +98,13 @@ export const LEVELS: readonly LevelSpec[] = [
   { level: 3,   name: 'STRIPED RUNNER',   accent: '#ff7a1a', targets: { games: 21,  tournaments: 15, purchases: 3,  points: 6_500  }, reward: '1× Shield · 1× Bomb', cashMilestone: false },
   { level: 4,   name: 'PIXEL BREAKER',    accent: '#b7ff3b', targets: { games: 28,  tournaments: 18, purchases: 4,  points: 12_000 }, reward: '2× Revival Bundle', cashMilestone: true },
   { level: 5,   name: 'NEON RIDER',       accent: '#29e6e6', targets: { games: 36,  tournaments: 21, purchases: 5,  points: 20_000 }, reward: '2× Score Boost · 1× Rotate Pass', cashMilestone: false },
-  { level: 6,   name: 'COSMIC DRIFTER',   accent: '#8a3dff', targets: { games: 45,  tournaments: 25, purchases: 6,  points: 32_000 }, reward: '2× Shield · 2× Bomb', cashMilestone: false },
+  { level: 6,   name: 'COSMIC DRIFTER',   accent: '#8a3dff', targets: { games: 45,  tournaments: 25, purchases: 7,  points: 32_000 }, reward: '2× Shield · 2× Bomb', cashMilestone: false },
   { level: 7,   name: 'LIQUID SURGE',     accent: '#29e6e6', targets: { games: 55,  tournaments: 29, purchases: 8,  points: 48_000 }, reward: '3× Revival Bundle · 1× Rotate Pass', cashMilestone: false },
   { level: 8,   name: 'GLITCH WALKER',    accent: '#ff3bbd', targets: { games: 66,  tournaments: 33, purchases: 10,  points: 70_000 }, reward: '3× Score Boost · 3× Shield', cashMilestone: true },
   { level: 9,   name: 'VOID ARCHITECT',   accent: '#b7ff3b', targets: { games: 78,  tournaments: 38, purchases: 12, points: 100_000}, reward: '3× Bomb · 3× Rotate Pass', cashMilestone: false },
   { level: 10,  name: 'PRISM WARDEN',     accent: '#ff7a1a', targets: { games: 91,  tournaments: 43, purchases: 14, points: 140_000}, reward: '5× Revival Bundle · 3× Score Boost', cashMilestone: false },
-  { level: 11,  name: 'OBSIDIAN ORACLE',  accent: '#8a3dff', targets: { games: 105, tournaments: 48, purchases: 17, points: 190_000}, reward: '5× Shield · 5× Bomb · 3× Rotate Pass', cashMilestone: false },
-  { level: 12,  name: 'BLOKAZ SOVEREIGN', accent: '#ffd51f', targets: { games: 120, tournaments: 54, purchases: 20, points: 260_000}, reward: '5× of every power-up', cashMilestone: true },
+  { level: 11,  name: 'OBSIDIAN ORACLE',  accent: '#8a3dff', targets: { games: 105, tournaments: 48, purchases: 16, points: 190_000}, reward: '5× Shield · 5× Bomb · 3× Rotate Pass', cashMilestone: false },
+  { level: 12,  name: 'BLOKAZ SOVEREIGN', accent: '#ffd51f', targets: { games: 120, tournaments: 54, purchases: 18, points: 260_000}, reward: '5× of every power-up', cashMilestone: true },
 ]
 
 export function levelSpec(level: number): LevelSpec {

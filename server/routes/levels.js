@@ -206,37 +206,6 @@ async function grantLevel(addr, level) {
   return { level, name: LEVELS[level].name, powerups, cash, firstClear: true }
 }
 
-/**
- * Funded cash links per level: how many are left, and how many there ever were.
- *
- * Player-facing on purpose. The pool is a fixed number of slots handed out in
- * the order players clear the level, so "6 of 10 left" is the whole shape of
- * the offer — and scarcity a player can see does more to get a level finished
- * this week than a larger prize they cannot.
- */
-async function readCashSlots() {
-  const levels = poolLevels()
-  const { data, error } = await supabase
-    .from('level_cashlink_pool')
-    .select('level, assigned_to')
-    .in('level', levels)
-
-  if (error) {
-    console.error('cash slot read error:', error)
-    return null
-  }
-
-  const slots = {}
-  for (const level of levels) slots[level] = { left: 0, total: 0 }
-  for (const row of data ?? []) {
-    const slot = slots[row.level]
-    if (!slot) continue
-    slot.total += 1
-    if (!row.assigned_to) slot.left += 1
-  }
-  return slots
-}
-
 // ── State assembly ───────────────────────────────────────────────────────────
 
 /**
@@ -419,7 +388,6 @@ router.post('/refresh', async (req, res) => {
       maxed: row.level === MAX_LEVEL,
       // Durable, unlike `held` — this is what the client latches SilverGod on.
       sovereign: await isSovereign(addr),
-      cashSlots: await readCashSlots(),
     }),
   })
 })
@@ -643,7 +611,6 @@ router.get('/:address', async (req, res) => {
       held: false,
       sovereign: await isSovereign(addr),
       maxed: row.level === MAX_LEVEL,
-      cashSlots: await readCashSlots(),
     }),
   })
 })

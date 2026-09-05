@@ -50,19 +50,27 @@ if (!publicClient) {
 }
 
 /**
- * Verifies that txHash is a mined, successful transfer of at least the item
- * price in the claimed token, from the claimed address to the game treasury.
+ * Verifies that txHash is a mined, successful transfer of at least the price of
+ * `quantity` of the item, in the claimed token, from the claimed address to the
+ * game treasury.
+ *
+ * The quantity is part of the price and always has been — it was simply not
+ * charged for. The route accepts up to 100 units per call and writes that
+ * number to inventory and to purchase_log, so checking a single unit's price
+ * let one $0.10 transfer buy a hundred power-ups, and clear the ladder's
+ * purchase objectives with it.
  *
  * Returns { ok: true } | { ok: false, retryable: boolean, error: string }.
  * retryable=true means the receipt may simply not be indexed yet — the client
  * queues and retries these, so a slow RPC never loses a legitimate receipt.
  */
-async function verifyPurchaseTx(txHash, address, tokenSymbol, itemId) {
+async function verifyPurchaseTx(txHash, address, tokenSymbol, itemId, quantity = 1) {
   if (!publicClient) return { ok: true } // verification disabled (no RPC configured)
 
   const token = TOKENS[tokenSymbol]
   const priceCents = PRICE_CENTS[itemId]
-  const expected = (BigInt(priceCents) * 10n ** BigInt(token.decimals)) / 100n
+  const units = BigInt(Math.max(1, Math.floor(Number(quantity) || 1)))
+  const expected = (BigInt(priceCents) * units * 10n ** BigInt(token.decimals)) / 100n
 
   let receipt
   try {
@@ -245,7 +253,10 @@ router.post('/purchase', async (req, res) => {
 
   // Verify the payment actually happened on-chain before crediting anything —
   // a fabricated txHash must never mint free power-ups.
-  const verification = await verifyPurchaseTx(txHash, addr, tokenSymbol, itemId)
+  // Bundles are a single fixed-price purchase whatever they contain; every
+  // other item is priced per unit.
+  const paidUnits = BUNDLE_IDS.has(itemId) ? 1 : quantity
+  const verification = await verifyPurchaseTx(txHash, addr, tokenSymbol, itemId, paidUnits)
   if (!verification.ok) {
     console.warn(`[inventory] purchase verification failed (${itemId}, ${txHash}): ${verification.error}`)
     return res.status(verification.retryable ? 503 : 400).json({ error: verification.error })

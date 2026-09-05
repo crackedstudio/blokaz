@@ -193,6 +193,45 @@ describe('mirror contract with server/config/levels.js', () => {
   })
 })
 
+describe('the funding rule', () => {
+  // A milestone pays twice what the climb to it costs at the shop's $0.10 unit
+  // price, so the purchases between one milestone and the next must come to
+  // exactly half the payout. These numbers are the economics, not a difficulty
+  // dial — an edit that breaks them has the game paying out more than it takes
+  // in, and nothing else in the codebase would notice.
+  const UNIT_PRICE = 0.10
+
+  const buysBetween = (from: number, to: number) => {
+    let total = 0
+    for (let n = from; n <= to; n++) total += SERVER_LEVELS[n].targets.purchases
+    return total
+  }
+
+  it.each([
+    { stretch: 'levels 1–4', from: 1, to: 4, payout: 2 },
+    { stretch: 'levels 5–8', from: 5, to: 8, payout: 6 },
+    { stretch: 'levels 9–12', from: 9, to: 12, payout: 12 },
+  ])('$stretch force exactly half of their $$payout payout', ({ from, to, payout }) => {
+    expect(buysBetween(from, to) * UNIT_PRICE).toBeCloseTo(payout / 2, 10)
+  })
+
+  it('costs a full climb half of everything the ladder pays out', () => {
+    const paid = 2 + 6 + 12
+    expect(buysBetween(1, MAX_LEVEL) * UNIT_PRICE).toBeCloseTo(paid / 2, 10)
+  })
+
+  it('never asks for fewer purchases at a higher level', () => {
+    // The stretch totals are what the funding depends on, but a level that
+    // asked for less than the one below it would still read as a mistake.
+    for (let n = 2; n <= MAX_LEVEL; n++) {
+      expect(
+        SERVER_LEVELS[n].targets.purchases,
+        `level ${n} asks for fewer purchases than level ${n - 1}`
+      ).toBeGreaterThanOrEqual(SERVER_LEVELS[n - 1].targets.purchases)
+    }
+  })
+})
+
 describe('a full climb with per-level windows', () => {
   // The sequence POST /levels/refresh runs, driven by the same pure functions
   // the route uses: read the window, count what falls inside it, clear the card,

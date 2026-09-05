@@ -52,12 +52,6 @@ export interface LevelState {
    * every later read — it is what SilverGod unlocks on.
    */
   sovereign: boolean
-  /**
-   * Funded cash links per level — how many are left of how many there were.
-   * The pool is a fixed set of slots handed out in clearing order, so this is
-   * the offer's real shape and players are shown it.
-   */
-  cashSlots: Record<string, { left: number; total: number }> | null
 }
 
 async function postRefresh(
