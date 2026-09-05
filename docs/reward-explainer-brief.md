@@ -139,3 +139,71 @@ If you choose this, add to the prompt:
 
 That last line is what keeps the graphic honest when you re-fund at different
 values.
+
+---
+
+## X post — to pair with the carousel
+
+Post the three panels as one tweet with three images, in order.
+
+### Option A — the mechanic, plainly (recommended)
+
+```
+how cash rewards work on blokaz 🧱
+
+clear level 4, 8 or 12 and you earn a stablecoin reward — paid to your
+wallet, claimed on the level that paid it.
+
+once per level, ever. funded in advance, so when a level's rewards are
+taken they're gone until the next season.
+
+blokaz.xyz
+
+#miniapps #minipay #playblokaz #celo
+```
+
+### Option B — short
+
+```
+three rungs on the blokaz ladder pay real money 💸
+
+level 4 · level 8 · level 12
+
+clear one and the reward waits on that level until you claim it. once per
+level, ever.
+
+blokaz.xyz
+
+#miniapps #minipay #playblokaz #celo
+```
+
+### Option C — urgency, if the pools are funded and you want them drained
+
+```
+cash rewards are loaded on blokaz 🧱
+
+levels 4, 8 and 12 each pay a stablecoin reward straight to your wallet.
+they're funded in advance and limited — first players to clear the level
+take them.
+
+ladder's open: blokaz.xyz
+
+#miniapps #minipay #playblokaz #celo
+```
+
+### As a two-tweet thread
+
+Lead with A, then reply with:
+
+```
+the catch worth knowing: every level starts you from zero.
+
+games, tournament runs, shop items and points all reset when you move up
+— so each rung is its own week's work, and clearing one doesn't half-pay
+for the next.
+```
+
+**Only post option C once the pools are actually funded.** "Limited, first come"
+against three empty pools tells every player who clears level 4 that the rewards
+are already gone.
+
