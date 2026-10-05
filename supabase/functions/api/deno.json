@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.107.0",
+    "compression": "npm:compression@1.8.1",
+    "cors": "npm:cors@2.8.6",
+    "dotenv": "npm:dotenv@17.4.2",
+    "express": "npm:express@5.2.1",
+    "express-rate-limit": "npm:express-rate-limit@8.5.2",
+    "helmet": "npm:helmet@8.2.0",
+    "morgan": "npm:morgan@1.11.0",
+    "viem": "npm:viem@2.48.4",
+    "viem/": "npm:/viem@2.48.4/"
+  }
+}
