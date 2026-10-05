@@ -13,6 +13,18 @@ const VALID_TOKENS = new Set(['USDC', 'USDT', 'USDm'])
 
 const BUNDLE_IDS = new Set(['revivalMegaPack', 'powerPack', 'starterPack'])
 
+// One revivalBundle purchase is $0.10 for three revives, and the client reports
+// it as quantity 3 — the revives it grants, not the units it paid for. Pricing
+// that quantity per unit asked for $0.30 and rejected every bundle bought.
+const REVIVES_PER_BUNDLE = 3
+
+/** Paid units behind a purchase: what it is priced at and counted as on the ladder. */
+function paidUnitsFor(itemId, quantity) {
+  if (BUNDLE_IDS.has(itemId)) return 1
+  if (itemId === 'revivalBundle') return Math.ceil(quantity / REVIVES_PER_BUNDLE)
+  return quantity
+}
+
 // ── On-chain payment verification ─────────────────────────────────────────────
 
 const GAME_TREASURY = (process.env.GAME_TREASURY ?? '0x3E325B45F72dFCc3875f75b5933A5da183Ec4225').toLowerCase()
@@ -255,7 +267,7 @@ router.post('/purchase', async (req, res) => {
   // a fabricated txHash must never mint free power-ups.
   // Bundles are a single fixed-price purchase whatever they contain; every
   // other item is priced per unit.
-  const paidUnits = BUNDLE_IDS.has(itemId) ? 1 : quantity
+  const paidUnits = paidUnitsFor(itemId, quantity)
   const verification = await verifyPurchaseTx(txHash, addr, tokenSymbol, itemId, paidUnits)
   if (!verification.ok) {
     console.warn(`[inventory] purchase verification failed (${itemId}, ${txHash}): ${verification.error}`)
@@ -311,10 +323,12 @@ router.post('/purchase', async (req, res) => {
   const column = columnMap[itemId]
 
   const [logResult, invResult] = await Promise.all([
+    // purchase_log.quantity feeds the ladder's purchase objective, which counts
+    // paid units ($0.10 each), so a revival bundle logs 1 while crediting 3.
     supabase.from('purchase_log').insert({
       address: addr,
       item_id: itemId,
-      quantity,
+      quantity: paidUnits,
       token_symbol: tokenSymbol,
       tx_hash: txHash ?? null,
     }),

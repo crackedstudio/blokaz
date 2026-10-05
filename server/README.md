@@ -45,6 +45,34 @@ node index.js
 npm run dev
 ```
 
+## Hosting on Supabase Edge Functions
+
+The same app also runs as the `api` Edge Function in the **main** Supabase project.
+`app.js` builds the app; `index.js` hosts it on Node and
+`supabase/functions/api/index.ts` hosts it on Supabase, mounted under `/api`.
+On Supabase the in-memory rate limiter, compression and the 10 s request timeout are
+off: each isolate is short-lived, so an in-memory counter would count per isolate
+rather than per client, and the platform enforces its own time limit.
+
+```bash
+# Run locally under Deno (reads server/.env), then hit http://localhost:8787/api/health
+PORT=8787 deno run -A --config supabase/functions/api/deno.json supabase/functions/api/index.ts
+
+# Secrets. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
+supabase secrets set --project-ref <main-project-ref> \
+  SIGNER_PRIVATE_KEY=... TOURNAMENT_ADDRESS=... CHAIN_ID=42220 RPC_URL=... \
+  ADMIN_ADDRESSES=... ALLOWED_ORIGINS=... \
+  REWARDS_SUPABASE_URL=... REWARDS_SUPABASE_SERVICE_ROLE_KEY=...
+# Optional, only if set on the Node host: GAME_TREASURY, TEST_CASH_ADDRESSES, LADDER_EPOCH
+
+# Deploy (JWT verification is off in supabase/config.toml — the browser calls it directly)
+supabase functions deploy api --project-ref <main-project-ref>
+```
+
+Then point the frontend at it: `VITE_SIGNER_URL=https://<main-project-ref>.supabase.co/functions/v1/api`.
+The npm dependency versions for the function are pinned in `supabase/functions/api/deno.json`;
+bump them there when `package.json` changes.
+
 ## API Endpoints
 
 - `POST /sign-start`: Generates a game seed and signature to begin a tournament match.
